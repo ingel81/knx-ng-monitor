@@ -103,7 +103,17 @@
   color: #555;
 
   .status-icon {
-    font-size: 18px;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+
+    &.success {
+      color: #4caf50;
+    }
+
+    &.pending {
+      color: #ff9800;
+    }
   }
 }
 
