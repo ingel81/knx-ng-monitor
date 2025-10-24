@@ -1,0 +1,68 @@
+<div class="live-view-container">
+  <div class="toolbar">
+    <h2>KNX Live View</h2>
+    <div class="actions">
+      @if (!isConnected) {
+        <button mat-raised-button color="primary" (click)="connectToKnx()">
+          <mat-icon>power_settings_new</mat-icon>
+          Connect
+        </button>
+      } @else {
+        <button mat-raised-button color="warn" (click)="disconnectFromKnx()">
+          <mat-icon>power_off</mat-icon>
+          Disconnect
+        </button>
+      }
+
+      <button mat-raised-button (click)="togglePause()">
+        <mat-icon>{{ isPaused ? 'play_arrow' : 'pause' }}</mat-icon>
+        {{ isPaused ? 'Resume' : 'Pause' }}
+      </button>
+
+      <button mat-raised-button (click)="clearTelegrams()">
+        <mat-icon>clear_all</mat-icon>
+        Clear
+      </button>
+    </div>
+  </div>
+
+  <div class="telegrams-header">
+    <span class="col-time">Time</span>
+    <span class="col-source">Source</span>
+    <span class="col-dest">Destination</span>
+    <span class="col-type">Type</span>
+    <span class="col-value">Value</span>
+    <span class="col-decoded">Decoded</span>
+  </div>
+
+  <div class="telegrams-list">
+    @if (telegrams.length === 0) {
+      <div class="no-telegrams">
+        <mat-icon>inbox</mat-icon>
+        <p>No telegrams received yet</p>
+        @if (!isConnected) {
+          <p class="hint">Click "Connect" to start monitoring</p>
+        }
+      </div>
+    } @else {
+      @for (telegram of telegrams; track telegram.id) {
+        <div class="telegram-row" [ngClass]="getMessageTypeClass(telegram.messageType)">
+          <span class="col-time">{{ telegram.timestamp | date:'HH:mm:ss.SSS' }}</span>
+          <span class="col-source">{{ telegram.sourceAddress }}</span>
+          <span class="col-dest">{{ telegram.destinationAddress }}</span>
+          <span class="col-type">{{ getMessageTypeName(telegram.messageType) }}</span>
+          <span class="col-value">{{ telegram.value }}</span>
+          <span class="col-decoded">{{ telegram.valueDecoded }}</span>
+        </div>
+      }
+    }
+  </div>
+
+  <div class="footer">
+    <span>Total telegrams: {{ telegrams.length }}</span>
+    <span class="status" [class.connected]="isConnected">
+      <mat-icon>{{ isConnected ? 'check_circle' : 'cancel' }}</mat-icon>
+      {{ isConnected ? 'Connected' : 'Disconnected' }}
+    </span>
+  </div>
+</div>

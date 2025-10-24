@@ -1,0 +1,127 @@
+.live-view-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f7fa;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 500;
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+  }
+}
+
+.telegrams-header {
+  display: grid;
+  grid-template-columns: 120px 120px 150px 100px 100px 1fr;
+  gap: 12px;
+  padding: 12px 24px;
+  background: #fafafa;
+  border-bottom: 2px solid #e0e0e0;
+  font-weight: 500;
+  font-size: 13px;
+  color: #666;
+}
+
+.telegrams-list {
+  flex: 1;
+  overflow-y: auto;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+}
+
+.no-telegrams {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+  }
+
+  p {
+    margin: 4px 0;
+    font-size: 16px;
+  }
+
+  .hint {
+    font-size: 14px;
+    color: #bbb;
+  }
+}
+
+.telegram-row {
+  display: grid;
+  grid-template-columns: 120px 120px 150px 100px 100px 1fr;
+  gap: 12px;
+  padding: 10px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #f9f9f9;
+  }
+
+  &.msg-write {
+    background-color: #e8f5e9;
+    border-left: 3px solid #4caf50;
+  }
+
+  &.msg-read {
+    background-color: #e3f2fd;
+    border-left: 3px solid #2196f3;
+  }
+
+  &.msg-response {
+    background-color: #fff3e0;
+    border-left: 3px solid #ff9800;
+  }
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  font-size: 14px;
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #f44336;
+
+    &.connected {
+      color: #4caf50;
+    }
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}

@@ -5,8 +5,12 @@ using Microsoft.IdentityModel.Tokens;
 using KnxMonitor.Infrastructure.Data;
 using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Models;
+using KnxMonitor.Core.Services;
 using KnxMonitor.Infrastructure.Repositories;
 using KnxMonitor.Infrastructure.Services;
+using KnxMonitor.Infrastructure.KnxConnection;
+using KnxMonitor.Api.Hubs;
+using KnxMonitor.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +67,11 @@ builder.Services.AddScoped<IKnxConfigurationRepository, KnxConfigurationReposito
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IKnxConnectionService, KnxConnectionService>();
+builder.Services.AddHostedService<TelegramBroadcastService>();
+
+// SignalR
+builder.Services.AddSignalR();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -102,5 +111,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<TelegramHub>("/hubs/telegram");
 
 app.Run();
