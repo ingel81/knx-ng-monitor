@@ -44,7 +44,6 @@ artifacts/
 *.db
 *.db-shm
 *.db-wal
-Migrations/
 
 # Node.js / Angular
 node_modules/
