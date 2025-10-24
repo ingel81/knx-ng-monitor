@@ -225,3 +225,4 @@ Next steps according to the plan:
 - Show **loading indicators** for all async operations
 - Display **user-friendly error messages**
 - WCAG 2.1 Level AA compliance for accessibility
+- schreibe commits generell immer kompakt und immer ohne claude footer.

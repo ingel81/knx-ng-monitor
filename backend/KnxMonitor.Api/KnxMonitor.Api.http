@@ -1,0 +1,6 @@
+@KnxMonitor.Api_HostAddress = http://localhost:5075
+
+GET {{KnxMonitor.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
