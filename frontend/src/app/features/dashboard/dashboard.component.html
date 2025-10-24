@@ -1,0 +1,48 @@
+<div class="dashboard-container">
+  <header class="dashboard-header">
+    <div class="header-content">
+      <h1>KNX-NG-Monitor</h1>
+      <div class="user-info">
+        @if (currentUser$ | async; as username) {
+          <span class="welcome">Welcome, <strong>{{ username }}</strong></span>
+          <button class="logout-button" (click)="logout()">Logout</button>
+        }
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-main">
+    <div class="dashboard-content">
+      <div class="welcome-card">
+        <h2>🎉 Authentication Successful!</h2>
+        <p>You are now logged in to the KNX-NG-Monitor dashboard.</p>
+
+        <div class="status-info">
+          <div class="status-item">
+            <span class="status-icon">✅</span>
+            <span>Backend API: Connected</span>
+          </div>
+          <div class="status-item">
+            <span class="status-icon">✅</span>
+            <span>JWT Authentication: Active</span>
+          </div>
+          <div class="status-item">
+            <span class="status-icon">⏳</span>
+            <span>KNX Integration: Coming soon...</span>
+          </div>
+        </div>
+
+        <div class="next-steps">
+          <h3>Next Steps:</h3>
+          <ul>
+            <li>Phase 4: KNX Integration</li>
+            <li>Phase 5: .knxproj Parser</li>
+            <li>Phase 6: Telegram API</li>
+            <li>Phase 7: SignalR Real-time Updates</li>
+            <li>Phase 12-14: Live View, Filters, History</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

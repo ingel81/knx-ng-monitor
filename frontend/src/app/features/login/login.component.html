@@ -1,0 +1,58 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <h1>KNX-NG-Monitor</h1>
+      <p>Sign in to continue</p>
+    </div>
+
+    <form (ngSubmit)="onSubmit()" class="login-form">
+      @if (errorMessage) {
+        <div class="error-message">
+          {{ errorMessage }}
+        </div>
+      }
+
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          [(ngModel)]="credentials.username"
+          placeholder="Enter username"
+          [disabled]="isLoading"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          [(ngModel)]="credentials.password"
+          placeholder="Enter password"
+          [disabled]="isLoading"
+          required
+        />
+      </div>
+
+      <button
+        type="submit"
+        class="login-button"
+        [disabled]="isLoading"
+      >
+        @if (isLoading) {
+          <span>Logging in...</span>
+        } @else {
+          <span>Login</span>
+        }
+      </button>
+
+      <div class="login-hint">
+        <small>Default credentials: admin / admin</small>
+      </div>
+    </form>
+  </div>
+</div>
