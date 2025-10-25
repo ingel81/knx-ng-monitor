@@ -97,6 +97,25 @@ public class KnxController : ControllerBase
         var configs = await _configRepository.GetAllAsync();
         return Ok(configs);
     }
+
+    [HttpPut("configurations/{id}")]
+    public async Task<IActionResult> UpdateConfiguration(int id, [FromBody] CreateConfigRequest request)
+    {
+        var config = await _configRepository.GetByIdAsync(id);
+        if (config == null)
+        {
+            return NotFound();
+        }
+
+        config.IpAddress = request.IpAddress;
+        config.Port = request.Port;
+        config.PhysicalAddress = request.PhysicalAddress;
+        config.ConnectionType = request.ConnectionType;
+        config.UpdatedAt = DateTime.UtcNow;
+
+        await _configRepository.UpdateAsync(config);
+        return Ok(config);
+    }
 }
 
 public record CreateConfigRequest(

@@ -1,0 +1,99 @@
+<div class="settings-container">
+  <div class="settings-content">
+    <h1 class="page-title">
+      <mat-icon>settings</mat-icon>
+      Settings
+    </h1>
+
+    <mat-card class="settings-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>router</mat-icon>
+          KNX Gateway Configuration
+        </mat-card-title>
+      </mat-card-header>
+
+      <mat-card-content>
+        <p class="description">
+          Configure your KNX IP interface connection. These settings will be used for all KNX communications.
+        </p>
+
+        <div class="config-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Gateway IP Address</mat-label>
+            <input matInput [(ngModel)]="knxConfig.ipAddress" placeholder="192.168.1.100">
+            <mat-icon matPrefix>language</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Gateway Port</mat-label>
+            <input matInput type="number" [(ngModel)]="knxConfig.port" placeholder="3671">
+            <mat-icon matPrefix>settings_ethernet</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Physical Address</mat-label>
+            <input matInput [(ngModel)]="knxConfig.physicalAddress" placeholder="1.0.58">
+            <mat-icon matPrefix>location_on</mat-icon>
+          </mat-form-field>
+        </div>
+
+        <div class="info-box">
+          <mat-icon>info</mat-icon>
+          <div>
+            <strong>Connection Type:</strong> IP Tunneling (UDP)<br>
+            <strong>Default Port:</strong> 3671<br>
+            <strong>Note:</strong> Make sure your KNX IP interface is reachable on the network.
+          </div>
+        </div>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-raised-button color="primary" (click)="saveSettings()" [disabled]="isSaving">
+          <mat-icon>save</mat-icon>
+          {{ isSaving ? 'Saving...' : 'Save Settings' }}
+        </button>
+
+        <button mat-raised-button color="accent" (click)="testConnection()" [disabled]="isTesting || isSaving">
+          <mat-icon>cable</mat-icon>
+          {{ isTesting ? 'Testing...' : 'Test Connection' }}
+        </button>
+
+        <button mat-stroked-button (click)="resetToDefaults()">
+          <mat-icon>restore</mat-icon>
+          Reset to Defaults
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <mat-card class="settings-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>storage</mat-icon>
+          Data Storage
+        </mat-card-title>
+      </mat-card-header>
+
+      <mat-card-content>
+        <p class="description">
+          Settings are stored in the backend database and persist across server restarts.
+        </p>
+
+        <div class="storage-info">
+          <div class="storage-item">
+            <mat-icon class="success">check_circle</mat-icon>
+            <span>Persistent storage in SQLite database</span>
+          </div>
+          <div class="storage-item">
+            <mat-icon class="success">check_circle</mat-icon>
+            <span>Survives server and application restarts</span>
+          </div>
+          <div class="storage-item">
+            <mat-icon class="success">check_circle</mat-icon>
+            <span>Shared across all sessions and users</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

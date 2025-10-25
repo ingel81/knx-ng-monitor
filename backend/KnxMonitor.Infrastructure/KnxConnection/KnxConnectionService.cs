@@ -1,9 +1,14 @@
+using Knx.Falcon;
+using Knx.Falcon.Configuration;
+using Knx.Falcon.KnxnetIp;
+using Knx.Falcon.Sdk;
 using KnxMonitor.Core.Entities;
 using KnxMonitor.Core.Enums;
 using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace KnxMonitor.Infrastructure.KnxConnection;
 
@@ -11,10 +16,10 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
 {
     private readonly ILogger<KnxConnectionService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
-    private Timer? _simulationTimer;
+    private KnxBus? _knxBus;
     private KnxConfiguration? _activeConfiguration;
     private bool _isConnected;
-    private readonly Random _random = new();
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
 
     public event EventHandler<KnxTelegram>? TelegramReceived;
     public bool IsConnected => _isConnected;
@@ -36,47 +41,87 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
                 await DisconnectAsync();
             }
 
-            _logger.LogInformation("Connecting to KNX bus at {IpAddress}:{Port}",
-                configuration.IpAddress, configuration.Port);
+            _logger.LogInformation("Connecting to KNX bus at {IpAddress}:{Port} via {ConnectionType}",
+                configuration.IpAddress, configuration.Port, configuration.ConnectionType);
 
-            // TODO: Implement actual KNX connection with Knx.Falcon.Sdk
-            // For now, simulate telegrams for demo purposes
-            _simulationTimer = new Timer(SimulateTelegram, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(3));
+            // Create connector parameters based on configuration type
+            ConnectorParameters connectorParameters;
+            if (configuration.ConnectionType == Core.Enums.ConnectionType.Tunneling)
+            {
+                // Create tunneling parameters
+                connectorParameters = new IpTunnelingConnectorParameters(
+                    configuration.IpAddress,
+                    configuration.Port,
+                    IpProtocol.Udp,
+                    true  // Use NAT mode
+                );
+            }
+            else
+            {
+                // Create routing parameters
+                connectorParameters = new IpRoutingConnectorParameters(IPAddress.Parse(configuration.IpAddress));
+            }
+
+            // Create KNX bus instance
+            _knxBus = new KnxBus(connectorParameters);
+
+            // Subscribe to events before connecting
+            _knxBus.GroupMessageReceived += OnGroupMessageReceived;
+            _knxBus.ConnectionStateChanged += OnConnectionStateChanged;
+
+            // Connect to the bus
+            await _knxBus.ConnectAsync(_cancellationTokenSource.Token);
 
             _activeConfiguration = configuration;
             _isConnected = true;
 
-            _logger.LogInformation("Successfully connected to KNX bus (simulation mode)");
-            return await Task.FromResult(true);
+            _logger.LogInformation("Successfully connected to KNX bus. InterfaceAddress: {IndividualAddress}",
+                _knxBus.InterfaceConfiguration.IndividualAddress);
+
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to connect to KNX bus");
             _isConnected = false;
+            await CleanupBusConnection();
             return false;
         }
     }
 
     public async Task DisconnectAsync()
     {
-        if (_simulationTimer != null)
+        try
+        {
+            await CleanupBusConnection();
+            _isConnected = false;
+            _activeConfiguration = null;
+
+            _logger.LogInformation("Disconnected from KNX bus");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error disconnecting from KNX bus");
+        }
+    }
+
+    private async Task CleanupBusConnection()
+    {
+        if (_knxBus != null)
         {
             try
             {
-                await _simulationTimer.DisposeAsync();
-                _simulationTimer = null;
-                _isConnected = false;
-                _activeConfiguration = null;
+                _knxBus.GroupMessageReceived -= OnGroupMessageReceived;
+                _knxBus.ConnectionStateChanged -= OnConnectionStateChanged;
 
-                _logger.LogInformation("Disconnected from KNX bus");
+                await _knxBus.DisposeAsync();
+                _knxBus = null;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error disconnecting from KNX bus");
+                _logger.LogError(ex, "Error cleaning up bus connection");
             }
         }
-
-        await Task.CompletedTask;
     }
 
     public Task<KnxConfiguration?> GetActiveConfigurationAsync()
@@ -84,23 +129,30 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
         return Task.FromResult(_activeConfiguration);
     }
 
-    private void SimulateTelegram(object? state)
+    private void OnGroupMessageReceived(object? sender, GroupEventArgs e)
     {
         try
         {
-            var groupAddresses = new[] { "0/0/1", "0/0/2", "0/1/5", "1/2/10", "1/2/11", "2/0/1" };
-            var messageTypes = new[] { MessageType.Write, MessageType.Read, MessageType.Response };
+            // Map EventType to our MessageType enum
+            // EventType is an enum in Falcon SDK, convert string representation
+            var messageType = e.EventType.ToString() switch
+            {
+                "GroupValueWrite" => MessageType.Write,
+                "GroupValueRead" => MessageType.Read,
+                "GroupValueResponse" => MessageType.Response,
+                _ => MessageType.Write
+            };
 
-            var randomValue = _random.Next(0, 256);
+            // Convert Falcon telegram to our domain model
             var telegram = new KnxTelegram
             {
                 Timestamp = DateTime.UtcNow,
-                SourceAddress = $"1.1.{_random.Next(1, 255)}",
-                DestinationAddress = groupAddresses[_random.Next(groupAddresses.Length)],
-                MessageType = messageTypes[_random.Next(messageTypes.Length)],
-                Value = new byte[] { (byte)randomValue },
-                ValueDecoded = randomValue.ToString(),
-                Priority = 0,
+                SourceAddress = e.SourceAddress.ToString(),
+                DestinationAddress = e.DestinationAddress.ToString(),
+                MessageType = messageType,
+                Value = GetValueBytes(e.Value),
+                ValueDecoded = DecodeValue(e.Value),
+                Priority = 0, // TODO: Map priority from telegram if available
                 Flags = "00"
             };
 
@@ -122,18 +174,79 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
             // Raise event for SignalR broadcasting
             TelegramReceived?.Invoke(this, telegram);
 
-            _logger.LogDebug("Simulated telegram: {Source} -> {Dest} ({Type})",
-                telegram.SourceAddress, telegram.DestinationAddress, telegram.MessageType);
+            _logger.LogDebug("Received KNX telegram: {Source} -> {Dest} ({Type}): {Value}",
+                telegram.SourceAddress, telegram.DestinationAddress, telegram.MessageType, telegram.ValueDecoded);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error simulating KNX telegram");
+            _logger.LogError(ex, "Error processing KNX telegram");
+        }
+    }
+
+    private void OnConnectionStateChanged(object? sender, EventArgs e)
+    {
+        if (sender is KnxBus bus)
+        {
+            var state = bus.ConnectionState;
+            _logger.LogInformation("KNX connection state changed to: {ConnectionState}", state);
+
+            // Update our internal connection status
+            _isConnected = state == BusConnectionState.Connected;
+        }
+    }
+
+    private byte[] GetValueBytes(GroupValue? value)
+    {
+        if (value == null)
+            return Array.Empty<byte>();
+
+        try
+        {
+            // GroupValue has internal byte array, access via reflection
+            var valueField = value.GetType().GetField("_value",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (valueField != null && valueField.GetValue(value) is byte[] bytes)
+            {
+                return bytes;
+            }
+
+            // Fallback: try to parse from string representation
+            var valueStr = value.ToString();
+            if (!string.IsNullOrEmpty(valueStr) && byte.TryParse(valueStr, out var singleByte))
+            {
+                return new[] { singleByte };
+            }
+
+            return Array.Empty<byte>();
+        }
+        catch
+        {
+            return Array.Empty<byte>();
+        }
+    }
+
+    private string DecodeValue(GroupValue? value)
+    {
+        try
+        {
+            if (value == null)
+                return string.Empty;
+
+            // GroupValue has ToString() which provides string representation
+            return value.ToString() ?? "N/A";
+        }
+        catch
+        {
+            return "N/A";
         }
     }
 
     public void Dispose()
     {
+        _cancellationTokenSource.Cancel();
         DisconnectAsync().Wait();
+        _cancellationTokenSource.Dispose();
         GC.SuppressFinalize(this);
     }
 }

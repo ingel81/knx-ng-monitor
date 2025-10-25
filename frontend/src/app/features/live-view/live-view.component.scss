@@ -1,23 +1,25 @@
 .live-view-container {
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #f5f7fa;
+  padding: 24px;
 }
 
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
-  background: white;
-  border-bottom: 1px solid #e0e0e0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-bottom: 16px;
 
   h2 {
     margin: 0;
     font-size: 20px;
     font-weight: 500;
+    color: #fff;
   }
 
   .actions {
@@ -26,16 +28,51 @@
   }
 }
 
+.knx-config-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
+
+  mat-card-header {
+    margin-bottom: 16px;
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 18px;
+      font-weight: 500;
+      color: #fff;
+
+      mat-icon {
+        color: #64b5f6;
+      }
+    }
+  }
+
+  .config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    padding: 8px 0;
+
+    mat-form-field {
+      width: 100%;
+    }
+  }
+}
+
 .telegrams-header {
   display: grid;
   grid-template-columns: 120px 120px 150px 100px 100px 1fr;
   gap: 12px;
-  padding: 12px 24px;
-  background: #fafafa;
-  border-bottom: 2px solid #e0e0e0;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px 8px 0 0;
   font-weight: 500;
   font-size: 13px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .telegrams-list {
@@ -43,6 +80,10 @@
   overflow-y: auto;
   font-family: 'Roboto Mono', monospace;
   font-size: 13px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
 }
 
 .no-telegrams {
@@ -51,13 +92,14 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  color: rgba(255, 255, 255, 0.5);
 
   mat-icon {
     font-size: 64px;
     width: 64px;
     height: 64px;
     margin-bottom: 16px;
+    opacity: 0.5;
   }
 
   p {
@@ -67,7 +109,7 @@
 
   .hint {
     font-size: 14px;
-    color: #bbb;
+    color: rgba(255, 255, 255, 0.3);
   }
 }
 
@@ -75,26 +117,27 @@
   display: grid;
   grid-template-columns: 120px 120px 150px 100px 100px 1fr;
   gap: 12px;
-  padding: 10px 24px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: background-color 0.2s;
+  color: rgba(255, 255, 255, 0.9);
 
   &:hover {
-    background-color: #f9f9f9;
+    background-color: rgba(255, 255, 255, 0.05);
   }
 
   &.msg-write {
-    background-color: #e8f5e9;
+    background-color: rgba(76, 175, 80, 0.15);
     border-left: 3px solid #4caf50;
   }
 
   &.msg-read {
-    background-color: #e3f2fd;
+    background-color: rgba(33, 150, 243, 0.15);
     border-left: 3px solid #2196f3;
   }
 
   &.msg-response {
-    background-color: #fff3e0;
+    background-color: rgba(255, 152, 0, 0.15);
     border-left: 3px solid #ff9800;
   }
 }
@@ -103,10 +146,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 24px;
-  background: white;
-  border-top: 1px solid #e0e0e0;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-top: 16px;
   font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
 
   .status {
     display: flex;

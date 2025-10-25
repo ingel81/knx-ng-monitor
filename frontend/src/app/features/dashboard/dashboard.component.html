@@ -1,50 +1,36 @@
 <div class="dashboard-container">
-  <header class="dashboard-header">
-    <div class="header-content">
-      <h1>KNX-NG-Monitor</h1>
-      <div class="user-info">
-        @if (currentUser$ | async; as username) {
-          <span class="welcome">Welcome, <strong>{{ username }}</strong></span>
-          <button class="logout-button" (click)="logout()">Logout</button>
-        }
-      </div>
-    </div>
-  </header>
+  <div class="dashboard-content">
+    <div class="welcome-card">
+      <h2>Authentication Successful</h2>
+      <p>You are now logged in to the KNX-NG-Monitor dashboard.</p>
 
-  <main class="dashboard-main">
-    <div class="dashboard-content">
-      <div class="welcome-card">
-        <h2>Authentication Successful</h2>
-        <p>You are now logged in to the KNX-NG-Monitor dashboard.</p>
-
-        <div class="status-info">
-          <div class="status-item">
-            <mat-icon class="status-icon success">check_circle</mat-icon>
-            <span>Backend API: Connected</span>
-          </div>
-          <div class="status-item">
-            <mat-icon class="status-icon success">verified_user</mat-icon>
-            <span>JWT Authentication: Active</span>
-          </div>
-          <div class="status-item">
-            <mat-icon class="status-icon pending">schedule</mat-icon>
-            <span>KNX Integration: Coming soon...</span>
-          </div>
+      <div class="status-info">
+        <div class="status-item">
+          <mat-icon class="status-icon success">check_circle</mat-icon>
+          <span>Backend API: Connected</span>
         </div>
-
-        <div class="next-steps">
-          <h3>Available Features:</h3>
-          <ul>
-            <li><a href="/live-view">Live View - Monitor KNX bus in real-time</a></li>
-          </ul>
-          <h3>Coming Soon:</h3>
-          <ul>
-            <li>Phase 5: .knxproj Parser</li>
-            <li>Phase 6: Telegram API</li>
-            <li>Filter System & History</li>
-          </ul>
+        <div class="status-item">
+          <mat-icon class="status-icon success">verified_user</mat-icon>
+          <span>JWT Authentication: Active</span>
+        </div>
+        <div class="status-item">
+          <mat-icon class="status-icon pending">schedule</mat-icon>
+          <span>KNX Integration: Coming soon...</span>
         </div>
       </div>
+
+      <div class="next-steps">
+        <h3>Available Features:</h3>
+        <ul>
+          <li><a routerLink="/live-view">Live View - Monitor KNX bus in real-time</a></li>
+        </ul>
+        <h3>Coming Soon:</h3>
+        <ul>
+          <li>Phase 5: .knxproj Parser</li>
+          <li>Phase 6: Telegram API</li>
+          <li>Filter System & History</li>
+        </ul>
+      </div>
     </div>
-  </main>
+  </div>
 </div>

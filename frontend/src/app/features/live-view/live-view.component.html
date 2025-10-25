@@ -3,9 +3,9 @@
     <h2>KNX Live View</h2>
     <div class="actions">
       @if (!isConnected) {
-        <button mat-raised-button color="primary" (click)="connectToKnx()">
+        <button mat-raised-button color="primary" (click)="connectToKnx()" [disabled]="isConnecting">
           <mat-icon>power_settings_new</mat-icon>
-          Connect
+          {{ isConnecting ? 'Connecting...' : 'Connect' }}
         </button>
       } @else {
         <button mat-raised-button color="warn" (click)="disconnectFromKnx()">
@@ -41,7 +41,7 @@
         <mat-icon>inbox</mat-icon>
         <p>No telegrams received yet</p>
         @if (!isConnected) {
-          <p class="hint">Click "Connect" to start monitoring</p>
+          <p class="hint">Configure KNX Gateway settings above and click "Connect" to start monitoring</p>
         }
       </div>
     } @else {

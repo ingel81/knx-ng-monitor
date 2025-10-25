@@ -1,7 +1,11 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatCardModule } from '@angular/material/card';
 import { Subscription } from 'rxjs';
 import { SignalrService, KnxTelegram } from '../../core/services/signalr.service';
 import { HttpClient } from '@angular/common/http';
@@ -15,7 +19,15 @@ interface KnxConfiguration {
 
 @Component({
   selector: 'app-live-view',
-  imports: [CommonModule, MatIconModule, MatButtonModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatIconModule,
+    MatButtonModule,
+    MatInputModule,
+    MatFormFieldModule,
+    MatCardModule
+  ],
   templateUrl: './live-view.component.html',
   styleUrl: './live-view.component.scss'
 })
@@ -27,6 +39,7 @@ export class LiveViewComponent implements OnInit, OnDestroy {
   telegrams: KnxTelegram[] = [];
   isConnected = false;
   isPaused = false;
+  isConnecting = false;
 
   async ngOnInit() {
     await this.signalrService.startConnection();
@@ -50,27 +63,25 @@ export class LiveViewComponent implements OnInit, OnDestroy {
 
   async connectToKnx() {
     try {
-      // Get or create default configuration
+      this.isConnecting = true;
+
+      // Get configuration from backend (configured in Settings)
       const configs = await this.http.get<KnxConfiguration[]>('http://localhost:5075/api/knx/configurations').toPromise();
 
-      let configId: number;
-      if (configs && configs.length > 0) {
-        configId = configs[0].id;
-      } else {
-        // Create default configuration
-        const newConfig = await this.http.post<KnxConfiguration>('http://localhost:5075/api/knx/configurations', {
-          ipAddress: '192.168.1.100',
-          port: 3671,
-          physicalAddress: '1.0.58',
-          connectionType: 0 // Tunneling
-        }).toPromise();
-        configId = newConfig!.id;
+      if (!configs || configs.length === 0) {
+        alert('No KNX configuration found. Please configure your KNX Gateway in Settings first.');
+        return;
       }
+
+      const configId = configs[0].id;
 
       await this.http.post('http://localhost:5075/api/knx/connect', configId).toPromise();
       this.isConnected = true;
     } catch (error) {
       console.error('Failed to connect to KNX:', error);
+      alert('Failed to connect to KNX Gateway. Please check your settings and try again.');
+    } finally {
+      this.isConnecting = false;
     }
   }
 

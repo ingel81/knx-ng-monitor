@@ -1,0 +1,240 @@
+.settings-container {
+  min-height: 100%;
+  padding: 24px;
+}
+
+.settings-content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 500;
+  margin: 0 0 24px 0;
+
+  mat-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    color: #64b5f6;
+  }
+}
+
+.settings-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 24px;
+  color: rgba(255, 255, 255, 0.9);
+
+  mat-card-header {
+    margin-bottom: 16px;
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 500;
+      color: #fff;
+
+      mat-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+        color: #64b5f6;
+      }
+    }
+  }
+
+  mat-card-content {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  mat-card-actions {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    flex-wrap: wrap;
+
+    button {
+      mat-icon {
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
+.description {
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+
+  mat-form-field {
+    width: 100%;
+
+    ::ng-deep {
+      .mat-mdc-text-field-wrapper {
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      .mat-mdc-form-field-focus-overlay {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+
+      .mdc-text-field--outlined:not(.mdc-text-field--disabled) {
+        .mdc-notched-outline__leading,
+        .mdc-notched-outline__notch,
+        .mdc-notched-outline__trailing {
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        &:hover .mdc-notched-outline {
+          .mdc-notched-outline__leading,
+          .mdc-notched-outline__notch,
+          .mdc-notched-outline__trailing {
+            border-color: rgba(255, 255, 255, 0.5);
+          }
+        }
+
+        &.mdc-text-field--focused .mdc-notched-outline {
+          .mdc-notched-outline__leading,
+          .mdc-notched-outline__notch,
+          .mdc-notched-outline__trailing {
+            border-color: #64b5f6;
+          }
+        }
+      }
+
+      .mat-mdc-form-field-label,
+      .mat-mdc-input-element {
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .mat-mdc-form-field-icon-prefix mat-icon {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      input::placeholder {
+        color: rgba(255, 255, 255, 0.3);
+      }
+    }
+  }
+}
+
+.info-box {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(100, 181, 246, 0.1);
+  border: 1px solid rgba(100, 181, 246, 0.3);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.9);
+
+  mat-icon {
+    color: #64b5f6;
+    flex-shrink: 0;
+  }
+
+  strong {
+    color: #fff;
+  }
+}
+
+.storage-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.storage-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.8);
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+
+    &.success {
+      color: #4caf50;
+    }
+  }
+}
+
+// Material Button overrides for dark theme
+::ng-deep {
+  .settings-card {
+    .mat-mdc-raised-button {
+      &.mat-primary {
+        background-color: #1976d2;
+        color: white;
+
+        &:hover:not([disabled]) {
+          background-color: #1565c0;
+        }
+      }
+
+      &.mat-accent {
+        background-color: #388e3c;
+        color: white;
+
+        &:hover:not([disabled]) {
+          background-color: #2e7d32;
+        }
+      }
+    }
+
+    .mat-mdc-outlined-button {
+      border-color: rgba(255, 255, 255, 0.3);
+      color: rgba(255, 255, 255, 0.9);
+
+      &:hover:not([disabled]) {
+        background-color: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .settings-container {
+    padding: 16px;
+  }
+
+  .page-title {
+    font-size: 24px;
+
+    mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+    }
+  }
+
+  .config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mat-card-actions {
+    flex-direction: column;
+
+    button {
+      width: 100%;
+    }
+  }
+}
