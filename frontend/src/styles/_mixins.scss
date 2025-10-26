@@ -1,4 +1,7 @@
-@import 'variables';
+// Forward variables so consumers get them automatically
+@forward 'variables';
+// Use variables internally
+@use 'variables' as *;
 
 // ============================================================================
 // Page Header Mixin

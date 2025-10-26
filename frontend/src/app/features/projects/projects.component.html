@@ -1,7 +1,7 @@
 <div class="projects-container">
   <div class="page-header">
     <div class="page-header-left">
-      <h2>KNX Projects</h2>
+      <h2>Projects</h2>
       @if (projects.length > 0) {
         <span class="badge">{{ projects.length }} projects</span>
       }
@@ -23,17 +23,20 @@
       <p>Loading projects...</p>
     </div>
   } @else if (projects.length === 0) {
-    <mat-card class="empty-state">
-      <mat-card-content>
-        <mat-icon>folder_open</mat-icon>
-        <h3>No Projects Imported</h3>
-        <p>Upload a .knxproj file from ETS to get started</p>
-        <button mat-raised-button color="primary" (click)="fileInput.click()">
+    <div class="empty-state">
+      <div class="empty-state-content">
+        <div class="icon-wrapper">
+          <mat-icon>folder_open</mat-icon>
+        </div>
+        <h2>No Projects Yet</h2>
+        <p class="description">Get started by importing your first ETS project</p>
+        <p class="hint">Upload a .knxproj file to begin monitoring KNX telegrams</p>
+        <button mat-raised-button color="primary" (click)="fileInput.click()" class="upload-button">
           <mat-icon>upload_file</mat-icon>
-          Upload .knxproj
+          Import Project
         </button>
-      </mat-card-content>
-    </mat-card>
+      </div>
+    </div>
   } @else {
     <table mat-table [dataSource]="projects" class="projects-table">
       <ng-container matColumnDef="name">

@@ -1,5 +1,5 @@
-@import '../../../styles/variables';
-@import '../../../styles/mixins';
+// Import mixins (forwards variables, so we get both)
+@use '../../../styles/mixins' as *;
 @import 'ag-grid-community/styles/ag-grid.css';
 @import 'ag-grid-community/styles/ag-theme-material.css';
 
@@ -19,6 +19,16 @@
   // Page Header (using centralized mixin - DO NOT override!)
   .page-header {
     @include page-header;
+
+    // Badge styling override for better visibility in right section
+    .page-header-right .badge {
+      background: rgba(100, 181, 246, 0.25);
+      border: 1px solid rgba(100, 181, 246, 0.5);
+      color: #1976d2;
+      font-size: $font-size-base;
+      font-weight: $font-weight-bold;
+      padding: $spacing-sm $spacing-lg;
+    }
 
     .auto-scroll-toggle {
       color: $text-primary;
@@ -90,6 +100,7 @@
     padding: 0;
     background-color: white;
     min-height: 0; // Critical for flex children with overflow
+    max-width: 100%; // Prevent horizontal overflow
     display: flex; // Make it flex to size AG-Grid properly
     flex-direction: column;
 
@@ -103,37 +114,122 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #999;
+      color: #666;
       background-color: white;
       z-index: $z-index-base;
       pointer-events: none;
+      padding: $spacing-xl;
 
-      mat-icon {
+      > mat-icon {
         font-size: 72px;
         width: 72px;
         height: 72px;
         margin-bottom: $spacing-lg;
-        opacity: 0.5;
+        opacity: 0.4;
+        color: #999;
       }
 
       h3 {
-        margin: 0 0 $spacing-sm 0;
-        font-weight: $font-weight-normal;
+        margin: 0 0 $spacing-xl 0;
+        font-weight: $font-weight-medium;
+        font-size: $font-size-xl;
+        color: #333;
+      }
+
+      .setup-checklist {
+        max-width: 500px;
+        width: 100%;
+
+        .checklist-intro {
+          text-align: center;
+          margin-bottom: $spacing-lg;
+          font-size: $font-size-base;
+          color: #666;
+        }
+
+        .checklist-item {
+          display: flex;
+          align-items: flex-start;
+          gap: $spacing-md;
+          padding: $spacing-md;
+          margin-bottom: $spacing-sm;
+          border-radius: $border-radius-md;
+          background: #f5f5f5;
+          transition: all $transition-base;
+
+          &.completed {
+            background: #e8f5e9;
+
+            .checklist-icon {
+              color: #4caf50;
+            }
+
+            .checklist-title {
+              color: #2e7d32;
+              text-decoration: line-through;
+            }
+          }
+
+          .checklist-icon {
+            font-size: 24px;
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            color: #bbb;
+            margin-top: 2px;
+          }
+
+          .checklist-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+
+            .checklist-title {
+              font-weight: $font-weight-medium;
+              font-size: $font-size-base;
+              color: #333;
+            }
+
+            .checklist-hint {
+              font-size: $font-size-sm;
+              color: #666;
+            }
+          }
+        }
       }
 
       .hint {
         max-width: 400px;
         text-align: center;
-        font-size: $font-size-sm;
+        font-size: $font-size-base;
         line-height: 1.5;
+
+        &.connected {
+          display: flex;
+          align-items: center;
+          gap: $spacing-sm;
+          color: #4caf50;
+          font-weight: $font-weight-medium;
+
+          mat-icon {
+            font-size: 24px;
+            width: 24px;
+            height: 24px;
+            margin: 0;
+            opacity: 1;
+          }
+        }
       }
     }
 
     ag-grid-angular {
       flex: 1;
       width: 100%;
+      max-width: 100%; // Prevent horizontal overflow
       min-height: 300px; // Minimum height to ensure visibility
       display: block;
+      overflow: hidden; // Prevent any overflow from ag-grid-angular element
 
       &.grid-empty {
         opacity: 0;
@@ -144,9 +240,20 @@
     ::ng-deep {
       .ag-theme-material {
         width: 100%;
+        max-width: 100%; // Prevent horizontal overflow
         height: 100%; // Ensure AG-Grid fills container
         display: block; // Use block instead of flex for AG-Grid root
         position: relative;
+        overflow: hidden; // Prevent overflow at theme level
+
+        // Prevent horizontal scrollbar
+        .ag-body-horizontal-scroll-viewport {
+          overflow-x: hidden !important;
+        }
+
+        .ag-body-horizontal-scroll-container {
+          overflow-x: hidden !important;
+        }
 
         // Row colors for message types
         .ag-row {

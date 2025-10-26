@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
-import { LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse } from '../models/auth.models';
+import { LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse, InitialSetupRequest, NeedsSetupResponse } from '../models/auth.models';
 
 @Injectable({
   providedIn: 'root'
@@ -100,5 +100,20 @@ export class AuthService {
 
     const expiryDate = new Date(expiry);
     return expiryDate > new Date();
+  }
+
+  needsSetup(): Observable<NeedsSetupResponse> {
+    return this.http.get<NeedsSetupResponse>(`${this.apiUrl}/auth/needs-setup`);
+  }
+
+  initialSetup(request: InitialSetupRequest): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/setup`, request)
+      .pipe(
+        tap(response => {
+          this.storeTokens(response);
+          this.currentUserSubject.next(response.username);
+          this.isAuthenticatedSubject.next(true);
+        })
+      );
   }
 }

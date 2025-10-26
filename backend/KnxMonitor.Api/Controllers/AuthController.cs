@@ -78,4 +78,37 @@ public class AuthController : ControllerBase
         _logger.LogInformation("User logged out successfully");
         return Ok(new { message = "Logged out successfully" });
     }
+
+    [HttpGet("needs-setup")]
+    [AllowAnonymous]
+    public async Task<IActionResult> NeedsInitialSetup()
+    {
+        var needsSetup = await _authService.NeedsInitialSetupAsync();
+        return Ok(new { needsSetup });
+    }
+
+    [HttpPost("setup")]
+    [AllowAnonymous]
+    public async Task<IActionResult> InitialSetup([FromBody] InitialSetupRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest(new { message = "Username and password are required" });
+        }
+
+        if (request.Password.Length < 8)
+        {
+            return BadRequest(new { message = "Password must be at least 8 characters long" });
+        }
+
+        var response = await _authService.InitialSetupAsync(request);
+
+        if (response == null)
+        {
+            return BadRequest(new { message = "Initial setup already completed or invalid data" });
+        }
+
+        _logger.LogInformation("Initial setup completed for user: {Username}", request.Username);
+        return Ok(response);
+    }
 }

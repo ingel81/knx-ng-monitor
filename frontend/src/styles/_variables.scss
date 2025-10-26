@@ -22,6 +22,10 @@ $bg-secondary: #1e1e1e;
 $bg-tertiary: #2a2a2a;
 $bg-elevated: rgba(255, 255, 255, 0.05);
 
+// Aliases for consistency
+$background-dark: $bg-primary;
+$surface-dark: $bg-secondary;
+
 // Text Colors (Dark Theme)
 $text-primary: rgba(255, 255, 255, 0.9);
 $text-secondary: rgba(255, 255, 255, 0.7);

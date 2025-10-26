@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -10,10 +10,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
-import { LoginRequest } from '../../core/models/auth.models';
+import { InitialSetupRequest } from '../../core/models/auth.models';
 
 @Component({
-  selector: 'app-login',
+  selector: 'app-initial-setup',
   imports: [
     CommonModule,
     FormsModule,
@@ -24,54 +24,53 @@ import { LoginRequest } from '../../core/models/auth.models';
     MatIconModule,
     MatProgressSpinnerModule
   ],
-  templateUrl: './login.component.html',
-  styleUrl: './login.component.scss'
+  templateUrl: './initial-setup.html',
+  styleUrl: './initial-setup.scss'
 })
-export class LoginComponent implements OnInit {
+export class InitialSetup {
   private authService = inject(AuthService);
   private router = inject(Router);
   private toast = inject(ToastService);
 
-  credentials: LoginRequest = {
+  credentials: InitialSetupRequest = {
     username: '',
     password: ''
   };
 
+  confirmPassword = '';
   errorMessage = '';
   isLoading = false;
   hidePassword = true;
-
-  ngOnInit(): void {
-    // Check if initial setup is needed
-    this.authService.needsSetup().subscribe({
-      next: (response) => {
-        if (response.needsSetup) {
-          this.router.navigate(['/setup']);
-        }
-      },
-      error: (error) => {
-        console.error('Failed to check setup status:', error);
-      }
-    });
-  }
+  hideConfirmPassword = true;
 
   onSubmit(): void {
+    this.errorMessage = '';
+
     if (!this.credentials.username || !this.credentials.password) {
       this.errorMessage = 'Please enter username and password';
       return;
     }
 
-    this.isLoading = true;
-    this.errorMessage = '';
+    if (this.credentials.password.length < 8) {
+      this.errorMessage = 'Password must be at least 8 characters long';
+      return;
+    }
 
-    this.authService.login(this.credentials).subscribe({
+    if (this.credentials.password !== this.confirmPassword) {
+      this.errorMessage = 'Passwords do not match';
+      return;
+    }
+
+    this.isLoading = true;
+
+    this.authService.initialSetup(this.credentials).subscribe({
       next: () => {
-        this.toast.success('Login successful!');
+        this.toast.success('Admin account created successfully!');
         this.router.navigate(['/live-view']);
       },
       error: (error) => {
         this.isLoading = false;
-        const message = error.error?.message || 'Login failed. Please try again.';
+        const message = error.error?.message || 'Setup failed. Please try again.';
         this.errorMessage = message;
         this.toast.error(message);
       }

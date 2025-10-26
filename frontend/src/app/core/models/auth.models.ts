@@ -19,3 +19,12 @@ export interface RefreshTokenResponse {
   refreshToken: string;
   expiresAt: string;
 }
+
+export interface InitialSetupRequest {
+  username: string;
+  password: string;
+}
+
+export interface NeedsSetupResponse {
+  needsSetup: boolean;
+}

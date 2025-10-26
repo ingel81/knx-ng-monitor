@@ -1,5 +1,5 @@
-@import '../../../styles/variables';
-@import '../../../styles/mixins';
+// Import mixins (forwards variables, so we get both)
+@use '../../../styles/mixins' as *;
 
 .settings-container {
   display: flex;

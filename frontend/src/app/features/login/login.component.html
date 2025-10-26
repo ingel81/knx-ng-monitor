@@ -1,58 +1,85 @@
 <div class="login-container">
   <div class="login-card">
+    <!-- Header with Logo -->
     <div class="login-header">
-      <h1>KNX-NG-Monitor</h1>
-      <p>Sign in to continue</p>
+      <div class="logo-container">
+        <mat-icon class="logo-icon">developer_board</mat-icon>
+      </div>
+      <h1 class="app-title">KNX-NG-Monitor</h1>
+      <p class="app-subtitle">Professional KNX Bus Monitoring</p>
     </div>
 
-    <form (ngSubmit)="onSubmit()" class="login-form">
-      @if (errorMessage) {
-        <div class="error-message">
-          {{ errorMessage }}
-        </div>
-      }
+    <!-- Login Form -->
+    <div class="login-content">
+      <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Username</mat-label>
+          <input
+            matInput
+            type="text"
+            [(ngModel)]="credentials.username"
+            name="username"
+            required
+            autocomplete="username"
+            [disabled]="isLoading"
+          />
+          <mat-icon matPrefix>person</mat-icon>
+        </mat-form-field>
 
-      <div class="form-group">
-        <label for="username">Username</label>
-        <input
-          type="text"
-          id="username"
-          name="username"
-          [(ngModel)]="credentials.username"
-          placeholder="Enter username"
-          [disabled]="isLoading"
-          required
-        />
-      </div>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Password</mat-label>
+          <input
+            matInput
+            [type]="hidePassword ? 'password' : 'text'"
+            [(ngModel)]="credentials.password"
+            name="password"
+            required
+            autocomplete="current-password"
+            [disabled]="isLoading"
+          />
+          <mat-icon matPrefix>lock</mat-icon>
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            tabindex="-1"
+            (click)="hidePassword = !hidePassword"
+            [attr.aria-label]="'Hide password'"
+            [attr.aria-pressed]="hidePassword"
+          >
+            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </mat-form-field>
 
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          [(ngModel)]="credentials.password"
-          placeholder="Enter password"
-          [disabled]="isLoading"
-          required
-        />
-      </div>
-
-      <button
-        type="submit"
-        class="login-button"
-        [disabled]="isLoading"
-      >
-        @if (isLoading) {
-          <span>Logging in...</span>
-        } @else {
-          <span>Login</span>
+        @if (errorMessage) {
+          <div class="error-message">
+            <mat-icon>error</mat-icon>
+            {{ errorMessage }}
+          </div>
         }
-      </button>
 
-      <div class="login-hint">
-        <small>Default credentials: admin / admin</small>
-      </div>
-    </form>
+        <button
+          mat-raised-button
+          color="primary"
+          type="submit"
+          class="login-button"
+          [disabled]="isLoading || !loginForm.form.valid"
+        >
+          @if (isLoading) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <ng-container>
+              <mat-icon>login</mat-icon>
+              Sign In
+            </ng-container>
+          }
+        </button>
+      </form>
+    </div>
+
+    <!-- Footer -->
+    <div class="login-footer">
+      <span class="version-info">Version 1.0.0</span>
+    </div>
   </div>
 </div>

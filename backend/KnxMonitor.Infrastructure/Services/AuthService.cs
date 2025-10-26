@@ -155,4 +155,48 @@ public class AuthService : IAuthService
 
         return refreshToken;
     }
+
+    public async Task<bool> NeedsInitialSetupAsync()
+    {
+        return !await _context.Users.AnyAsync();
+    }
+
+    public async Task<LoginResponse?> InitialSetupAsync(InitialSetupRequest request)
+    {
+        // Check if users already exist
+        if (await _context.Users.AnyAsync())
+        {
+            return null;
+        }
+
+        // Validate input
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return null;
+        }
+
+        // Create first admin user
+        var user = new User
+        {
+            Username = request.Username,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            CreatedAt = DateTime.UtcNow,
+            LastLogin = DateTime.UtcNow
+        };
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        // Generate tokens
+        var accessToken = GenerateAccessToken(user);
+        var refreshToken = await GenerateRefreshTokenAsync(user.Id);
+
+        return new LoginResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken.Token,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
+            Username = user.Username
+        };
+    }
 }

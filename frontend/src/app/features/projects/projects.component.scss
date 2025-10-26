@@ -1,5 +1,5 @@
-@import '../../../styles/variables';
-@import '../../../styles/mixins';
+// Import mixins (forwards variables, so we get both)
+@use '../../../styles/mixins' as *;
 
 .projects-container {
   display: flex;
@@ -32,26 +32,82 @@
   }
 
   .empty-state {
-    @include card-dark;
-    text-align: center;
-    padding: $spacing-3xl $spacing-xl;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 500px;
+    padding: $spacing-3xl;
 
-    mat-icon {
-      font-size: 64px;
-      width: 64px;
-      height: 64px;
-      color: $text-hint;
-      margin-bottom: $spacing-lg;
-    }
+    .empty-state-content {
+      text-align: center;
+      max-width: 500px;
 
-    h3 {
-      margin: $spacing-lg 0;
-      color: $text-primary;
-    }
+      .icon-wrapper {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(121, 134, 203, 0.1), rgba(100, 181, 246, 0.1));
+        margin: 0 auto $spacing-2xl;
+        position: relative;
 
-    p {
-      color: $text-secondary;
-      margin-bottom: $spacing-xl;
+        &::before {
+          content: '';
+          position: absolute;
+          inset: -2px;
+          border-radius: 50%;
+          padding: 2px;
+          background: linear-gradient(135deg, rgba(121, 134, 203, 0.3), rgba(100, 181, 246, 0.3));
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+        }
+
+        mat-icon {
+          font-size: 64px;
+          width: 64px;
+          height: 64px;
+          color: $accent-color;
+        }
+      }
+
+      h2 {
+        font-size: $font-size-3xl;
+        font-weight: $font-weight-medium;
+        color: $text-primary;
+        margin: 0 0 $spacing-lg;
+      }
+
+      .description {
+        font-size: $font-size-lg;
+        color: $text-secondary;
+        margin: 0 0 $spacing-md;
+        line-height: 1.6;
+      }
+
+      .hint {
+        font-size: $font-size-sm;
+        color: $text-hint;
+        margin: 0 0 $spacing-2xl;
+        line-height: 1.5;
+      }
+
+      .upload-button {
+        padding: $spacing-md $spacing-2xl;
+        font-size: $font-size-base;
+        font-weight: $font-weight-medium;
+        height: 48px;
+        box-shadow: $shadow-md;
+        transition: all $transition-base;
+
+        &:hover:not([disabled]) {
+          transform: translateY(-2px);
+          box-shadow: $shadow-lg;
+        }
+      }
     }
   }
 

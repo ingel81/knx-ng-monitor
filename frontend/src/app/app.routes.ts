@@ -3,6 +3,10 @@ import { authGuard } from './shared/guards/auth.guard';
 
 export const routes: Routes = [
   {
+    path: 'setup',
+    loadComponent: () => import('./features/initial-setup/initial-setup').then(m => m.InitialSetup)
+  },
+  {
     path: 'login',
     loadComponent: () => import('./features/login/login.component').then(m => m.LoginComponent)
   },

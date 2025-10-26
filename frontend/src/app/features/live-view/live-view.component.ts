@@ -63,6 +63,10 @@ export class LiveViewComponent implements OnInit, OnDestroy {
   autoScroll = true;
   quickFilterText = '';
 
+  // Setup status
+  hasProject = false;
+  hasKnxConfig = false;
+
   // AG-Grid Configuration
   gridOptions: GridOptions;
   columnDefs: ColDef[];
@@ -150,9 +154,9 @@ export class LiveViewComponent implements OnInit, OnDestroy {
         minWidth: 70,
         filter: 'agTextColumnFilter',
         cellClass: (params) => {
-          return this.getMessageTypeClass(params.value);
+          return this.getMessageTypeClass(params.data.messageType);
         },
-        valueFormatter: (params) => this.getMessageTypeName(params.value)
+        valueGetter: (params) => this.getMessageTypeName(params.data.messageType)
       },
       {
         headerName: 'Raw Value',
@@ -199,6 +203,7 @@ export class LiveViewComponent implements OnInit, OnDestroy {
       ensureDomOrder: false, // Let AG-Grid manage DOM order
       suppressCellFocus: false,
       suppressColumnVirtualisation: true, // Render all columns to avoid scroll issues
+      suppressHorizontalScroll: false, // Allow horizontal scroll if needed, but we'll manage column widths
       getRowId: (params: GetRowIdParams) => {
         // Generate unique ID if not present
         return params.data.id ? params.data.id.toString() : `telegram-${Date.now()}-${Math.random()}`;
@@ -222,7 +227,9 @@ export class LiveViewComponent implements OnInit, OnDestroy {
       suppressScrollOnNewData: false,
       suppressRowTransform: false, // Allow row transforms
       suppressRowVirtualisation: false, // Enable virtualization
-      onGridReady: this.onGridReady.bind(this)
+      onGridReady: this.onGridReady.bind(this),
+      onFirstDataRendered: this.onFirstDataRendered.bind(this),
+      onBodyScroll: this.onBodyScroll.bind(this)
     };
   }
 
@@ -257,6 +264,21 @@ export class LiveViewComponent implements OnInit, OnDestroy {
     });
 
     this.checkConnectionStatus();
+    this.checkSetupStatus();
+  }
+
+  async checkSetupStatus() {
+    try {
+      // Check if projects exist
+      const projects = await this.http.get<any[]>('http://localhost:5075/api/projects').toPromise();
+      this.hasProject = (projects && projects.length > 0) || false;
+
+      // Check if KNX configuration exists
+      const configs = await this.http.get<KnxConfiguration[]>('http://localhost:5075/api/knx/configurations').toPromise();
+      this.hasKnxConfig = (configs && configs.length > 0) || false;
+    } catch (error) {
+      console.error('Failed to check setup status:', error);
+    }
   }
 
   ngOnDestroy() {
@@ -267,16 +289,67 @@ export class LiveViewComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   onWindowResize() {
     // Resize grid when window size changes
-    if (this.agGrid?.api) {
-      setTimeout(() => {
-        this.agGrid.api.sizeColumnsToFit();
-      }, 100);
+    setTimeout(() => {
+      this.resizeColumnsToFit();
+    }, 100);
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent) {
+    // Space = Pause/Resume (only if not typing in an input field)
+    if (event.code === 'Space' && event.target instanceof HTMLElement) {
+      const tagName = event.target.tagName.toLowerCase();
+      // Ignore if user is typing in input/textarea or if any modifier key is pressed
+      if (tagName !== 'input' && tagName !== 'textarea' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+        event.preventDefault();
+        this.togglePause();
+      }
     }
   }
 
   onGridReady(params: GridReadyEvent) {
     // Grid is ready, auto-size columns initially
-    params.api.sizeColumnsToFit();
+    this.resizeColumnsToFit();
+  }
+
+  onFirstDataRendered() {
+    // Resize columns when first data is rendered
+    this.resizeColumnsToFit();
+  }
+
+  onBodyScroll() {
+    // When vertical scrollbar appears, resize columns to prevent horizontal scroll
+    if (this.agGrid?.api) {
+      const gridBody = document.querySelector('.ag-body-viewport');
+      if (gridBody) {
+        const hasVerticalScroll = gridBody.scrollHeight > gridBody.clientHeight;
+        if (hasVerticalScroll) {
+          // Debounce resize to prevent excessive calls
+          setTimeout(() => {
+            this.resizeColumnsToFit();
+          }, 100);
+        }
+      }
+    }
+  }
+
+  private resizeColumnsToFit() {
+    if (this.agGrid?.api) {
+      // Get available width
+      const gridElement = document.querySelector('.ag-theme-material');
+      if (gridElement) {
+        const availableWidth = gridElement.clientWidth;
+
+        // Account for scrollbar width (typically 15-17px)
+        const scrollbarWidth = 17;
+        const effectiveWidth = availableWidth - scrollbarWidth;
+
+        // Size columns to fit the effective width
+        this.agGrid.api.sizeColumnsToFit({
+          defaultMinWidth: 70
+        });
+      }
+    }
   }
 
   async connectToKnx() {

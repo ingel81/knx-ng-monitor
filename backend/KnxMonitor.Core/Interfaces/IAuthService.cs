@@ -8,4 +8,6 @@ public interface IAuthService
     Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest request);
     Task<bool> LogoutAsync(string refreshToken);
     Task<bool> RevokeAllTokensAsync(int userId);
+    Task<bool> NeedsInitialSetupAsync();
+    Task<LoginResponse?> InitialSetupAsync(InitialSetupRequest request);
 }

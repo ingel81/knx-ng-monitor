@@ -1,12 +1,9 @@
 <div class="live-view-container">
   <!-- Page Header -->
   <div class="page-header">
+    <!-- LEFT: KNX Monitoring Controls -->
     <div class="page-header-left">
-      <span class="badge">{{ telegrams.length }} telegrams</span>
-    </div>
-
-    <div class="page-header-right">
-      <!-- KNX Connection (Primary Action) -->
+      <!-- KNX Connection -->
       @if (!isConnected) {
         <button mat-raised-button color="primary" (click)="connectToKnx()" [disabled]="isConnecting">
           <mat-icon>power_settings_new</mat-icon>
@@ -21,7 +18,7 @@
 
       <div class="divider"></div>
 
-      <!-- Monitoring Controls -->
+      <!-- Pause/Resume with Auto-scroll -->
       <button mat-raised-button (click)="togglePause()" [color]="isPaused ? 'accent' : ''">
         <mat-icon>{{ isPaused ? 'play_arrow' : 'pause' }}</mat-icon>
         {{ isPaused ? 'Resume' : 'Pause' }}
@@ -30,15 +27,19 @@
       <mat-checkbox [(ngModel)]="autoScroll" class="auto-scroll-toggle" color="primary">
         Auto-scroll
       </mat-checkbox>
+    </div>
 
-      <div class="divider"></div>
-
-      <!-- Data Controls -->
+    <!-- RIGHT: Data Management & Export -->
+    <div class="page-header-right">
+      <!-- Clear Data -->
       <button mat-raised-button (click)="clearTelegrams()">
         <mat-icon>clear_all</mat-icon>
         Clear
       </button>
 
+      <div class="divider"></div>
+
+      <!-- Export -->
       <button mat-raised-button (click)="exportToCsv()" [disabled]="telegrams.length === 0">
         <mat-icon>download</mat-icon>
         Export
@@ -46,36 +47,8 @@
 
       <div class="divider"></div>
 
-      <!-- View Controls -->
-      <button mat-icon-button (click)="autoSizeAll()" matTooltip="Auto-size all columns">
-        <mat-icon>view_column</mat-icon>
-      </button>
-
-      <button mat-icon-button (click)="resetColumns()" matTooltip="Reset column layout">
-        <mat-icon>restart_alt</mat-icon>
-      </button>
-
-      <div class="divider"></div>
-
-      <!-- Filters -->
-      <button mat-stroked-button (click)="showOnlyWrites()" matTooltip="Show only Write telegrams">
-        <span class="filter-indicator msg-write"></span>
-        Writes
-      </button>
-
-      <button mat-stroked-button (click)="showOnlyReads()" matTooltip="Show only Read telegrams">
-        <span class="filter-indicator msg-read"></span>
-        Reads
-      </button>
-
-      <button mat-stroked-button (click)="showOnlyResponses()" matTooltip="Show only Response telegrams">
-        <span class="filter-indicator msg-response"></span>
-        Responses
-      </button>
-
-      <button mat-icon-button (click)="clearAllFilters()" matTooltip="Clear all filters">
-        <mat-icon>filter_alt_off</mat-icon>
-      </button>
+      <!-- Telegram Count -->
+      <span class="badge">{{ telegrams.length }} telegrams</span>
     </div>
   </div>
 
@@ -94,11 +67,41 @@
     @if (telegrams.length === 0) {
       <div class="no-telegrams-overlay">
         <mat-icon>inbox</mat-icon>
-        <h3>No telegrams received yet</h3>
+        <h3>Get Started with KNX Monitoring</h3>
+
         @if (!isConnected) {
-          <p class="hint">Configure your KNX Gateway in Settings and click "Connect" to start monitoring</p>
+          <div class="setup-checklist">
+            <p class="checklist-intro">Follow these steps to start monitoring:</p>
+
+            <div class="checklist-item" [class.completed]="hasProject">
+              <mat-icon class="checklist-icon">{{ hasProject ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+              <div class="checklist-content">
+                <span class="checklist-title">Import a .knxproj file</span>
+                <span class="checklist-hint">Go to Projects → Import your ETS project</span>
+              </div>
+            </div>
+
+            <div class="checklist-item" [class.completed]="hasKnxConfig">
+              <mat-icon class="checklist-icon">{{ hasKnxConfig ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+              <div class="checklist-content">
+                <span class="checklist-title">Configure KNX Gateway</span>
+                <span class="checklist-hint">Go to Settings → Add your KNX IP interface</span>
+              </div>
+            </div>
+
+            <div class="checklist-item" [class.completed]="false">
+              <mat-icon class="checklist-icon">radio_button_unchecked</mat-icon>
+              <div class="checklist-content">
+                <span class="checklist-title">Connect to KNX</span>
+                <span class="checklist-hint">Click "Connect KNX" button above</span>
+              </div>
+            </div>
+          </div>
         } @else {
-          <p class="hint">Connected and waiting for KNX telegrams...</p>
+          <p class="hint connected">
+            <mat-icon>check_circle</mat-icon>
+            Connected and waiting for KNX telegrams...
+          </p>
         }
       </div>
     }
@@ -121,12 +124,8 @@
 
     <div class="footer-right">
       <span class="info-text">
-        <strong>Shortcuts:</strong>
+        <strong>Shortcut:</strong>
         Space = Pause/Resume
-        |
-        Ctrl+F = Quick Filter
-        |
-        Esc = Clear Filter
       </span>
     </div>
   </div>

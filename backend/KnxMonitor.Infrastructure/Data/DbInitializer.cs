@@ -11,21 +11,6 @@ public static class DbInitializer
         // Ensure database is created
         await context.Database.MigrateAsync();
 
-        // Check if admin user exists
-        if (await context.Users.AnyAsync())
-        {
-            return; // Database already seeded
-        }
-
-        // Create default admin user
-        var adminUser = new User
-        {
-            Username = "admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin"),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        context.Users.Add(adminUser);
-        await context.SaveChangesAsync();
+        // No seeding - use Initial Setup endpoint to create first user
     }
 }
