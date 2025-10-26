@@ -1,0 +1,161 @@
+<div class="projects-container">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>KNX Projects</h2>
+      @if (projects.length > 0) {
+        <span class="badge">{{ projects.length }} projects</span>
+      }
+    </div>
+    <div class="page-header-right">
+      <button mat-raised-button color="primary" (click)="fileInput.click()" [disabled]="isUploading">
+        <mat-icon>upload_file</mat-icon>
+        {{ isUploading ? 'Uploading...' : 'Upload .knxproj' }}
+      </button>
+      <input #fileInput type="file" accept=".knxproj" (change)="onFileSelected($event)" style="display: none">
+    </div>
+  </div>
+
+  <div class="content">
+
+  @if (isLoading) {
+    <div class="loading">
+      <mat-spinner></mat-spinner>
+      <p>Loading projects...</p>
+    </div>
+  } @else if (projects.length === 0) {
+    <mat-card class="empty-state">
+      <mat-card-content>
+        <mat-icon>folder_open</mat-icon>
+        <h3>No Projects Imported</h3>
+        <p>Upload a .knxproj file from ETS to get started</p>
+        <button mat-raised-button color="primary" (click)="fileInput.click()">
+          <mat-icon>upload_file</mat-icon>
+          Upload .knxproj
+        </button>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <table mat-table [dataSource]="projects" class="projects-table">
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let project">
+          <strong>{{ project.name }}</strong>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="fileName">
+        <th mat-header-cell *matHeaderCellDef>File Name</th>
+        <td mat-cell *matCellDef="let project">{{ project.fileName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="importDate">
+        <th mat-header-cell *matHeaderCellDef>Import Date</th>
+        <td mat-cell *matCellDef="let project">{{ project.importDate | date:'short' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="stats">
+        <th mat-header-cell *matHeaderCellDef>Statistics</th>
+        <td mat-cell *matCellDef="let project">
+          <span class="stats">
+            <mat-icon>device_hub</mat-icon>
+            {{ project.groupAddressCount }} GAs
+            <mat-icon>devices</mat-icon>
+            {{ project.deviceCount }} Devices
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="isActive">
+        <th mat-header-cell *matHeaderCellDef>Active</th>
+        <td mat-cell *matCellDef="let project">
+          <mat-slide-toggle
+            [checked]="project.isActive"
+            (change)="toggleActivation(project)"
+            [disabled]="project.isActive"
+            color="primary">
+          </mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let project">
+          <button mat-icon-button (click)="viewDetails(project)" matTooltip="View Details">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="deleteProject(project)" matTooltip="Delete">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" [class.active-row]="row.isActive"></tr>
+    </table>
+  }
+
+  @if (expandedProject) {
+    <div class="details-overlay" (click)="closeDetails()">
+      <mat-card class="details-card" (click)="$event.stopPropagation()">
+        <mat-card-header>
+          <mat-card-title>{{ expandedProject.name }}</mat-card-title>
+          <button mat-icon-button (click)="closeDetails()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-expansion-panel expanded>
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <mat-icon>device_hub</mat-icon>
+                Group Addresses ({{ expandedProject.groupAddresses.length }})
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <table mat-table [dataSource]="expandedProject.groupAddresses" class="details-table">
+              <ng-container matColumnDef="address">
+                <th mat-header-cell *matHeaderCellDef>Address</th>
+                <td mat-cell *matCellDef="let ga">{{ ga.address }}</td>
+              </ng-container>
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Name</th>
+                <td mat-cell *matCellDef="let ga">{{ ga.name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="dpt">
+                <th mat-header-cell *matHeaderCellDef>DPT</th>
+                <td mat-cell *matCellDef="let ga">{{ ga.datapointType || 'N/A' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['address', 'name', 'dpt']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['address', 'name', 'dpt'];"></tr>
+            </table>
+          </mat-expansion-panel>
+
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <mat-icon>devices</mat-icon>
+                Devices ({{ expandedProject.devices.length }})
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <table mat-table [dataSource]="expandedProject.devices" class="details-table">
+              <ng-container matColumnDef="address">
+                <th mat-header-cell *matHeaderCellDef>Address</th>
+                <td mat-cell *matCellDef="let device">{{ device.physicalAddress }}</td>
+              </ng-container>
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Name</th>
+                <td mat-cell *matCellDef="let device">{{ device.name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="manufacturer">
+                <th mat-header-cell *matHeaderCellDef>Manufacturer</th>
+                <td mat-cell *matCellDef="let device">{{ device.manufacturer || 'N/A' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['address', 'name', 'manufacturer']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['address', 'name', 'manufacturer'];"></tr>
+            </table>
+          </mat-expansion-panel>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+  </div>
+</div>

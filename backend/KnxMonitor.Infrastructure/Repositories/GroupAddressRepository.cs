@@ -15,7 +15,7 @@ public class GroupAddressRepository : Repository<GroupAddress>, IGroupAddressRep
     {
         return await _dbSet
             .Include(g => g.Project)
-            .FirstOrDefaultAsync(g => g.Address == address);
+            .FirstOrDefaultAsync(g => g.Address == address && g.Project.IsActive);
     }
 
     public async Task<IEnumerable<GroupAddress>> GetByProjectIdAsync(int projectId)

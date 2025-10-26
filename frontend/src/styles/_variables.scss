@@ -1,0 +1,126 @@
+// KNX-NG-Monitor Design System
+// Zentrale Variablen für konsistentes Styling
+
+// ============================================================================
+// Colors
+// ============================================================================
+
+// Primary Colors
+$primary-color: #1976d2;
+$primary-light: #42a5f5;
+$primary-dark: #1565c0;
+
+// Accent Colors
+$accent-color: #64b5f6;
+$success-color: #4caf50;
+$warning-color: #ff9800;
+$error-color: #f44336;
+
+// Background Colors (Dark Theme)
+$bg-primary: #121212;
+$bg-secondary: #1e1e1e;
+$bg-tertiary: #2a2a2a;
+$bg-elevated: rgba(255, 255, 255, 0.05);
+
+// Text Colors (Dark Theme)
+$text-primary: rgba(255, 255, 255, 0.9);
+$text-secondary: rgba(255, 255, 255, 0.7);
+$text-disabled: rgba(255, 255, 255, 0.5);
+$text-hint: rgba(255, 255, 255, 0.3);
+
+// Border Colors
+$border-color: rgba(255, 255, 255, 0.1);
+$border-color-hover: rgba(255, 255, 255, 0.3);
+
+// KNX Message Type Colors
+$msg-write-bg: rgba(76, 175, 80, 0.08);
+$msg-write-bg-hover: rgba(76, 175, 80, 0.15);
+$msg-write-text: #2e7d32;
+
+$msg-read-bg: rgba(33, 150, 243, 0.08);
+$msg-read-bg-hover: rgba(33, 150, 243, 0.15);
+$msg-read-text: #1565c0;
+
+$msg-response-bg: rgba(255, 193, 7, 0.08);
+$msg-response-bg-hover: rgba(255, 193, 7, 0.15);
+$msg-response-text: #f57c00;
+
+// ============================================================================
+// Spacing
+// ============================================================================
+
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 12px;
+$spacing-lg: 16px;
+$spacing-xl: 24px;
+$spacing-2xl: 32px;
+$spacing-3xl: 48px;
+
+// ============================================================================
+// Typography
+// ============================================================================
+
+$font-family: 'Roboto', sans-serif;
+
+// Font Sizes
+$font-size-xs: 0.75rem;    // 12px
+$font-size-sm: 0.875rem;   // 14px
+$font-size-base: 1rem;     // 16px
+$font-size-lg: 1.125rem;   // 18px
+$font-size-xl: 1.25rem;    // 20px
+$font-size-2xl: 1.5rem;    // 24px
+$font-size-3xl: 1.75rem;   // 28px
+
+// Font Weights
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-bold: 700;
+
+// ============================================================================
+// Borders & Radius
+// ============================================================================
+
+$border-radius-sm: 4px;
+$border-radius-md: 8px;
+$border-radius-lg: 12px;
+$border-radius-xl: 16px;
+
+// ============================================================================
+// Shadows
+// ============================================================================
+
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+$shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+$shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
+
+// ============================================================================
+// Z-Index Layers
+// ============================================================================
+
+$z-index-base: 1;
+$z-index-dropdown: 100;
+$z-index-sticky: 200;
+$z-index-fixed: 300;
+$z-index-modal-backdrop: 400;
+$z-index-modal: 500;
+$z-index-popover: 600;
+$z-index-tooltip: 700;
+
+// ============================================================================
+// Transitions
+// ============================================================================
+
+$transition-fast: 0.15s ease;
+$transition-base: 0.3s ease;
+$transition-slow: 0.5s ease;
+
+// ============================================================================
+// Breakpoints
+// ============================================================================
+
+$breakpoint-xs: 480px;
+$breakpoint-sm: 768px;
+$breakpoint-md: 1024px;
+$breakpoint-lg: 1280px;
+$breakpoint-xl: 1440px;

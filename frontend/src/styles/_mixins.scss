@@ -1,0 +1,269 @@
+@import 'variables';
+
+// ============================================================================
+// Page Header Mixin
+// ============================================================================
+
+@mixin page-header {
+  // Layout
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+
+  // Sizing - NEVER override these!
+  min-height: 64px;
+  height: auto;
+  flex-shrink: 0;
+  flex-grow: 0;
+
+  // Spacing
+  padding: $spacing-md $spacing-xl;
+
+  // Appearance
+  background: $bg-secondary;
+  border-bottom: 2px solid $primary-color;
+  box-shadow: $shadow-sm;
+
+  .page-header-left {
+    display: flex;
+    align-items: center;
+    gap: $spacing-lg;
+    flex-shrink: 0;
+
+    h2 {
+      margin: 0;
+      font-size: $font-size-xl;
+      font-weight: $font-weight-medium;
+      letter-spacing: 0.3px;
+      color: $text-primary;
+      line-height: 1.2;
+    }
+
+    .badge {
+      background: rgba(100, 181, 246, 0.15);
+      border: 1px solid rgba(100, 181, 246, 0.3);
+      color: $accent-color;
+      padding: $spacing-xs $spacing-md;
+      border-radius: $border-radius-xl;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      line-height: 1;
+      white-space: nowrap;
+    }
+  }
+
+  .page-header-right {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    flex-wrap: wrap;
+
+    .divider {
+      border-left: 1px solid rgba(0, 0, 0, 0.12);
+      height: 30px;
+      margin: 0 $spacing-xs;
+      flex-shrink: 0;
+    }
+  }
+
+  // Standardized button styling - DO NOT override!
+  button {
+    height: 36px;
+    font-size: $font-size-sm;
+    padding: 0 $spacing-md;
+    line-height: 36px;
+
+    mat-icon {
+      margin-right: $spacing-xs;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &.mat-mdc-icon-button {
+      width: 36px;
+      height: 36px;
+      padding: 6px;
+      line-height: 1;
+
+      mat-icon {
+        margin-right: 0;
+      }
+    }
+  }
+
+  // Input fields
+  .mat-mdc-form-field {
+    font-size: $font-size-sm;
+  }
+
+  // Responsive
+  @media (max-width: $breakpoint-sm) {
+    padding: $spacing-md $spacing-lg;
+    min-height: 56px;
+
+    .page-header-left h2 {
+      font-size: $font-size-lg;
+    }
+  }
+}
+
+// ============================================================================
+// Card Mixin (Dark Theme)
+// ============================================================================
+
+@mixin card-dark {
+  background: $bg-elevated;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-md;
+  padding: $spacing-xl;
+  color: $text-primary;
+}
+
+// ============================================================================
+// Table Mixin (Dark Theme)
+// ============================================================================
+
+@mixin table-dark {
+  width: 100%;
+  background: $bg-secondary;
+  border-radius: $border-radius-md;
+  overflow: hidden;
+
+  th {
+    background: $bg-elevated;
+    color: $text-secondary;
+    font-weight: $font-weight-medium;
+    padding: $spacing-lg;
+    text-align: left;
+  }
+
+  td {
+    color: $text-primary;
+    padding: $spacing-lg;
+    border-bottom: 1px solid $border-color;
+  }
+
+  tr:hover {
+    background: $bg-elevated;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+// ============================================================================
+// Button Mixins
+// ============================================================================
+
+@mixin button-primary {
+  background-color: $primary-color;
+  color: white;
+  border: none;
+  padding: $spacing-sm $spacing-lg;
+  border-radius: $border-radius-sm;
+  font-weight: $font-weight-medium;
+  transition: background-color $transition-fast;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: $primary-dark;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// ============================================================================
+// Scrollbar Mixin
+// ============================================================================
+
+@mixin custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+  }
+}
+
+// ============================================================================
+// Form Field Mixin (Dark Theme)
+// ============================================================================
+
+@mixin form-field-dark {
+  ::ng-deep {
+    .mat-mdc-text-field-wrapper {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .mat-mdc-form-field-focus-overlay {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .mdc-text-field--outlined:not(.mdc-text-field--disabled) {
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: $border-color-hover;
+      }
+
+      &:hover .mdc-notched-outline {
+        .mdc-notched-outline__leading,
+        .mdc-notched-outline__notch,
+        .mdc-notched-outline__trailing {
+          border-color: rgba(255, 255, 255, 0.5);
+        }
+      }
+
+      &.mdc-text-field--focused .mdc-notched-outline {
+        .mdc-notched-outline__leading,
+        .mdc-notched-outline__notch,
+        .mdc-notched-outline__trailing {
+          border-color: $accent-color;
+        }
+      }
+    }
+
+    .mat-mdc-form-field-label,
+    .mat-mdc-input-element {
+      color: $text-primary;
+    }
+
+    .mat-mdc-form-field-icon-prefix mat-icon {
+      color: $text-disabled;
+    }
+
+    input::placeholder {
+      color: $text-hint;
+    }
+  }
+}
+
+// ============================================================================
+// Tooltip Fix for AG-Grid
+// ============================================================================
+
+@mixin tooltip-fix {
+  ::ng-deep {
+    .mat-mdc-tooltip {
+      z-index: $z-index-tooltip !important;
+    }
+  }
+}

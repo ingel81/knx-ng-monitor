@@ -11,8 +11,22 @@ using KnxMonitor.Infrastructure.Services;
 using KnxMonitor.Infrastructure.KnxConnection;
 using KnxMonitor.Api.Hubs;
 using KnxMonitor.Api.Services;
+using Serilog;
+
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Use Serilog for logging
+builder.Host.UseSerilog();
 
 // Add services to the container.
 // Database
@@ -67,11 +81,18 @@ builder.Services.AddScoped<IKnxConfigurationRepository, KnxConfigurationReposito
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IKnxProjectParserService, KnxProjectParserService>();
+builder.Services.AddSingleton<IGroupAddressCacheService, GroupAddressCacheService>();
 builder.Services.AddSingleton<IKnxConnectionService, KnxConnectionService>();
 builder.Services.AddHostedService<TelegramBroadcastService>();
 
 // SignalR
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -89,11 +110,15 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
         await KnxMonitor.Infrastructure.Data.DbInitializer.InitializeAsync(context);
+
+        // Initialize group address cache
+        var cacheService = app.Services.GetRequiredService<IGroupAddressCacheService>();
+        await cacheService.InitializeAsync();
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding the database.");
+        logger.LogError(ex, "An error occurred during initialization.");
     }
 }
 
@@ -113,4 +138,16 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<TelegramHub>("/hubs/telegram");
 
-app.Run();
+try
+{
+    Log.Information("Starting KNX Monitor API");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

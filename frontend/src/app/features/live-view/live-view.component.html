@@ -1,11 +1,16 @@
 <div class="live-view-container">
-  <div class="toolbar">
-    <h2>KNX Live View</h2>
-    <div class="actions">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <span class="badge">{{ telegrams.length }} telegrams</span>
+    </div>
+
+    <div class="page-header-right">
+      <!-- KNX Connection (Primary Action) -->
       @if (!isConnected) {
         <button mat-raised-button color="primary" (click)="connectToKnx()" [disabled]="isConnecting">
           <mat-icon>power_settings_new</mat-icon>
-          {{ isConnecting ? 'Connecting...' : 'Connect' }}
+          {{ isConnecting ? 'Connecting...' : 'Connect KNX' }}
         </button>
       } @else {
         <button mat-raised-button color="warn" (click)="disconnectFromKnx()">
@@ -14,55 +19,115 @@
         </button>
       }
 
-      <button mat-raised-button (click)="togglePause()">
+      <div class="divider"></div>
+
+      <!-- Monitoring Controls -->
+      <button mat-raised-button (click)="togglePause()" [color]="isPaused ? 'accent' : ''">
         <mat-icon>{{ isPaused ? 'play_arrow' : 'pause' }}</mat-icon>
         {{ isPaused ? 'Resume' : 'Pause' }}
       </button>
 
+      <mat-checkbox [(ngModel)]="autoScroll" class="auto-scroll-toggle" color="primary">
+        Auto-scroll
+      </mat-checkbox>
+
+      <div class="divider"></div>
+
+      <!-- Data Controls -->
       <button mat-raised-button (click)="clearTelegrams()">
         <mat-icon>clear_all</mat-icon>
         Clear
       </button>
+
+      <button mat-raised-button (click)="exportToCsv()" [disabled]="telegrams.length === 0">
+        <mat-icon>download</mat-icon>
+        Export
+      </button>
+
+      <div class="divider"></div>
+
+      <!-- View Controls -->
+      <button mat-icon-button (click)="autoSizeAll()" matTooltip="Auto-size all columns">
+        <mat-icon>view_column</mat-icon>
+      </button>
+
+      <button mat-icon-button (click)="resetColumns()" matTooltip="Reset column layout">
+        <mat-icon>restart_alt</mat-icon>
+      </button>
+
+      <div class="divider"></div>
+
+      <!-- Filters -->
+      <button mat-stroked-button (click)="showOnlyWrites()" matTooltip="Show only Write telegrams">
+        <span class="filter-indicator msg-write"></span>
+        Writes
+      </button>
+
+      <button mat-stroked-button (click)="showOnlyReads()" matTooltip="Show only Read telegrams">
+        <span class="filter-indicator msg-read"></span>
+        Reads
+      </button>
+
+      <button mat-stroked-button (click)="showOnlyResponses()" matTooltip="Show only Response telegrams">
+        <span class="filter-indicator msg-response"></span>
+        Responses
+      </button>
+
+      <button mat-icon-button (click)="clearAllFilters()" matTooltip="Clear all filters">
+        <mat-icon>filter_alt_off</mat-icon>
+      </button>
     </div>
   </div>
 
-  <div class="telegrams-header">
-    <span class="col-time">Time</span>
-    <span class="col-source">Source</span>
-    <span class="col-dest">Destination</span>
-    <span class="col-type">Type</span>
-    <span class="col-value">Value</span>
-    <span class="col-decoded">Decoded</span>
-  </div>
+  <!-- AG-Grid Table -->
+  <div class="grid-container">
+    <ag-grid-angular
+      class="ag-theme-material"
+      [rowData]="telegrams"
+      [columnDefs]="columnDefs"
+      [defaultColDef]="defaultColDef"
+      [gridOptions]="gridOptions"
+      [class.grid-empty]="telegrams.length === 0"
+    >
+    </ag-grid-angular>
 
-  <div class="telegrams-list">
     @if (telegrams.length === 0) {
-      <div class="no-telegrams">
+      <div class="no-telegrams-overlay">
         <mat-icon>inbox</mat-icon>
-        <p>No telegrams received yet</p>
+        <h3>No telegrams received yet</h3>
         @if (!isConnected) {
-          <p class="hint">Configure KNX Gateway settings above and click "Connect" to start monitoring</p>
+          <p class="hint">Configure your KNX Gateway in Settings and click "Connect" to start monitoring</p>
+        } @else {
+          <p class="hint">Connected and waiting for KNX telegrams...</p>
         }
       </div>
-    } @else {
-      @for (telegram of telegrams; track telegram.id) {
-        <div class="telegram-row" [ngClass]="getMessageTypeClass(telegram.messageType)">
-          <span class="col-time">{{ telegram.timestamp | date:'HH:mm:ss.SSS' }}</span>
-          <span class="col-source">{{ telegram.sourceAddress }}</span>
-          <span class="col-dest">{{ telegram.destinationAddress }}</span>
-          <span class="col-type">{{ getMessageTypeName(telegram.messageType) }}</span>
-          <span class="col-value">{{ telegram.value }}</span>
-          <span class="col-decoded">{{ telegram.valueDecoded }}</span>
-        </div>
-      }
     }
   </div>
 
+  <!-- Footer with status -->
   <div class="footer">
-    <span>Total telegrams: {{ telegrams.length }}</span>
-    <span class="status" [class.connected]="isConnected">
-      <mat-icon>{{ isConnected ? 'check_circle' : 'cancel' }}</mat-icon>
-      {{ isConnected ? 'Connected' : 'Disconnected' }}
-    </span>
+    <div class="footer-left">
+      <span class="status-indicator" [class.connected]="isConnected">
+        <mat-icon>{{ isConnected ? 'check_circle' : 'cancel' }}</mat-icon>
+        {{ isConnected ? 'Connected' : 'Disconnected' }}
+      </span>
+      @if (isPaused) {
+        <span class="paused-indicator">
+          <mat-icon>pause_circle</mat-icon>
+          Paused
+        </span>
+      }
+    </div>
+
+    <div class="footer-right">
+      <span class="info-text">
+        <strong>Shortcuts:</strong>
+        Space = Pause/Resume
+        |
+        Ctrl+F = Quick Filter
+        |
+        Esc = Clear Filter
+      </span>
+    </div>
   </div>
 </div>

@@ -18,4 +18,20 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
             .Include(p => p.Devices)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
+
+    public async Task<List<Project>> GetAllWithCountsAsync()
+    {
+        return await _dbSet
+            .Include(p => p.GroupAddresses)
+            .Include(p => p.Devices)
+            .ToListAsync();
+    }
+
+    public async Task<Project?> GetActiveProjectAsync()
+    {
+        return await _dbSet
+            .Include(p => p.GroupAddresses)
+            .Include(p => p.Devices)
+            .FirstOrDefaultAsync(p => p.IsActive);
+    }
 }

@@ -12,12 +12,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       {
-        path: 'dashboard',
-        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
-      },
-      {
         path: 'live-view',
         loadComponent: () => import('./features/live-view/live-view.component').then(m => m.LiveViewComponent)
+      },
+      {
+        path: 'projects',
+        loadComponent: () => import('./features/projects/projects.component').then(m => m.ProjectsComponent)
       },
       {
         path: 'settings',
@@ -25,7 +25,7 @@ export const routes: Routes = [
       },
       {
         path: '',
-        redirectTo: 'dashboard',
+        redirectTo: 'live-view',
         pathMatch: 'full'
       }
     ]

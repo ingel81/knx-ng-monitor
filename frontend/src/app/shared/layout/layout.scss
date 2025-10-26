@@ -3,6 +3,7 @@
   flex-direction: column;
   height: 100vh;
   width: 100%;
+  overflow: hidden; // No scrolling at layout level
 }
 
 .app-header {
@@ -10,6 +11,8 @@
   color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   z-index: 1000;
+  flex-shrink: 0; // Never shrink header
+  flex-grow: 0; // Never grow header
 }
 
 .header-content {
@@ -18,11 +21,12 @@
   justify-content: space-between;
   padding: 0 24px;
   height: 64px;
-  max-width: 1920px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .brand {
+  flex-shrink: 0;
+
   h1 {
     margin: 0;
     font-size: 1.5rem;
@@ -35,8 +39,8 @@
   display: flex;
   gap: 8px;
   flex: 1;
-  justify-content: center;
-  max-width: 600px;
+  justify-content: flex-start;
+  margin-left: 48px;
 }
 
 .nav-link {
@@ -72,11 +76,13 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 
   .username {
     font-size: 0.95rem;
     font-weight: 500;
     opacity: 0.9;
+    white-space: nowrap;
   }
 
   button {
@@ -89,9 +95,23 @@
 }
 
 .app-main {
-  flex: 1;
-  overflow: auto;
+  flex: 1; // Grow to fill available space
+  overflow: hidden; // Prevent page scrolling - only child content scrolls
   background: #0a0e27;
+  min-height: 0; // Important for flex children with overflow
+  display: flex; // Make it a flex container
+  flex-direction: column; // Stack children vertically
+  position: relative;
+
+  .router-content {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: block;
+    overflow: hidden;
+    position: relative;
+  }
 }
 
 // Responsive

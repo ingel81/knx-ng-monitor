@@ -6,13 +6,13 @@
       </div>
 
       <nav class="main-nav">
-        <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
-          <mat-icon>dashboard</mat-icon>
-          <span>Dashboard</span>
-        </a>
         <a routerLink="/live-view" routerLinkActive="active" class="nav-link">
           <mat-icon>visibility</mat-icon>
           <span>Live View</span>
+        </a>
+        <a routerLink="/projects" routerLinkActive="active" class="nav-link">
+          <mat-icon>folder_open</mat-icon>
+          <span>Projects</span>
         </a>
         <a routerLink="/settings" routerLinkActive="active" class="nav-link">
           <mat-icon>settings</mat-icon>
@@ -32,6 +32,8 @@
   </header>
 
   <main class="app-main">
-    <router-outlet></router-outlet>
+    <div class="router-content">
+      <router-outlet></router-outlet>
+    </div>
   </main>
 </div>

@@ -6,6 +6,7 @@ using KnxMonitor.Core.Entities;
 using KnxMonitor.Core.Enums;
 using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Services;
+using KnxMonitor.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Net;
@@ -16,6 +17,7 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
 {
     private readonly ILogger<KnxConnectionService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IGroupAddressCacheService _groupAddressCache;
     private KnxBus? _knxBus;
     private KnxConfiguration? _activeConfiguration;
     private bool _isConnected;
@@ -26,10 +28,12 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
 
     public KnxConnectionService(
         ILogger<KnxConnectionService> logger,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IGroupAddressCacheService groupAddressCache)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
+        _groupAddressCache = groupAddressCache;
     }
 
     public async Task<bool> ConnectAsync(KnxConfiguration configuration)
@@ -134,14 +138,17 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
         try
         {
             // Map EventType to our MessageType enum
-            // EventType is an enum in Falcon SDK, convert string representation
-            var messageType = e.EventType.ToString() switch
+            var eventTypeString = e.EventType.ToString();
+            var messageType = eventTypeString switch
             {
-                "GroupValueWrite" => MessageType.Write,
-                "GroupValueRead" => MessageType.Read,
-                "GroupValueResponse" => MessageType.Response,
-                _ => MessageType.Write
+                "ValueWrite" => MessageType.Write,
+                "ValueRead" => MessageType.Read,
+                "ValueResponse" => MessageType.Response,
+                _ => MessageType.Read // Default to Read if unknown
             };
+
+            // Get raw value bytes
+            var valueBytes = GetValueBytes(e.Value);
 
             // Convert Falcon telegram to our domain model
             var telegram = new KnxTelegram
@@ -150,13 +157,28 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
                 SourceAddress = e.SourceAddress.ToString(),
                 DestinationAddress = e.DestinationAddress.ToString(),
                 MessageType = messageType,
-                Value = GetValueBytes(e.Value),
-                ValueDecoded = DecodeValue(e.Value),
+                Value = valueBytes,
+                ValueDecoded = null, // Will be set after resolving DPT
                 Priority = 0, // TODO: Map priority from telegram if available
                 Flags = "00"
             };
 
-            // Save to database (using scope because this is a Singleton service)
+            // Resolve GroupAddressId and DPT from cache
+            string? datapointType = null;
+            var groupAddress = _groupAddressCache.GetByAddress(telegram.DestinationAddress);
+            if (groupAddress != null)
+            {
+                telegram.GroupAddressId = groupAddress.Id;
+                datapointType = groupAddress.DatapointType;
+            }
+
+            // Decode value using DPT information
+            telegram.ValueDecoded = DptConverter.Decode(datapointType, valueBytes);
+
+            // Raise event for SignalR broadcasting (now with GroupAddressId set!)
+            TelegramReceived?.Invoke(this, telegram);
+
+            // Save to database asynchronously (fire and forget)
             Task.Run(async () =>
             {
                 try
@@ -170,12 +192,6 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
                     _logger.LogError(ex, "Failed to save telegram to database");
                 }
             });
-
-            // Raise event for SignalR broadcasting
-            TelegramReceived?.Invoke(this, telegram);
-
-            _logger.LogDebug("Received KNX telegram: {Source} -> {Dest} ({Type}): {Value}",
-                telegram.SourceAddress, telegram.DestinationAddress, telegram.MessageType, telegram.ValueDecoded);
         }
         catch (Exception ex)
         {
@@ -226,21 +242,6 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
         }
     }
 
-    private string DecodeValue(GroupValue? value)
-    {
-        try
-        {
-            if (value == null)
-                return string.Empty;
-
-            // GroupValue has ToString() which provides string representation
-            return value.ToString() ?? "N/A";
-        }
-        catch
-        {
-            return "N/A";
-        }
-    }
 
     public void Dispose()
     {

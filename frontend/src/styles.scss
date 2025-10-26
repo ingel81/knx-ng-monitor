@@ -9,6 +9,10 @@
 @import '@fontsource/roboto/700.css';
 @import '@fontsource/material-icons/index.css';
 
+// Import centralized design system
+@import 'styles/variables';
+@import 'styles/mixins';
+
 $theme: mat.define-theme((
   color: (
     theme-type: light,
@@ -29,6 +33,11 @@ $theme: mat.define-theme((
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden; // Prevent any body scrolling
 }
 
 body {
@@ -53,4 +62,9 @@ body {
   -webkit-font-feature-settings: 'liga';
   font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
+}
+
+// Global tooltip fix for AG-Grid and other components
+.mat-mdc-tooltip {
+  z-index: $z-index-tooltip !important;
 }

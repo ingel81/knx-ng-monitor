@@ -1,240 +1,145 @@
+@import '../../../styles/variables';
+@import '../../../styles/mixins';
+
 .settings-container {
-  min-height: 100%;
-  padding: 24px;
-}
-
-.settings-content {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.page-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #fff;
-  font-size: 28px;
-  font-weight: 500;
-  margin: 0 0 24px 0;
-
-  mat-icon {
-    font-size: 32px;
-    width: 32px;
-    height: 32px;
-    color: #64b5f6;
-  }
-}
-
-.settings-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 24px;
-  color: rgba(255, 255, 255, 0.9);
-
-  mat-card-header {
-    margin-bottom: 16px;
-
-    mat-card-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 20px;
-      font-weight: 500;
-      color: #fff;
-
-      mat-icon {
-        font-size: 24px;
-        width: 24px;
-        height: 24px;
-        color: #64b5f6;
-      }
-    }
-  }
-
-  mat-card-content {
-    color: rgba(255, 255, 255, 0.9);
-  }
-
-  mat-card-actions {
-    display: flex;
-    gap: 12px;
-    padding: 16px;
-    flex-wrap: wrap;
-
-    button {
-      mat-icon {
-        margin-right: 8px;
-      }
-    }
-  }
-}
-
-.description {
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0 0 24px 0;
-  line-height: 1.5;
-}
-
-.config-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-
-  mat-form-field {
-    width: 100%;
-
-    ::ng-deep {
-      .mat-mdc-text-field-wrapper {
-        background: rgba(0, 0, 0, 0.2);
-      }
-
-      .mat-mdc-form-field-focus-overlay {
-        background-color: rgba(255, 255, 255, 0.05);
-      }
-
-      .mdc-text-field--outlined:not(.mdc-text-field--disabled) {
-        .mdc-notched-outline__leading,
-        .mdc-notched-outline__notch,
-        .mdc-notched-outline__trailing {
-          border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        &:hover .mdc-notched-outline {
-          .mdc-notched-outline__leading,
-          .mdc-notched-outline__notch,
-          .mdc-notched-outline__trailing {
-            border-color: rgba(255, 255, 255, 0.5);
-          }
-        }
-
-        &.mdc-text-field--focused .mdc-notched-outline {
-          .mdc-notched-outline__leading,
-          .mdc-notched-outline__notch,
-          .mdc-notched-outline__trailing {
-            border-color: #64b5f6;
-          }
-        }
-      }
-
-      .mat-mdc-form-field-label,
-      .mat-mdc-input-element {
-        color: rgba(255, 255, 255, 0.9);
-      }
-
-      .mat-mdc-form-field-icon-prefix mat-icon {
-        color: rgba(255, 255, 255, 0.5);
-      }
-
-      input::placeholder {
-        color: rgba(255, 255, 255, 0.3);
-      }
-    }
-  }
-}
-
-.info-box {
-  display: flex;
-  gap: 16px;
-  padding: 16px;
-  background: rgba(100, 181, 246, 0.1);
-  border: 1px solid rgba(100, 181, 246, 0.3);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.9);
-
-  mat-icon {
-    color: #64b5f6;
-    flex-shrink: 0;
-  }
-
-  strong {
-    color: #fff;
-  }
-}
-
-.storage-info {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
+  min-height: 100vh;
+  background: $bg-primary;
 
-.storage-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  // Page Header (using centralized mixin - DO NOT override!)
+  .page-header {
+    @include page-header;
+  }
 
-  mat-icon {
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
+  .settings-content {
+    flex: 1;
+    padding: $spacing-xl;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+  }
 
-    &.success {
-      color: #4caf50;
+  .settings-card {
+    @include card-dark;
+    margin-bottom: $spacing-xl;
+
+    mat-card-header {
+      margin-bottom: $spacing-lg;
+
+      mat-card-title {
+        display: flex;
+        align-items: center;
+        gap: $spacing-md;
+        font-size: $font-size-xl;
+        font-weight: $font-weight-medium;
+        color: $text-primary;
+
+        mat-icon {
+          font-size: 24px;
+          width: 24px;
+          height: 24px;
+          color: $accent-color;
+        }
+      }
+    }
+
+    mat-card-content {
+      color: $text-primary;
+    }
+
+    mat-card-actions {
+      display: flex;
+      gap: $spacing-md;
+      padding: $spacing-lg;
+      flex-wrap: wrap;
+
+      button {
+        mat-icon {
+          margin-right: $spacing-sm;
+        }
+      }
     }
   }
-}
 
-// Material Button overrides for dark theme
-::ng-deep {
-  .settings-card {
-    .mat-mdc-raised-button {
-      &.mat-primary {
-        background-color: #1976d2;
-        color: white;
+  .description {
+    color: $text-secondary;
+    margin: 0 0 $spacing-xl 0;
+    line-height: 1.5;
+  }
 
-        &:hover:not([disabled]) {
-          background-color: #1565c0;
-        }
-      }
+  .config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: $spacing-lg;
+    margin-bottom: $spacing-xl;
 
-      &.mat-accent {
-        background-color: #388e3c;
-        color: white;
+    mat-form-field {
+      width: 100%;
+      @include form-field-dark;
+    }
+  }
 
-        &:hover:not([disabled]) {
-          background-color: #2e7d32;
-        }
-      }
+  .info-box {
+    display: flex;
+    gap: $spacing-lg;
+    padding: $spacing-lg;
+    background: rgba(100, 181, 246, 0.1);
+    border: 1px solid rgba(100, 181, 246, 0.3);
+    border-radius: $border-radius-md;
+    color: $text-primary;
+
+    mat-icon {
+      color: $accent-color;
+      flex-shrink: 0;
     }
 
-    .mat-mdc-outlined-button {
-      border-color: rgba(255, 255, 255, 0.3);
-      color: rgba(255, 255, 255, 0.9);
+    strong {
+      color: $text-primary;
+    }
+  }
 
-      &:hover:not([disabled]) {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.5);
+  .storage-info {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  .storage-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    color: $text-secondary;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+
+      &.success {
+        color: $success-color;
       }
     }
   }
 }
 
 // Responsive
-@media (max-width: 768px) {
+@media (max-width: $breakpoint-sm) {
   .settings-container {
-    padding: 16px;
-  }
-
-  .page-title {
-    font-size: 24px;
-
-    mat-icon {
-      font-size: 28px;
-      width: 28px;
-      height: 28px;
+    .settings-content {
+      padding: $spacing-lg;
     }
-  }
 
-  .config-grid {
-    grid-template-columns: 1fr;
-  }
+    .config-grid {
+      grid-template-columns: 1fr;
+    }
 
-  .mat-card-actions {
-    flex-direction: column;
+    .settings-card mat-card-actions {
+      flex-direction: column;
 
-    button {
-      width: 100%;
+      button {
+        width: 100%;
+      }
     }
   }
 }

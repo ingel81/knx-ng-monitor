@@ -8,9 +8,11 @@ export interface KnxTelegram {
   timestamp: Date;
   sourceAddress: string;
   destinationAddress: string;
+  groupAddressName?: string;
+  datapointType?: string;
   messageType: string;
-  value: string;
-  valueDecoded: string;
+  value: string;          // Hex representation of raw bytes
+  valueDecoded: string;   // Human-readable decoded value
   priority: number;
   flags: string;
 }
@@ -41,12 +43,12 @@ export class SignalrService {
     });
 
     this.hubConnection.on('Connected', (message: string) => {
-      console.log('[SignalR]', message);
+      console.debug('[SignalR]', message);
     });
 
     try {
       await this.hubConnection.start();
-      console.log('[SignalR] Connection started');
+      console.debug('[SignalR] Connection started');
     } catch (err) {
       console.error('[SignalR] Error starting connection:', err);
       setTimeout(() => this.startConnection(), 5000);
@@ -56,7 +58,7 @@ export class SignalrService {
   public async stopConnection(): Promise<void> {
     if (this.hubConnection) {
       await this.hubConnection.stop();
-      console.log('[SignalR] Connection stopped');
+      console.debug('[SignalR] Connection stopped');
     }
   }
 }

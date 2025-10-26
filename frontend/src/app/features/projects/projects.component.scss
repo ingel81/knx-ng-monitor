@@ -1,0 +1,165 @@
+@import '../../../styles/variables';
+@import '../../../styles/mixins';
+
+.projects-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: $bg-primary;
+
+  // Page Header (using centralized mixin - DO NOT override!)
+  .page-header {
+    @include page-header;
+  }
+
+  // Content area
+  .content {
+    flex: 1;
+    padding: $spacing-xl;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-3xl;
+    gap: $spacing-lg;
+    color: $text-secondary;
+  }
+
+  .empty-state {
+    @include card-dark;
+    text-align: center;
+    padding: $spacing-3xl $spacing-xl;
+
+    mat-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      color: $text-hint;
+      margin-bottom: $spacing-lg;
+    }
+
+    h3 {
+      margin: $spacing-lg 0;
+      color: $text-primary;
+    }
+
+    p {
+      color: $text-secondary;
+      margin-bottom: $spacing-xl;
+    }
+  }
+
+  .projects-table {
+    @include table-dark;
+
+    .stats {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      font-size: $font-size-sm;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        opacity: 0.7;
+      }
+    }
+
+    .active-row {
+      background: rgba(63, 81, 181, 0.1);
+
+      &:hover {
+        background: rgba(63, 81, 181, 0.15) !important;
+      }
+    }
+
+    td strong {
+      font-weight: $font-weight-medium;
+    }
+  }
+
+  .details-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: $z-index-modal;
+  }
+
+  .details-card {
+    width: 90%;
+    max-width: 1200px;
+    max-height: 90vh;
+    overflow: auto;
+    background: $bg-secondary;
+    color: $text-primary;
+    @include custom-scrollbar;
+
+    mat-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: $spacing-lg;
+
+      mat-card-title {
+        color: $text-primary;
+      }
+
+      button {
+        color: $text-secondary;
+      }
+    }
+
+    mat-expansion-panel {
+      margin-bottom: $spacing-lg;
+      background: $bg-elevated;
+      color: $text-primary;
+
+      mat-expansion-panel-header {
+        background: rgba(255, 255, 255, 0.03);
+
+        mat-panel-title {
+          color: $text-primary;
+          display: flex;
+          align-items: center;
+          gap: $spacing-sm;
+
+          mat-icon {
+            color: $accent-color;
+          }
+        }
+      }
+    }
+  }
+
+  .details-table {
+    @include table-dark;
+    margin-top: $spacing-lg;
+  }
+}
+
+// Responsive
+@media (max-width: $breakpoint-sm) {
+  .projects-container {
+    .content {
+      padding: $spacing-lg;
+    }
+
+    .details-card {
+      width: 95%;
+      max-height: 95vh;
+    }
+  }
+}
