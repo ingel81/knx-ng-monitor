@@ -24,10 +24,8 @@ COPY backend/ ./
 # Copy built frontend to wwwroot
 COPY --from=frontend-build /app/frontend/dist/frontend/browser ./KnxMonitor.Api/wwwroot
 
-# Restore dependencies
-RUN dotnet restore
-
-# Map Docker TARGETARCH to .NET RID
+# Build self-contained binary for target architecture
+# Note: dotnet publish will automatically restore with the correct RID
 RUN if [ "$TARGETARCH" = "arm64" ]; then \
         RID="linux-arm64"; \
     else \
@@ -41,8 +39,7 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
         -p:PublishSingleFile=true \
         -p:IncludeNativeLibrariesForSelfExtract=true \
         -p:EnableCompressionInSingleFile=true \
-        -o /app/publish \
-        --no-restore
+        -o /app/publish
 
 # Stage 3: Minimal Alpine Runtime
 FROM alpine:latest
