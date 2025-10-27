@@ -40,13 +40,19 @@ Automatisierte Builds und Releases via GitHub Actions, die bei jedem Git Tag (Pa
 
 | Platform | Architecture | Base Image | Build-Strategie |
 |----------|--------------|------------|-----------------|
-| linux/amd64 | x64 | alpine:latest (~7 MB) | Self-Contained |
+| linux/amd64 | x64 | debian:12-slim (~75 MB) | Self-Contained |
 
 **Image Tags:**
 - `ingel81/knx-ng-monitor:latest` (immer neuester Build)
 - `ingel81/knx-ng-monitor:<version>` (z.B. v0.0.1)
 
-**Image-Größe:** ~90-100 MB (Self-Contained Binary ~80 MB + Alpine ~7 MB + Dependencies)
+**Image-Größe:** ~120-130 MB (Self-Contained Binary ~80 MB + Debian Slim ~75 MB + Dependencies)
+
+**Base Image Wahl:**
+- **debian:12-slim** statt alpine wegen glibc Kompatibilität
+- .NET Self-Contained Binaries sind gegen glibc gelinkt
+- Alpine (musl-libc) führt zu "no such file or directory" Fehler beim Exec
+- Debian Slim: +30 MB größer, aber native glibc-Kompatibilität
 
 **Plattform-Hinweis:**
 - Docker Image nur für **linux/amd64** (native Build, schnell)
@@ -56,9 +62,9 @@ Automatisierte Builds und Releases via GitHub Actions, die bei jedem Git Tag (Pa
 
 **Vorteile Self-Contained Docker:**
 - ✅ Konsistente Strategie mit Binaries
-- ✅ Kleineres finales Image (~90 MB vs. ~300 MB mit aspnet:9.0)
+- ✅ Kleineres finales Image (~120 MB vs. ~300 MB mit aspnet:9.0)
 - ✅ Keine .NET Runtime-Abhängigkeit
-- ✅ Weniger Angriffsfläche (minimales Base Image)
+- ✅ Native glibc - keine Kompatibilitätsprobleme
 
 ## Datei-Struktur
 
@@ -206,17 +212,17 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
         -o /app/publish
 ```
 
-### Stage 3: Minimal Alpine Runtime
+### Stage 3: Debian Slim Runtime (glibc compatible)
 ```dockerfile
-FROM alpine:latest
+FROM debian:12-slim
 WORKDIR /app
 
 # Install runtime dependencies for .NET self-contained apps
-RUN apk add --no-cache \
-    libstdc++ \
-    libintl \
-    icu-libs \
-    icu-data-full
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libicu72 \
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=backend-build /app/publish .
 RUN mkdir -p /app/data && chmod +x /app/KnxMonitor.Api
@@ -234,9 +240,10 @@ ENTRYPOINT ["/app/KnxMonitor.Api"]
 
 **Wichtige Änderungen zur ursprünglichen Planung:**
 1. **Angular Output-Pfad:** `dist/frontend/browser` (Projektname in angular.json)
-2. **Self-Contained Build:** Alpine Base Image statt aspnet:9.0 Runtime
-3. **Multi-Platform:** Automatische RID-Auswahl via `TARGETARCH` Build-Arg
-4. **Restore-Strategie:** `dotnet publish` führt restore automatisch mit korrektem RID aus
+2. **Self-Contained Build:** Debian Slim Base Image statt aspnet:9.0 Runtime
+3. **Base Image Wahl:** debian:12-slim (glibc) statt alpine (musl-libc) für Kompatibilität
+4. **Multi-Platform:** Automatische RID-Auswahl via `TARGETARCH` Build-Arg
+5. **Restore-Strategie:** `dotnet publish` führt restore automatisch mit korrektem RID aus
 
 ## GitHub Secrets Setup
 
@@ -374,9 +381,10 @@ Optional (bei Bedarf):
 **Implementiert (2025-01):**
 
 1. **Self-Contained Docker Image**
-   - Alpine Base Image (~7 MB) statt aspnet:9.0 (~220 MB)
-   - Finale Image-Größe: ~90-100 MB (vorher ~300+ MB)
+   - Debian Slim Base Image (~75 MB) statt aspnet:9.0 (~220 MB)
+   - Finale Image-Größe: ~120-130 MB (vorher ~300+ MB)
    - Konsistente Self-Contained Strategie mit Binaries
+   - Native glibc Kompatibilität (Alpine/musl-libc führte zu Exec-Fehler)
 
 2. **Windows Build Fix**
    - Explizites `shell: bash` für Cross-Platform Kompatibilität
@@ -388,12 +396,12 @@ Optional (bei Bedarf):
 4. **Build Optimierungen**
    - `EnableCompressionInSingleFile` aktiviert
    - Automatisches restore mit korrektem RID in `dotnet publish`
-   - Multi-Platform Docker Build via `TARGETARCH`
+   - Docker Build nur für linux/amd64 (ARM64 via QEMU zu instabil)
 
 5. **DockerHub Integration**
    - Username: `ingel81`
    - Automatisches Pushen von `latest` und versionierten Tags
-   - Multi-Platform Images: linux/amd64 + linux/arm64
+   - Platform: linux/amd64 only (ARM64 Binaries trotzdem verfügbar)
 
 **Nächste Schritte:**
 - CI/CD Monitoring und Performance-Optimierung

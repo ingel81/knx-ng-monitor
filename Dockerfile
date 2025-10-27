@@ -41,17 +41,17 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
         -p:EnableCompressionInSingleFile=true \
         -o /app/publish
 
-# Stage 3: Minimal Alpine Runtime
-FROM alpine:latest
+# Stage 3: Debian Slim Runtime (glibc compatible)
+FROM debian:12-slim
 
 WORKDIR /app
 
 # Install runtime dependencies for .NET self-contained apps
-RUN apk add --no-cache \
-    libstdc++ \
-    libintl \
-    icu-libs \
-    icu-data-full
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libicu72 \
+        ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy self-contained application
 COPY --from=backend-build /app/publish .
