@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Subject, Observable } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment.development';
 
 export interface KnxTelegram {
   id: number;
@@ -32,7 +33,7 @@ export class SignalrService {
     const token = this.authService.getAccessToken();
 
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl('http://localhost:5075/hubs/telegram', {
+      .withUrl(`${environment.hubUrl}/telegram`, {
         accessTokenFactory: () => token || ''
       })
       .withAutomaticReconnect()

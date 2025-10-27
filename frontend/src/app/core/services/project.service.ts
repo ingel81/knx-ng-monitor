@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment.development';
 
 export interface ProjectDto {
   id: number;
@@ -43,7 +44,7 @@ export interface ProjectDetailsDto {
 })
 export class ProjectService {
   private http = inject(HttpClient);
-  private apiUrl = 'http://localhost:5075/api/projects';
+  private apiUrl = `${environment.apiUrl}/projects`;
 
   uploadProject(file: File): Observable<ProjectDto> {
     const formData = new FormData();

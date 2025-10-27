@@ -154,6 +154,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+// Serve static files (Angular frontend) in Production
+if (app.Environment.IsProduction())
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
+
 app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
@@ -163,6 +170,12 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<TelegramHub>("/hubs/telegram");
+
+// Fallback to index.html for Angular routing (SPA) in Production
+if (app.Environment.IsProduction())
+{
+    app.MapFallbackToFile("index.html");
+}
 
 try
 {

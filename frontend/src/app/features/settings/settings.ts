@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { environment } from '../../../environments/environment.development';
 
 interface KnxConfiguration {
   id: number;
@@ -56,7 +57,7 @@ export class Settings implements OnInit {
 
   async loadSettings() {
     try {
-      const configs = await this.http.get<KnxConfiguration[]>('http://localhost:5075/api/knx/configurations').toPromise();
+      const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
 
       if (configs && configs.length > 0) {
         const config = configs[0];
@@ -76,7 +77,7 @@ export class Settings implements OnInit {
       this.isSaving = true;
 
       // Save to backend database
-      const configs = await this.http.get<KnxConfiguration[]>('http://localhost:5075/api/knx/configurations').toPromise();
+      const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
 
       if (configs && configs.length > 0) {
         // Update existing configuration
@@ -88,7 +89,7 @@ export class Settings implements OnInit {
         }).toPromise();
       } else {
         // Create new configuration
-        await this.http.post('http://localhost:5075/api/knx/configurations', {
+        await this.http.post(`${environment.apiUrl}/knx/configurations`, {
           ipAddress: this.knxConfig.ipAddress,
           port: this.knxConfig.port,
           physicalAddress: this.knxConfig.physicalAddress,
@@ -121,14 +122,14 @@ export class Settings implements OnInit {
       await this.saveSettings();
 
       // Get the configuration
-      const configs = await this.http.get<KnxConfiguration[]>('http://localhost:5075/api/knx/configurations').toPromise();
+      const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
 
       if (!configs || configs.length === 0) {
         throw new Error('No configuration found');
       }
 
       // Try to connect
-      await this.http.post('http://localhost:5075/api/knx/connect', configs[0].id).toPromise();
+      await this.http.post(`${environment.apiUrl}/knx/connect`, configs[0].id).toPromise();
 
       this.snackBar.open('✓ Connection successful!', 'Close', {
         duration: 3000,
@@ -139,7 +140,7 @@ export class Settings implements OnInit {
 
       // Disconnect after test
       setTimeout(async () => {
-        await this.http.post('http://localhost:5075/api/knx/disconnect', {}).toPromise();
+        await this.http.post(`${environment.apiUrl}/knx/disconnect`, {}).toPromise();
       }, 1000);
 
     } catch (error) {

@@ -12,6 +12,7 @@ import { Subscription } from 'rxjs';
 import { SignalrService, KnxTelegram } from '../../core/services/signalr.service';
 import { HttpClient } from '@angular/common/http';
 import { AgGridAngular } from 'ag-grid-angular';
+import { environment } from '../../../environments/environment.development';
 import {
   ColDef,
   GridOptions,
@@ -270,11 +271,11 @@ export class LiveViewComponent implements OnInit, OnDestroy {
   async checkSetupStatus() {
     try {
       // Check if projects exist
-      const projects = await this.http.get<any[]>('http://localhost:5075/api/projects').toPromise();
+      const projects = await this.http.get<any[]>(`${environment.apiUrl}/projects`).toPromise();
       this.hasProject = (projects && projects.length > 0) || false;
 
       // Check if KNX configuration exists
-      const configs = await this.http.get<KnxConfiguration[]>('http://localhost:5075/api/knx/configurations').toPromise();
+      const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
       this.hasKnxConfig = (configs && configs.length > 0) || false;
     } catch (error) {
       console.error('Failed to check setup status:', error);
@@ -356,7 +357,7 @@ export class LiveViewComponent implements OnInit, OnDestroy {
     try {
       this.isConnecting = true;
 
-      const configs = await this.http.get<KnxConfiguration[]>('http://localhost:5075/api/knx/configurations').toPromise();
+      const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
 
       if (!configs || configs.length === 0) {
         alert('No KNX configuration found. Please configure your KNX Gateway in Settings first.');
@@ -365,7 +366,7 @@ export class LiveViewComponent implements OnInit, OnDestroy {
 
       const configId = configs[0].id;
 
-      await this.http.post('http://localhost:5075/api/knx/connect', configId).toPromise();
+      await this.http.post(`${environment.apiUrl}/knx/connect`, configId).toPromise();
       this.isConnected = true;
     } catch (error) {
       console.error('Failed to connect to KNX:', error);
@@ -377,7 +378,7 @@ export class LiveViewComponent implements OnInit, OnDestroy {
 
   async disconnectFromKnx() {
     try {
-      await this.http.post('http://localhost:5075/api/knx/disconnect', {}).toPromise();
+      await this.http.post(`${environment.apiUrl}/knx/disconnect`, {}).toPromise();
       this.isConnected = false;
     } catch (error) {
       console.error('Failed to disconnect from KNX:', error);
@@ -386,7 +387,7 @@ export class LiveViewComponent implements OnInit, OnDestroy {
 
   async checkConnectionStatus() {
     try {
-      const status = await this.http.get<{ isConnected: boolean }>('http://localhost:5075/api/knx/status').toPromise();
+      const status = await this.http.get<{ isConnected: boolean }>(`${environment.apiUrl}/knx/status`).toPromise();
       this.isConnected = status?.isConnected || false;
     } catch (error) {
       console.error('Failed to check connection status:', error);
