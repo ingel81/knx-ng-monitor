@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p backend/KnxMonitor.Api/wwwroot
-          cp -r frontend/dist/knx-ng-monitor/browser/* backend/KnxMonitor.Api/wwwroot/
+          cp -r frontend/dist/frontend/browser/* backend/KnxMonitor.Api/wwwroot/
 
       - name: Restore backend dependencies
         run: dotnet restore

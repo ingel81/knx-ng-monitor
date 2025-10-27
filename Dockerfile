@@ -20,7 +20,7 @@ WORKDIR /app
 COPY backend/ ./
 
 # Copy built frontend to wwwroot
-COPY --from=frontend-build /app/frontend/dist/knx-ng-monitor/browser ./KnxMonitor.Api/wwwroot
+COPY --from=frontend-build /app/frontend/dist/frontend/browser ./KnxMonitor.Api/wwwroot
 
 # Restore dependencies
 RUN dotnet restore
