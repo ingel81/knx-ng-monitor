@@ -28,6 +28,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Use Serilog for logging
 builder.Host.UseSerilog();
 
+// Generate or load JWT secret
+var jwtSecret = KnxMonitor.Infrastructure.Services.JwtSecretManager.GetOrGenerateSecret();
+Log.Information("JWT secret loaded/generated successfully");
+
+// Override JWT Secret in configuration
+builder.Configuration["Jwt:Secret"] = jwtSecret;
+
 // Add services to the container.
 // Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
