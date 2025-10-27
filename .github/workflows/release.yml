@@ -1,0 +1,243 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-binaries:
+    name: Build ${{ matrix.rid }} Binary
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact: knx-ng-monitor-linux-x64.tar.gz
+            archive_cmd: tar -czf
+          - os: ubuntu-latest
+            rid: linux-arm64
+            artifact: knx-ng-monitor-linux-arm64.tar.gz
+            archive_cmd: tar -czf
+          - os: windows-latest
+            rid: win-x64
+            artifact: knx-ng-monitor-win-x64.zip
+            archive_cmd: 7z a -tzip
+          - os: windows-latest
+            rid: win-arm64
+            artifact: knx-ng-monitor-win-arm64.zip
+            archive_cmd: 7z a -tzip
+          - os: macos-latest
+            rid: osx-x64
+            artifact: knx-ng-monitor-osx-x64.tar.gz
+            archive_cmd: tar -czf
+          - os: macos-latest
+            rid: osx-arm64
+            artifact: knx-ng-monitor-osx-arm64.tar.gz
+            archive_cmd: tar -czf
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build -- --configuration production
+        working-directory: frontend
+
+      - name: Copy frontend to backend wwwroot
+        shell: bash
+        run: |
+          mkdir -p backend/KnxMonitor.Api/wwwroot
+          cp -r frontend/dist/knx-ng-monitor/browser/* backend/KnxMonitor.Api/wwwroot/
+
+      - name: Restore backend dependencies
+        run: dotnet restore
+        working-directory: backend
+
+      - name: Publish self-contained binary
+        run: |
+          dotnet publish KnxMonitor.Api/KnxMonitor.Api.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=true \
+            -o ./publish/${{ matrix.rid }}
+        working-directory: backend
+
+      - name: Create archive (tar.gz)
+        if: contains(matrix.artifact, '.tar.gz')
+        run: tar -czf ${{ matrix.artifact }} -C backend/publish/${{ matrix.rid }} .
+
+      - name: Create archive (zip)
+        if: contains(matrix.artifact, '.zip')
+        run: 7z a -tzip ${{ matrix.artifact }} ./backend/publish/${{ matrix.rid }}/*
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+          retention-days: 1
+
+  build-docker:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build and push multi-platform image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ingel81/knx-ng-monitor:latest
+            ingel81/knx-ng-monitor:${{ steps.version.outputs.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Logout from DockerHub
+        if: always()
+        run: docker logout
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-binaries, build-docker]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          # Generate changelog
+          if [ -z "$PREV_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGELOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+
+          # Create release notes
+          cat > release_notes.md <<EOF
+          ## Changes
+
+          $CHANGELOG
+
+          ## Docker Image
+
+          Pull the Docker image:
+          \`\`\`bash
+          docker pull ingel81/knx-ng-monitor:$VERSION
+          \`\`\`
+
+          Or use the latest tag:
+          \`\`\`bash
+          docker pull ingel81/knx-ng-monitor:latest
+          \`\`\`
+
+          ## Downloads
+
+          Self-contained binaries are available below for all supported platforms. No .NET installation required.
+
+          ### Linux
+          - **x64**: Download \`knx-ng-monitor-linux-x64.tar.gz\`
+          - **ARM64**: Download \`knx-ng-monitor-linux-arm64.tar.gz\`
+
+          ### Windows
+          - **x64**: Download \`knx-ng-monitor-win-x64.zip\`
+          - **ARM64**: Download \`knx-ng-monitor-win-arm64.zip\`
+
+          ### macOS
+          - **x64 (Intel)**: Download \`knx-ng-monitor-osx-x64.tar.gz\`
+          - **ARM64 (Apple Silicon)**: Download \`knx-ng-monitor-osx-arm64.tar.gz\`
+
+          ## Running the Binary
+
+          ### Linux/macOS
+          \`\`\`bash
+          tar -xzf knx-ng-monitor-*.tar.gz
+          ./KnxMonitor.Api
+          \`\`\`
+
+          ### Windows
+          Extract the .zip file and run \`KnxMonitor.Api.exe\`
+
+          The application will be available at \`http://localhost:8080\`
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ steps.version.outputs.VERSION }}
+          body_path: release_notes.md
+          files: |
+            artifacts/knx-ng-monitor-linux-x64.tar.gz/*
+            artifacts/knx-ng-monitor-linux-arm64.tar.gz/*
+            artifacts/knx-ng-monitor-win-x64.zip/*
+            artifacts/knx-ng-monitor-win-arm64.zip/*
+            artifacts/knx-ng-monitor-osx-x64.tar.gz/*
+            artifacts/knx-ng-monitor-osx-arm64.tar.gz/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,30 @@
+# Node modules
+**/node_modules/
+
+# Build outputs
+**/bin/
+**/obj/
+**/dist/
+**/out/
+
+# IDE
+**/.git/
+**/.vs/
+**/.vscode/
+**/.idea/
+
+# Data and logs
+**/data/
+**/*.log
+
+# OS files
+**/.DS_Store
+**/Thumbs.db
+
+# Environment files
+**/.env
+**/.env.*
+
+# Documentation
+**/*.md
+!README.md
