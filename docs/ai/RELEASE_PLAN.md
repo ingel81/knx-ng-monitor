@@ -41,13 +41,18 @@ Automatisierte Builds und Releases via GitHub Actions, die bei jedem Git Tag (Pa
 | Platform | Architecture | Base Image | Build-Strategie |
 |----------|--------------|------------|-----------------|
 | linux/amd64 | x64 | alpine:latest (~7 MB) | Self-Contained |
-| linux/arm64 | ARM64 | alpine:latest (~7 MB) | Self-Contained |
 
 **Image Tags:**
 - `ingel81/knx-ng-monitor:latest` (immer neuester Build)
 - `ingel81/knx-ng-monitor:<version>` (z.B. v0.0.1)
 
 **Image-Größe:** ~90-100 MB (Self-Contained Binary ~80 MB + Alpine ~7 MB + Dependencies)
+
+**Plattform-Hinweis:**
+- Docker Image nur für **linux/amd64** (native Build, schnell)
+- ARM64 wird via QEMU emuliert und ist zu langsam/instabil für CI
+- ARM64 **Binaries** sind trotzdem verfügbar (GitHub Actions Matrix)
+- ARM64 Docker kann später mit Self-Hosted ARM Runner hinzugefügt werden
 
 **Vorteile Self-Contained Docker:**
 - ✅ Konsistente Strategie mit Binaries
@@ -116,19 +121,21 @@ matrix:
       artifact: knx-ng-monitor-osx-arm64.tar.gz
 ```
 
-### Job 2: build-docker (Multi-Platform)
+### Job 2: build-docker
 
-**Zweck:** Docker Images für amd64 und arm64 bauen und zu DockerHub pushen
+**Zweck:** Docker Image für amd64 bauen und zu DockerHub pushen
 
 **Schritte:**
 1. Checkout Code
-2. Setup Docker Buildx (für Multi-Platform)
+2. Setup Docker Buildx
 3. Login zu DockerHub (mit Secrets)
 4. Extract Version aus Git Tag
-5. Build und Push Multi-Platform Image
-   - Platforms: `linux/amd64,linux/arm64`
+5. Build und Push Docker Image
+   - Platform: `linux/amd64` (native, schnell)
    - Tags: `latest` und `<version>`
 6. Logout von DockerHub
+
+**Hinweis:** ARM64 Docker wurde entfernt wegen QEMU-Instabilität. ARM64 Binaries sind weiterhin verfügbar.
 
 **Benötigte Secrets:**
 - `DOCKERHUB_USERNAME`
