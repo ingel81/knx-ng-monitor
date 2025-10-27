@@ -73,6 +73,7 @@ jobs:
         working-directory: backend
 
       - name: Publish self-contained binary
+        shell: bash
         run: |
           dotnet publish KnxMonitor.Api/KnxMonitor.Api.csproj \
             -c Release \
