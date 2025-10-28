@@ -227,3 +227,4 @@ Next steps according to the plan:
 - WCAG 2.1 Level AA compliance for accessibility
 - schreibe commits generell immer kompakt und immer ohne claude footer.
 - never commit on your own
+- parallel läuft immer bereits ng serve

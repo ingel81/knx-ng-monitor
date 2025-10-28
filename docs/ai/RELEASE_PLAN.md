@@ -318,8 +318,149 @@ docker logs -f knx-monitor
 
 # Inspect Image Size
 docker images ingel81/knx-ng-monitor
-# Expected: ~90-100 MB
+# Expected: ~120-130 MB
 ```
+
+## Production Deployment
+
+### Erstmaliges Setup
+
+Nach dem ersten Start wird automatisch:
+1. JWT Secret generiert und in `/app/data/.jwt-secret` (Docker) oder `./data/.jwt-secret` (Binary) gespeichert
+2. SQLite Datenbank angelegt in `/app/data/knxmonitor.db` (Docker) oder `./data/knxmonitor.db` (Binary)
+3. Initial Setup Wizard im Frontend angezeigt (Admin-User erstellen)
+
+### Docker Deployment (Empfohlen)
+
+**docker-compose.yml Beispiel:**
+```yaml
+version: '3.8'
+
+services:
+  knx-monitor:
+    image: ingel81/knx-ng-monitor:latest
+    container_name: knx-monitor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+    # Optional: Custom Port
+    # environment:
+    #   - ASPNETCORE_URLS=http://+:5000
+    # ports:
+    #   - "5000:5000"
+```
+
+**Start:**
+```bash
+docker-compose up -d
+```
+
+**Zugriff:**
+- Browser: `http://<server-ip>:8080`
+- Initial Setup durchführen (Admin-User erstellen)
+
+### Binary Deployment
+
+**Linux/macOS:**
+```bash
+# Download und entpacken
+wget https://github.com/ingel81/knx-ng-monitor/releases/download/v0.0.1/knx-ng-monitor-linux-x64.tar.gz
+tar -xzf knx-ng-monitor-linux-x64.tar.gz
+cd knx-ng-monitor-linux-x64
+
+# Starten
+./KnxMonitor.Api
+
+# Im Browser öffnen
+# http://localhost:8080
+```
+
+**Windows:**
+```powershell
+# Download und entpacken
+# knx-ng-monitor-win-x64.zip
+
+# Starten
+.\KnxMonitor.Api.exe
+
+# Im Browser öffnen
+# http://localhost:8080
+```
+
+**Systemd Service (Linux):**
+```ini
+[Unit]
+Description=KNX NG Monitor
+After=network.target
+
+[Service]
+Type=simple
+User=knxmonitor
+WorkingDirectory=/opt/knx-monitor
+ExecStart=/opt/knx-monitor/KnxMonitor.Api
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Daten-Persistenz
+
+**Wichtige Dateien in `./data/`:**
+- `.jwt-secret` - JWT Secret (NICHT löschen, sonst werden alle Sessions ungültig)
+- `knxmonitor.db` - SQLite Datenbank (Telegrams, Projects, Users, etc.)
+
+**Backup:**
+```bash
+# Docker
+docker-compose down
+cp -r ./data ./data-backup-$(date +%Y%m%d)
+docker-compose up -d
+
+# Binary
+./KnxMonitor.Api stop
+cp -r ./data ./data-backup-$(date +%Y%m%d)
+./KnxMonitor.Api
+```
+
+### Reverse Proxy (Optional)
+
+**nginx Beispiel:**
+```nginx
+server {
+    listen 80;
+    server_name knx.example.com;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # SignalR WebSocket Support
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+    }
+}
+```
+
+### Sicherheits-Hinweise
+
+1. **JWT Secret:** Wird automatisch generiert, NICHT manuell ändern oder löschen
+2. **Firewall:** Port 8080 nur für vertrauenswürdige Netzwerke freigeben
+3. **Reverse Proxy:** HTTPS mit Let's Encrypt für öffentlichen Zugriff empfohlen
+4. **Backups:** Regelmäßige Backups von `./data/` erstellen
+5. **Updates:** Bei Updates Container/Binary ersetzen, `./data/` Verzeichnis behalten
 
 ## Optimierungen
 
@@ -403,7 +544,63 @@ Optional (bei Bedarf):
    - Automatisches Pushen von `latest` und versionierten Tags
    - Platform: linux/amd64 only (ARM64 Binaries trotzdem verfügbar)
 
+6. **JWT Secret Auto-Generation** 🔐
+   - Kryptographisch sicheres Secret (512 bit / 64 Bytes)
+   - Automatische Generierung beim ersten Start
+   - Persistent gespeichert in `./data/.jwt-secret`
+   - Wiederverwendung bei Restarts (Session-Persistenz)
+   - Unix-Permissions: 600 (nur Owner read/write)
+   - Kein hardcoded Placeholder mehr in Releases
+   - Jede Installation hat unique Secret
+
+7. **Database Path Korrektur** 🗄️
+   - **Vorher:** `../../data/knxmonitor.db` (relativ, falsch für Docker & Releases)
+   - **Nachher:** `./data/knxmonitor.db` (relativ zum Binary)
+   - Funktioniert in Docker Container (`/app/data/`)
+   - Funktioniert bei Self-Contained Binaries (neben Executable)
+   - Volume-Mount in Docker: `/app/data` → Daten bleiben persistent
+
+8. **Environment-Based Configuration** 🌍
+   - **Development Mode:**
+     - Frontend: `ng serve` auf Port 4200
+     - Backend: separat auf Port 5075
+     - API URL: `http://localhost:5075/api`
+     - SignalR Hub: `http://localhost:5075/hubs`
+     - CORS: erlaubt `http://localhost:4200`
+
+   - **Production Mode:**
+     - Backend liefert Frontend aus (Static Files aus `wwwroot/`)
+     - API URL: `/api` (relativ)
+     - SignalR Hub: `/hubs` (relativ)
+     - SPA Fallback: `MapFallbackToFile("index.html")` für Angular Routing
+     - Single Port: 8080 (Docker) oder konfigurierbar
+
+   - **Frontend Environment Files:**
+     - `environment.development.ts`: localhost URLs für Dev
+     - `environment.ts`: relative URLs für Production
+     - Angular fileReplacements in angular.json
+
+   - **Backend Static File Middleware (Production only):**
+     - `UseDefaultFiles()`: Serve index.html als Default
+     - `UseStaticFiles()`: Serve alle Static Assets
+     - `MapFallbackToFile("index.html")`: Angular Client-Side Routing
+
+**Sicherheitsverbesserungen:**
+- ✅ Keine hardcoded Secrets mehr in Releases
+- ✅ Unique JWT Secret pro Installation
+- ✅ Kryptographisch sichere Secret-Generierung (RNG)
+- ✅ File-Permissions für Secret File (Unix: 600)
+
+**Production-Ready Features:**
+- ✅ Korrekte Pfade für Docker und Binaries
+- ✅ Frontend wird vom Backend ausgeliefert
+- ✅ Relative URLs funktionieren in Production
+- ✅ Angular Routing funktioniert (SPA Fallback)
+- ✅ Dev/Prod Environment vollständig getrennt
+
 **Nächste Schritte:**
 - CI/CD Monitoring und Performance-Optimierung
 - Evtl. Caching-Strategien für schnellere Builds
 - Release Notes Template verfeinern
+- Health Check Endpoint hinzufügen
+- Monitoring/Metrics Integration (optional)

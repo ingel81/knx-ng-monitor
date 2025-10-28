@@ -1,185 +1,30 @@
 // Import mixins (forwards variables, so we get both)
 @use '../../../styles/mixins' as *;
-@use 'sass:color';
 
 .login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background: $background-dark;
-  padding: 2rem;
+  @include auth-container;
 }
 
 .login-card {
-  max-width: 440px;
-  width: 100%;
-  background: $surface-dark;
-  border-radius: 8px;
-  border: 1px solid $border-color;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  overflow: hidden;
+  @include auth-card;
 }
 
-// Header Section
 .login-header {
-  text-align: center;
-  padding: 3rem 2.5rem 2rem 2.5rem;
-  background: $surface-dark;
-  border-bottom: 1px solid $border-color;
-
-  .logo-container {
-    margin-bottom: 1.5rem;
-
-    .logo-icon {
-      font-size: 64px;
-      width: 64px;
-      height: 64px;
-      color: $primary-color;
-    }
-  }
-
-  .app-title {
-    font-size: 1.75rem;
-    font-weight: 500;
-    margin: 0 0 0.5rem 0;
-    letter-spacing: 0.5px;
-    color: $text-primary;
-  }
-
-  .app-subtitle {
-    font-size: 0.95rem;
-    margin: 0;
-    color: $text-secondary;
-    font-weight: 400;
-  }
+  @include auth-header;
 }
 
-// Content Section
 .login-content {
-  padding: 2.5rem 2.5rem 2rem 2.5rem;
-
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .full-width {
-    width: 100%;
-  }
+  @include auth-content;
 }
 
 .error-message {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
-  background-color: rgba(239, 83, 80, 0.15);
-  color: #ef5350;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  border-left: 3px solid #ef5350;
-
-  mat-icon {
-    font-size: 1.25rem;
-    width: 1.25rem;
-    height: 1.25rem;
-    flex-shrink: 0;
-  }
+  @include auth-error-message;
 }
 
 .login-button {
-  width: 100%;
-  height: 48px;
-  font-size: 1rem;
-  font-weight: 500;
-  margin-top: 0.5rem;
-  letter-spacing: 0.5px;
-  background-color: $primary-color !important;
-  color: white !important;
-
-  &:hover:not(:disabled) {
-    background-color: color.adjust($primary-color, $lightness: 8%) !important;
-  }
-
-  &:disabled {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    color: rgba(255, 255, 255, 0.3) !important;
-  }
-
-  ::ng-deep {
-    .mdc-button__label {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-
-      mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
-      }
-    }
-  }
-
-  mat-spinner {
-    display: inline-block;
-    margin: 0 auto;
-
-    ::ng-deep circle {
-      stroke: white !important;
-    }
-  }
+  @include auth-button;
 }
 
-// Footer Section
 .login-footer {
-  text-align: center;
-  padding: 1.25rem 2rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-top: 1px solid $border-color;
-
-  .version-info {
-    font-size: 0.8125rem;
-    color: $text-disabled;
-    font-weight: 400;
-  }
-}
-
-// Responsive
-@media (max-width: 600px) {
-  .login-container {
-    padding: 1rem;
-  }
-
-  .login-card {
-    max-width: 100%;
-  }
-
-  .login-header {
-    padding: 2.5rem 2rem 1.5rem 2rem;
-
-    .logo-container .logo-icon {
-      font-size: 56px;
-      width: 56px;
-      height: 56px;
-    }
-
-    .app-title {
-      font-size: 1.5rem;
-    }
-
-    .app-subtitle {
-      font-size: 0.875rem;
-    }
-  }
-
-  .login-content {
-    padding: 2rem 2rem 1.5rem 2rem;
-  }
-
-  .login-footer {
-    padding: 1rem 2rem;
-  }
+  @include auth-footer;
 }

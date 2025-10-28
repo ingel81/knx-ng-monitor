@@ -1,15 +1,18 @@
-<div class="initial-setup-container">
-  <mat-card class="setup-card">
-    <mat-card-header>
-      <mat-card-title>
-        <mat-icon>settings</mat-icon>
-        Initial Setup
-      </mat-card-title>
-    </mat-card-header>
+<div class="setup-container">
+  <div class="setup-card">
+    <!-- Header with Logo -->
+    <div class="setup-header">
+      <div class="logo-container">
+        <img src="KNX_logo.svg" alt="KNX" class="logo-icon">
+        <h1 class="auth-title">-NG-Monitor</h1>
+      </div>
+      <p class="auth-subtitle">Initial Setup</p>
+    </div>
 
-    <mat-card-content>
+    <!-- Setup Form -->
+    <div class="setup-content">
       <p class="welcome-message">
-        Welcome to KNX-NG-Monitor! To get started, please create your admin account.
+        Welcome! To get started, please create your admin account.
       </p>
 
       <form (ngSubmit)="onSubmit()" #setupForm="ngForm">
@@ -22,6 +25,7 @@
             name="username"
             required
             autocomplete="username"
+            [disabled]="isLoading"
           />
           <mat-icon matPrefix>person</mat-icon>
         </mat-form-field>
@@ -36,6 +40,8 @@
             required
             minlength="8"
             autocomplete="new-password"
+            [disabled]="isLoading"
+            #passwordField="ngModel"
           />
           <mat-icon matPrefix>lock</mat-icon>
           <button
@@ -61,6 +67,8 @@
             required
             minlength="8"
             autocomplete="new-password"
+            [disabled]="isLoading"
+            #confirmPasswordField="ngModel"
           />
           <mat-icon matPrefix>lock</mat-icon>
           <button
@@ -83,11 +91,18 @@
           </div>
         }
 
+        @if ((passwordField.invalid && passwordField.touched) || (confirmPasswordField.invalid && confirmPasswordField.touched)) {
+          <div class="info-message">
+            <mat-icon>info</mat-icon>
+            Your password must be at least 8 characters long.
+          </div>
+        }
+
         <button
           mat-raised-button
           color="primary"
           type="submit"
-          class="submit-button"
+          class="setup-button"
           [disabled]="isLoading || !setupForm.form.valid"
         >
           @if (isLoading) {
@@ -100,11 +115,11 @@
           }
         </button>
       </form>
+    </div>
 
-      <p class="info-message">
-        <mat-icon>info</mat-icon>
-        Your password must be at least 8 characters long.
-      </p>
-    </mat-card-content>
-  </mat-card>
+    <!-- Footer -->
+    <div class="setup-footer">
+      <span class="version-info">Version 1.0.0</span>
+    </div>
+  </div>
 </div>

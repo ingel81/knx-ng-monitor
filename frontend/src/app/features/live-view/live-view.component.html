@@ -48,7 +48,10 @@
       <div class="divider"></div>
 
       <!-- Telegram Count -->
-      <span class="badge">{{ telegrams.length }} telegrams</span>
+      <div class="telegram-counter">
+        <mat-icon>list_alt</mat-icon>
+        <span class="counter-value">{{ telegrams.length }}</span>
+      </div>
     </div>
   </div>
 
@@ -73,20 +76,38 @@
           <div class="setup-checklist">
             <p class="checklist-intro">Follow these steps to start monitoring:</p>
 
-            <div class="checklist-item" [class.completed]="hasProject">
-              <mat-icon class="checklist-icon">{{ hasProject ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-              <div class="checklist-content">
-                <span class="checklist-title">Import a .knxproj file</span>
-                <span class="checklist-hint">Go to Projects → Import your ETS project</span>
-              </div>
-            </div>
-
             <div class="checklist-item" [class.completed]="hasKnxConfig">
               <mat-icon class="checklist-icon">{{ hasKnxConfig ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
               <div class="checklist-content">
                 <span class="checklist-title">Configure KNX Gateway</span>
                 <span class="checklist-hint">Go to Settings → Add your KNX IP interface</span>
               </div>
+              <button
+                mat-icon-button
+                class="checklist-action"
+                (click)="navigateToSettings()"
+                matTooltip="Go to Settings"
+                matTooltipPosition="left"
+              >
+                <mat-icon>arrow_forward</mat-icon>
+              </button>
+            </div>
+
+            <div class="checklist-item" [class.completed]="hasProject">
+              <mat-icon class="checklist-icon">{{ hasProject ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+              <div class="checklist-content">
+                <span class="checklist-title">Import a .knxproj file</span>
+                <span class="checklist-hint">Go to Projects → Import your ETS project</span>
+              </div>
+              <button
+                mat-icon-button
+                class="checklist-action"
+                (click)="navigateToProjects()"
+                matTooltip="Go to Projects"
+                matTooltipPosition="left"
+              >
+                <mat-icon>arrow_forward</mat-icon>
+              </button>
             </div>
 
             <div class="checklist-item" [class.completed]="false">
@@ -95,6 +116,15 @@
                 <span class="checklist-title">Connect to KNX</span>
                 <span class="checklist-hint">Click "Connect KNX" button above</span>
               </div>
+              <button
+                mat-icon-button
+                class="checklist-action checklist-action-disabled"
+                disabled
+                matTooltip="Use button in header"
+                matTooltipPosition="left"
+              >
+                <mat-icon>arrow_upward</mat-icon>
+              </button>
             </div>
           </div>
         } @else {

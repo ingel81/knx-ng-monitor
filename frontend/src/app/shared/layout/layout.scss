@@ -26,12 +26,20 @@
 
 .brand {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
 
-  h1 {
-    margin: 0;
+  .knx-logo {
+    height: 1.2rem;
+    width: auto;
+  }
+
+  .app-name {
     font-size: 1.5rem;
     font-weight: 500;
     letter-spacing: 0.5px;
+    margin: 0;
   }
 }
 
@@ -77,6 +85,13 @@
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+
+  mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    opacity: 0.9;
+  }
 
   .username {
     font-size: 0.95rem;
@@ -132,6 +147,7 @@
     padding: 8px 12px;
   }
 
+  .user-info mat-icon,
   .username {
     display: none;
   }

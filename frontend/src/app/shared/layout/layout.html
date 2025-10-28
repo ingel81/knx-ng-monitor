@@ -2,7 +2,8 @@
   <header class="app-header">
     <div class="header-content">
       <div class="brand">
-        <h1>KNX-NG-Monitor</h1>
+        <img src="KNX_logo.svg" alt="KNX" class="knx-logo">
+        <span class="app-name">-NG-Monitor</span>
       </div>
 
       <nav class="main-nav">
@@ -22,6 +23,7 @@
 
       <div class="user-info">
         @if (currentUser$ | async; as username) {
+          <mat-icon>account_circle</mat-icon>
           <span class="username">{{ username }}</span>
           <button mat-icon-button (click)="logout()" title="Logout">
             <mat-icon>logout</mat-icon>

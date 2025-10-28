@@ -72,7 +72,7 @@ export class Settings implements OnInit {
     }
   }
 
-  async saveSettings() {
+  async saveSettings(showToast: boolean = true) {
     try {
       this.isSaving = true;
 
@@ -81,7 +81,7 @@ export class Settings implements OnInit {
 
       if (configs && configs.length > 0) {
         // Update existing configuration
-        await this.http.put(`http://localhost:5075/api/knx/configurations/${configs[0].id}`, {
+        await this.http.put(`${environment.apiUrl}/knx/configurations/${configs[0].id}`, {
           ipAddress: this.knxConfig.ipAddress,
           port: this.knxConfig.port,
           physicalAddress: this.knxConfig.physicalAddress,
@@ -97,18 +97,25 @@ export class Settings implements OnInit {
         }).toPromise();
       }
 
-      this.snackBar.open('Settings saved successfully to database', 'Close', {
-        duration: 3000,
-        horizontalPosition: 'end',
-        verticalPosition: 'top'
-      });
+      if (showToast) {
+        this.snackBar.open('✓ Settings saved successfully', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['success-snackbar']
+        });
+      }
     } catch (error) {
       console.error('Failed to save settings:', error);
-      this.snackBar.open('Failed to save settings', 'Close', {
-        duration: 3000,
-        horizontalPosition: 'end',
-        verticalPosition: 'top'
-      });
+      if (showToast) {
+        this.snackBar.open('✗ Failed to save settings', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['error-snackbar']
+        });
+      }
+      throw error; // Re-throw to handle in testConnection
     } finally {
       this.isSaving = false;
     }
@@ -118,8 +125,8 @@ export class Settings implements OnInit {
     try {
       this.isTesting = true;
 
-      // First save the settings
-      await this.saveSettings();
+      // First save the settings silently
+      await this.saveSettings(false);
 
       // Get the configuration
       const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
@@ -131,8 +138,8 @@ export class Settings implements OnInit {
       // Try to connect
       await this.http.post(`${environment.apiUrl}/knx/connect`, configs[0].id).toPromise();
 
-      this.snackBar.open('✓ Connection successful!', 'Close', {
-        duration: 3000,
+      this.snackBar.open('✓ Settings saved and connection successful!', 'Close', {
+        duration: 4000,
         horizontalPosition: 'end',
         verticalPosition: 'top',
         panelClass: ['success-snackbar']
@@ -163,5 +170,26 @@ export class Settings implements OnInit {
       physicalAddress: '1.0.58'
     };
     this.saveSettings();
+  }
+
+  isFormValid(): boolean {
+    // IP Address validation
+    const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+    if (!ipPattern.test(this.knxConfig.ipAddress)) {
+      return false;
+    }
+
+    // Port validation
+    if (!this.knxConfig.port || this.knxConfig.port < 1 || this.knxConfig.port > 65535) {
+      return false;
+    }
+
+    // Physical Address validation
+    const paPattern = /^\d{1,2}\.\d{1,2}\.\d{1,3}$/;
+    if (!paPattern.test(this.knxConfig.physicalAddress)) {
+      return false;
+    }
+
+    return true;
   }
 }

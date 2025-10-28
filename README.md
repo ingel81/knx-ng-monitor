@@ -1,6 +1,10 @@
 # KNX-NG-Monitor
 
-A modern KNX bus monitoring tool with a web interface that displays, historizes, and presents KNX telegrams in real-time.
+A modern, self-contained KNX bus monitoring tool with a web interface that displays, historizes, and presents KNX telegrams in real-time.
+
+[![Release](https://img.shields.io/github/v/release/ingel81/knx-ng-monitor)](https://github.com/ingel81/knx-ng-monitor/releases)
+[![Docker](https://img.shields.io/docker/v/ingel81/knx-ng-monitor?label=docker)](https://hub.docker.com/r/ingel81/knx-ng-monitor)
+[![License](https://img.shields.io/github/license/ingel81/knx-ng-monitor)](LICENSE)
 
 ## Features
 
@@ -46,7 +50,63 @@ knx-ng-monitor/
 └── docker-compose.yml               # Optional: development
 ```
 
-## Getting Started
+## Quick Start (Production)
+
+### Using Docker (Recommended)
+
+```bash
+# Pull and run
+docker run -d \
+  -p 8080:8080 \
+  -v ./data:/app/data \
+  --name knx-monitor \
+  ingel81/knx-ng-monitor:latest
+
+# Access: http://localhost:8080
+```
+
+Or using docker-compose:
+
+```yaml
+version: '3.8'
+services:
+  knx-monitor:
+    image: ingel81/knx-ng-monitor:latest
+    container_name: knx-monitor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+```
+
+### Using Self-Contained Binary
+
+**No .NET installation required!** Download from [Releases](https://github.com/ingel81/knx-ng-monitor/releases):
+
+**Linux/macOS:**
+```bash
+wget https://github.com/ingel81/knx-ng-monitor/releases/download/v0.0.1/knx-ng-monitor-linux-x64.tar.gz
+tar -xzf knx-ng-monitor-linux-x64.tar.gz
+./KnxMonitor.Api
+# Access: http://localhost:8080
+```
+
+**Windows:**
+- Download `knx-ng-monitor-win-x64.zip`
+- Extract and run `KnxMonitor.Api.exe`
+- Access: http://localhost:8080
+
+### First-Time Setup
+
+1. Open browser at `http://localhost:8080`
+2. Complete initial setup wizard
+3. Create admin account
+4. Import your .knxproj file (optional)
+5. Configure KNX IP-Interface connection
+6. Start monitoring!
+
+## Development Setup
 
 ### Prerequisites
 
@@ -54,7 +114,7 @@ knx-ng-monitor/
 - Node.js 20+ and npm
 - Docker (optional, for containerized deployment)
 
-### Development Setup
+### Building from Source
 
 #### Backend
 
@@ -97,11 +157,19 @@ docker-compose up --build
 
 ### Environment Variables
 
-- `ASPNETCORE_ENVIRONMENT`: Production|Development
-- `JWT_SECRET`: Secret key for JWT token generation
-- `JWT_ISSUER`: knx-ng-monitor
-- `JWT_AUDIENCE`: knx-ng-monitor-client
-- `DATABASE_PATH`: /app/data/knxmonitor.db
+- `ASPNETCORE_ENVIRONMENT`: Production|Development (default: Production)
+- `ASPNETCORE_URLS`: http://+:8080 (default, change port if needed)
+
+**Note:** JWT Secret is automatically generated on first start and persisted in `./data/.jwt-secret`
+
+### Data Directory
+
+All persistent data is stored in `./data/`:
+- `.jwt-secret` - Auto-generated JWT secret (do NOT delete!)
+- `knxmonitor.db` - SQLite database (telegrams, users, projects, etc.)
+
+**Docker Volume:** `-v ./data:/app/data`
+**Binary:** Created in same directory as executable
 
 ### KNX Connection
 
@@ -113,9 +181,9 @@ Configure your KNX interface through the Settings page in the web UI:
 
 ## API Documentation
 
-Once the backend is running, Swagger documentation is available at:
-- Development: `https://localhost:5001/swagger`
-- Production: `http://your-host:8080/swagger`
+OpenAPI documentation is available in Development mode:
+- Development: `http://localhost:5075/scalar/v1` (when running backend separately)
+- Production: Integrated in frontend, no separate Swagger UI
 
 ## Database Schema
 
@@ -171,6 +239,25 @@ MIT
 
 Joerg
 
+## Releases
+
+### v0.0.1 (Latest)
+
+**Production-Ready Features:**
+- ✅ Self-contained binaries for 6 platforms (Linux, Windows, macOS - x64 & ARM64)
+- ✅ Docker image (linux/amd64, ~120 MB)
+- ✅ Auto-generated JWT secrets (secure by default)
+- ✅ Correct database paths for Docker & binaries
+- ✅ Environment-based configuration (Dev/Prod separation)
+- ✅ Backend serves frontend in production (single port deployment)
+
+**Downloads:**
+- Docker: `docker pull ingel81/knx-ng-monitor:v0.0.1`
+- Binaries: [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases/tag/v0.0.1)
+
 ## Project Status
 
-Currently in active development. See [PROJECT_PLAN.md](PROJECT_PLAN.md) for detailed implementation phases and progress.
+**Current:** v0.0.1 - Production ready for basic KNX monitoring
+**Next:** Performance optimizations, additional features
+
+See [docs/ai/PROJECT_PLAN.md](docs/ai/PROJECT_PLAN.md) for detailed implementation phases and [docs/ai/RELEASE_PLAN.md](docs/ai/RELEASE_PLAN.md) for release automation details.

@@ -270,3 +270,203 @@
     }
   }
 }
+
+// ============================================================================
+// Auth Dialog Mixins (Login, Setup, etc.)
+// ============================================================================
+
+@mixin auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: $background-dark;
+  padding: 2rem;
+
+  @media (max-width: $breakpoint-sm) {
+    padding: 1rem;
+  }
+}
+
+@mixin auth-card {
+  max-width: 440px;
+  width: 100%;
+  background: $surface-dark;
+  border-radius: $border-radius-md;
+  border: 1px solid $border-color;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+
+  @media (max-width: $breakpoint-sm) {
+    max-width: 100%;
+  }
+}
+
+@mixin auth-header {
+  text-align: center;
+  padding: 3rem 2.5rem 2rem 2.5rem;
+  background: $surface-dark;
+  border-bottom: 1px solid $border-color;
+
+  @media (max-width: $breakpoint-sm) {
+    padding: 2.5rem 2rem 1.5rem 2rem;
+  }
+
+  .logo-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 1.5rem;
+
+    .logo-icon {
+    width: auto;
+    height: 1.3rem;
+    margin-bottom: 1px;
+
+      @media (max-width: $breakpoint-sm) {
+        height: 1.3rem;
+      }
+    }
+
+    .auth-title {
+      font-size: 1.75rem;
+      font-weight: $font-weight-medium;
+      margin: 0;
+      letter-spacing: 0.5px;
+      color: $text-primary;
+      white-space: nowrap;
+
+      @media (max-width: $breakpoint-sm) {
+        font-size: 1.5rem;
+      }
+    }
+  }
+
+  .auth-subtitle {
+    font-size: 0.95rem;
+    margin: 0;
+    color: $text-secondary;
+    font-weight: $font-weight-normal;
+
+    @media (max-width: $breakpoint-sm) {
+      font-size: 0.875rem;
+    }
+  }
+}
+
+@mixin auth-content {
+  padding: 2.5rem 2.5rem 2rem 2.5rem;
+
+  @media (max-width: $breakpoint-sm) {
+    padding: 2rem 2rem 1.5rem 2rem;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .full-width {
+    width: 100%;
+  }
+}
+
+@mixin auth-error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background-color: rgba(239, 83, 80, 0.15);
+  color: #ef5350;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-sm;
+  border-left: 3px solid #ef5350;
+
+  mat-icon {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+}
+
+@mixin auth-info-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background-color: rgba(100, 181, 246, 0.15);
+  color: $accent-color;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-sm;
+  border-left: 3px solid $accent-color;
+
+  mat-icon {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+  }
+}
+
+@mixin auth-button {
+  width: 100%;
+  height: 48px;
+  font-size: 1rem;
+  font-weight: $font-weight-medium;
+  margin-top: 0.5rem;
+  letter-spacing: 0.5px;
+  background-color: $primary-color !important;
+  color: white !important;
+
+  &:hover:not(:disabled) {
+    background-color: $primary-light !important;
+  }
+
+  &:disabled {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.3) !important;
+  }
+
+  ::ng-deep {
+    .mdc-button__label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+  }
+
+  mat-spinner {
+    display: inline-block;
+    margin: 0 auto;
+
+    ::ng-deep circle {
+      stroke: white !important;
+    }
+  }
+}
+
+@mixin auth-footer {
+  text-align: center;
+  padding: 1.25rem 2rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid $border-color;
+
+  @media (max-width: $breakpoint-sm) {
+    padding: 1rem 2rem;
+  }
+
+  .version-info {
+    font-size: 0.8125rem;
+    color: $text-disabled;
+    font-weight: $font-weight-normal;
+  }
+}

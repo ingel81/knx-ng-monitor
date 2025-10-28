@@ -20,14 +20,36 @@
   .page-header {
     @include page-header;
 
-    // Badge styling override for better visibility in right section
-    .page-header-right .badge {
-      background: rgba(100, 181, 246, 0.25);
-      border: 1px solid rgba(100, 181, 246, 0.5);
-      color: #1976d2;
-      font-size: $font-size-base;
-      font-weight: $font-weight-bold;
-      padding: $spacing-sm $spacing-lg;
+    // Telegram counter styling
+    .telegram-counter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: transparent;
+      border-radius: $border-radius-sm;
+      transition: background-color $transition-fast;
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        color: $text-secondary;
+        opacity: 0.7;
+      }
+
+      .counter-value {
+        font-size: $font-size-lg;
+        font-weight: $font-weight-medium;
+        color: $text-primary;
+        font-variant-numeric: tabular-nums;
+        min-width: 30px;
+        text-align: right;
+      }
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.03);
+      }
     }
 
     .auto-scroll-toggle {
@@ -139,6 +161,7 @@
       .setup-checklist {
         max-width: 500px;
         width: 100%;
+        pointer-events: auto; // Enable pointer events for checklist
 
         .checklist-intro {
           text-align: center;
@@ -194,6 +217,31 @@
             .checklist-hint {
               font-size: $font-size-sm;
               color: #666;
+            }
+          }
+
+          .checklist-action {
+            flex-shrink: 0;
+            opacity: 0.7;
+            transition: all $transition-fast;
+            align-self: center;
+            color: $primary-color;
+
+            mat-icon {
+              font-size: 20px;
+              width: 20px;
+              height: 20px;
+            }
+
+            &:hover:not(:disabled) {
+              opacity: 1;
+              background-color: rgba(25, 118, 210, 0.15);
+              transform: translateX(2px);
+            }
+
+            &.checklist-action-disabled {
+              opacity: 0.3;
+              color: #999;
             }
           }
         }

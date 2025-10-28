@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, ViewChild, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
@@ -53,6 +54,7 @@ interface KnxConfiguration {
 export class LiveViewComponent implements OnInit, OnDestroy {
   private signalrService = inject(SignalrService);
   private http = inject(HttpClient);
+  private router = inject(Router);
   private subscription?: Subscription;
 
   @ViewChild(AgGridAngular) agGrid!: AgGridAngular;
@@ -542,5 +544,14 @@ Flags:       ${telegram.flags || '-'}
       this.agGrid.api.setFilterModel(null);
       this.quickFilterText = '';
     }
+  }
+
+  // Navigation methods for setup checklist
+  navigateToSettings() {
+    this.router.navigate(['/settings']);
+  }
+
+  navigateToProjects() {
+    this.router.navigate(['/projects']);
   }
 }

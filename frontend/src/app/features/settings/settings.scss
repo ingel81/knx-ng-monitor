@@ -50,77 +50,160 @@
 
     mat-card-actions {
       display: flex;
+      justify-content: space-between;
+      align-items: center;
       gap: $spacing-md;
       padding: $spacing-lg;
       flex-wrap: wrap;
+      margin-top: $spacing-lg;
+      border-top: 1px solid $border-color;
+
+      .button-group {
+        display: flex;
+        gap: $spacing-md;
+        flex-wrap: wrap;
+
+        &.primary-actions {
+          flex: 1;
+        }
+      }
+
+      .secondary-action {
+        opacity: 0.8;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
 
       button {
         mat-icon {
           margin-right: $spacing-sm;
         }
+
+        &[disabled] {
+          mat-icon {
+            animation: none;
+          }
+        }
+      }
+
+      // Rotating icon animation for testing state
+      button mat-icon {
+        transition: transform $transition-base;
       }
     }
-  }
-
-  .description {
-    color: $text-secondary;
-    margin: 0 0 $spacing-xl 0;
-    line-height: 1.5;
   }
 
   .config-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: $spacing-lg;
-    margin-bottom: $spacing-xl;
+    margin-bottom: $spacing-lg;
 
     mat-form-field {
       width: 100%;
       @include form-field-dark;
+
+      ::ng-deep {
+        .mat-mdc-form-field-hint {
+          color: $text-secondary;
+          font-size: $font-size-xs;
+        }
+      }
     }
   }
 
   .info-box {
     display: flex;
-    gap: $spacing-lg;
-    padding: $spacing-lg;
-    background: rgba(100, 181, 246, 0.1);
-    border: 1px solid rgba(100, 181, 246, 0.3);
-    border-radius: $border-radius-md;
-    color: $text-primary;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-md $spacing-lg;
+    background: rgba(100, 181, 246, 0.08);
+    border-left: 3px solid $accent-color;
+    border-radius: $border-radius-sm;
+    color: $text-secondary;
+    font-size: $font-size-sm;
 
     mat-icon {
       color: $accent-color;
       flex-shrink: 0;
-    }
-
-    strong {
-      color: $text-primary;
-    }
-  }
-
-  .storage-info {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-md;
-  }
-
-  .storage-item {
-    display: flex;
-    align-items: center;
-    gap: $spacing-md;
-    color: $text-secondary;
-
-    mat-icon {
       font-size: 20px;
       width: 20px;
       height: 20px;
+    }
 
-      &.success {
-        color: $success-color;
+    .info-content {
+      line-height: 1.5;
+
+      strong {
+        color: $text-primary;
       }
     }
   }
+
+  .storage-note {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    color: $text-disabled;
+    font-size: $font-size-xs;
+    margin-top: $spacing-lg;
+    padding: $spacing-md 0;
+    border-top: 1px solid $border-color;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      opacity: 0.7;
+    }
+  }
+}
+
+// Snackbar Styles
+::ng-deep {
+  .success-snackbar {
+    .mdc-snackbar__surface {
+      background-color: $success-color !important;
+    }
+
+    .mat-mdc-snack-bar-label {
+      color: white !important;
+    }
+
+    .mat-mdc-button {
+      color: white !important;
+    }
+  }
+
+  .error-snackbar {
+    .mdc-snackbar__surface {
+      background-color: $error-color !important;
+    }
+
+    .mat-mdc-snack-bar-label {
+      color: white !important;
+    }
+
+    .mat-mdc-button {
+      color: white !important;
+    }
+  }
+}
+
+// Spinning animation for testing icon
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.settings-container mat-icon.spinning {
+  animation: spin 1s linear infinite;
 }
 
 // Responsive
@@ -136,8 +219,18 @@
 
     .settings-card mat-card-actions {
       flex-direction: column;
+      align-items: stretch;
 
-      button {
+      .button-group {
+        flex-direction: column;
+        width: 100%;
+
+        button {
+          width: 100%;
+        }
+      }
+
+      .secondary-action {
         width: 100%;
       }
     }
