@@ -94,6 +94,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Security
+.jwt-secret
+
 # OS
 .DS_Store
 .DS_Store?
