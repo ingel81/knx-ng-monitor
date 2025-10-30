@@ -1,0 +1,165 @@
+<h2 mat-dialog-title>Projekt importieren</h2>
+
+<mat-dialog-content class="wizard-content">
+  <!-- Step 1: File Selection -->
+  <div *ngIf="currentStep === 'file-selection'" class="wizard-step">
+    <h3>ETS-Projekt auswählen</h3>
+    <p>Bitte wählen Sie eine .knxproj Datei aus:</p>
+
+    <div class="file-input-container">
+      <input
+        type="file"
+        accept=".knxproj"
+        (change)="onFileSelected($event)"
+        #fileInput
+        style="display: none;"
+      />
+      <button mat-raised-button color="primary" (click)="fileInput.click()">
+        <mat-icon>upload_file</mat-icon>
+        Datei auswählen
+      </button>
+      <span *ngIf="selectedFile" class="file-name">{{ selectedFile.name }}</span>
+    </div>
+  </div>
+
+  <!-- Step 2: Analyzing -->
+  <div *ngIf="currentStep === 'analyzing'" class="wizard-step">
+    <h3>Projekt wird analysiert...</h3>
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    <p class="analysis-text">Erkenne Projekt-Features und Anforderungen...</p>
+  </div>
+
+  <!-- Step 3: Requirements (Password/Keyring) -->
+  <div *ngIf="currentStep === 'requirements'" class="wizard-step">
+    <h3>Zusätzliche Eingaben erforderlich</h3>
+
+    <!-- Project Password -->
+    <div *ngIf="hasRequirement(RequirementType.ProjectPassword)" class="requirement-section">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Projekt-Passwort</mat-label>
+        <input
+          matInput
+          type="password"
+          [(ngModel)]="projectPassword"
+          (keyup.enter)="submitPassword()"
+        />
+        <mat-icon matSuffix>lock</mat-icon>
+      </mat-form-field>
+      <p class="requirement-message">Dieses Projekt ist passwortgeschützt.</p>
+      <p *ngIf="passwordError" class="error-message">{{ passwordError }}</p>
+      <button mat-raised-button color="primary" (click)="submitPassword()" [disabled]="!projectPassword">
+        Passwort eingeben
+      </button>
+    </div>
+
+    <!-- Keyring File -->
+    <div *ngIf="hasRequirement(RequirementType.KeyringFile)" class="requirement-section">
+      <h4>KNX Secure Keyring</h4>
+      <p class="requirement-message">KNX Secure Geräte erkannt. Bitte laden Sie die Keyring-Datei (.knxkeys) hoch.</p>
+
+      <div class="file-input-container">
+        <input
+          type="file"
+          accept=".knxkeys"
+          (change)="onKeyringFileSelected($event)"
+          #keyringInput
+          style="display: none;"
+        />
+        <button mat-raised-button (click)="keyringInput.click()">
+          <mat-icon>vpn_key</mat-icon>
+          Keyring auswählen
+        </button>
+        <span *ngIf="keyringFile" class="file-name">{{ keyringFile.name }}</span>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width" style="margin-top: 16px;">
+        <mat-label>Keyring-Passwort</mat-label>
+        <input
+          matInput
+          type="password"
+          [(ngModel)]="keyringPassword"
+        />
+        <mat-icon matSuffix>lock</mat-icon>
+      </mat-form-field>
+
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="submitKeyring()"
+        [disabled]="!keyringFile || !keyringPassword"
+      >
+        Keyring hochladen
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 4: Importing Progress -->
+  <div *ngIf="currentStep === 'importing'" class="wizard-step">
+    <h3>Import läuft...</h3>
+
+    <mat-progress-bar
+      mode="determinate"
+      [value]="importJob?.overallProgress || 0"
+    ></mat-progress-bar>
+    <p class="progress-text">{{ importJob?.overallProgress || 0 }}%</p>
+
+    <div class="steps-list">
+      <div *ngFor="let step of importJob?.steps"
+           [class]="'step-item ' + getStepClass(step)">
+        <span class="step-icon">{{ getStepStatus(step) }}</span>
+        <span class="step-name">{{ step.name }}</span>
+        <span class="step-progress">{{ step.progress }}%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 5: Complete -->
+  <div *ngIf="currentStep === 'complete'" class="wizard-step">
+    <div *ngIf="importJob?.status === ImportStatus.Completed" class="success-container">
+      <mat-icon class="success-icon">check_circle</mat-icon>
+      <h3>Import erfolgreich!</h3>
+
+      <div class="import-summary">
+        <p><strong>Projekt:</strong> {{ importJob?.projectName }}</p>
+        <p><strong>Gruppenadressen:</strong> {{ importJob?.groupAddressCount }}</p>
+        <p><strong>Geräte:</strong> {{ importJob?.deviceCount }}</p>
+        <p *ngIf="importJob?.etsVersion !== undefined">
+          <strong>ETS Version:</strong> {{ getEtsVersionLabel(importJob?.etsVersion) }}
+        </p>
+        <p *ngIf="importJob?.hasKnxSecure" class="secure-info">
+          <mat-icon class="inline-icon">security</mat-icon>
+          <span><strong>KNX Secure aktiviert</strong></span>
+        </p>
+      </div>
+    </div>
+
+    <div *ngIf="importJob?.status === ImportStatus.Failed" class="error-container">
+      <mat-icon class="error-icon">error</mat-icon>
+      <h3>Import fehlgeschlagen</h3>
+      <p class="error-message">{{ importJob?.errorMessage }}</p>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()" *ngIf="currentStep !== 'complete'">
+    Abbrechen
+  </button>
+  <button
+    mat-raised-button
+    color="primary"
+    (click)="startImport()"
+    [disabled]="!selectedFile"
+    *ngIf="currentStep === 'file-selection'"
+  >
+    Import starten
+  </button>
+  <button
+    mat-raised-button
+    color="primary"
+    (click)="close()"
+    *ngIf="currentStep === 'complete'"
+  >
+    Schließen
+  </button>
+</mat-dialog-actions>

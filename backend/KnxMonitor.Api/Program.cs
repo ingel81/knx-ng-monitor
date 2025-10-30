@@ -121,6 +121,12 @@ builder.Services.AddSingleton<IGroupAddressCacheService, GroupAddressCacheServic
 builder.Services.AddSingleton<IKnxConnectionService, KnxConnectionService>();
 builder.Services.AddHostedService<TelegramBroadcastService>();
 
+// Import Services
+builder.Services.AddSingleton<IImportJobManager, ImportJobManager>();
+builder.Services.AddScoped<IProjectFeatureDetector, ProjectFeatureDetector>();
+builder.Services.AddScoped<IKnxSecureService, KnxSecureService>();
+builder.Services.AddScoped<ProjectImportService>();
+
 // SignalR
 builder.Services.AddSignalR()
     .AddJsonProtocol(options =>
@@ -131,8 +137,13 @@ builder.Services.AddSignalR()
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// Controllers
-builder.Services.AddControllers();
+// Controllers with JSON configuration
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Serialize enums as strings instead of numbers
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 var app = builder.Build();
 

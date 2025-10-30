@@ -6,7 +6,8 @@
       "Bash(rm:*)",
       "Bash(mkdir:*)",
       "Bash(cp:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(unzip:*)"
     ],
     "deny": [],
     "ask": []

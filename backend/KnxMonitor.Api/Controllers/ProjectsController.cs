@@ -1,4 +1,6 @@
+using KnxMonitor.Core.DTOs;
 using KnxMonitor.Core.Interfaces;
+using KnxMonitor.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,11 +12,16 @@ namespace KnxMonitor.Api.Controllers;
 public class ProjectsController : ControllerBase
 {
     private readonly IProjectService _projectService;
+    private readonly ProjectImportService _importService;
     private readonly ILogger<ProjectsController> _logger;
 
-    public ProjectsController(IProjectService projectService, ILogger<ProjectsController> logger)
+    public ProjectsController(
+        IProjectService projectService,
+        ProjectImportService importService,
+        ILogger<ProjectsController> logger)
     {
         _projectService = projectService;
+        _importService = importService;
         _logger = logger;
     }
 
@@ -24,28 +31,81 @@ public class ProjectsController : ControllerBase
         try
         {
             if (file == null || file.Length == 0)
-                return BadRequest("No file uploaded");
+                return BadRequest(new { error = "No file uploaded" });
 
             if (!file.FileName.EndsWith(".knxproj", StringComparison.OrdinalIgnoreCase))
-                return BadRequest("Invalid file type. Only .knxproj files are allowed");
+                return BadRequest(new { error = "Invalid file type. Only .knxproj files are allowed" });
 
-            using var stream = file.OpenReadStream();
-            var project = await _projectService.UploadProjectAsync(stream, file.FileName);
+            // Read file data
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            var fileData = memoryStream.ToArray();
 
-            _logger.LogInformation("Project {ProjectName} uploaded successfully with {GroupAddressCount} group addresses and {DeviceCount} devices",
-                project.Name, project.GroupAddressCount, project.DeviceCount);
+            // Start import job
+            var job = await _importService.StartImportAsync(file.FileName, fileData);
 
-            return Ok(project);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogError(ex, "Failed to upload project");
-            return BadRequest(new { error = ex.Message });
+            _logger.LogInformation("Project import started: JobId={JobId}, FileName={FileName}", job.Id, file.FileName);
+
+            return Ok(job);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error during project upload");
-            return StatusCode(500, new { error = "An unexpected error occurred" });
+            _logger.LogError(ex, "Failed to start project import");
+            return StatusCode(500, new { error = "Failed to start project import" });
+        }
+    }
+
+    [HttpGet("imports/{id}")]
+    public IActionResult GetImportStatus(Guid id)
+    {
+        try
+        {
+            var job = _importService.GetImportStatus(id);
+
+            if (job == null)
+                return NotFound(new { error = "Import job not found" });
+
+            return Ok(job);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get import status for job {JobId}", id);
+            return StatusCode(500, new { error = "Failed to get import status" });
+        }
+    }
+
+    [HttpPost("imports/{id}/provide-input")]
+    public async Task<IActionResult> ProvideInput(Guid id, [FromBody] ProvideInputDto input)
+    {
+        try
+        {
+            var success = await _importService.ProvideInputAsync(id, input);
+
+            if (!success)
+                return BadRequest(new { error = "Failed to provide input. Job may not be in correct state." });
+
+            return Ok(new { message = "Input provided successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to provide input for job {JobId}", id);
+            return StatusCode(500, new { error = "Failed to provide input" });
+        }
+    }
+
+    [HttpDelete("imports/{id}")]
+    public IActionResult CancelImport(Guid id)
+    {
+        try
+        {
+            _importService.CancelImport(id);
+            _logger.LogInformation("Import job {JobId} cancelled", id);
+            return Ok(new { message = "Import cancelled successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cancel import job {JobId}", id);
+            return StatusCode(500, new { error = "Failed to cancel import" });
         }
     }
 

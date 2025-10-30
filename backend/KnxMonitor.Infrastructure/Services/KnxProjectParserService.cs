@@ -1,7 +1,10 @@
 using System.IO.Compression;
 using System.Xml.Linq;
 using KnxMonitor.Core.Entities;
+using KnxMonitor.Core.Enums;
 using KnxMonitor.Core.Interfaces;
+using KnxMonitor.Core.Models;
+using SharpZipLib = ICSharpCode.SharpZipLib.Zip;
 
 namespace KnxMonitor.Infrastructure.Services;
 
@@ -9,36 +12,118 @@ public class KnxProjectParserService : IKnxProjectParserService
 {
     public async Task<(List<GroupAddress> GroupAddresses, List<Device> Devices)> ParseProjectFileAsync(Stream fileStream, int projectId)
     {
+        // Legacy method - calls new method without context
+        var context = new ImportContext
+        {
+            FileName = "project.knxproj",
+            ProjectPassword = null
+        };
+
+        return await ParseProjectFileAsync(fileStream, projectId, context);
+    }
+
+    public async Task<(List<GroupAddress> GroupAddresses, List<Device> Devices)> ParseProjectFileAsync(Stream fileStream, int projectId, ImportContext context)
+    {
         var groupAddresses = new List<GroupAddress>();
         var devices = new List<Device>();
 
         try
         {
-            using var archive = new ZipArchive(fileStream, ZipArchiveMode.Read);
+            context.ProgressCallback?.Invoke("OpenZip", 0);
 
-            // Find the project file (P-xxxx/0.xml contains group addresses and topology)
-            var projectEntry = archive.Entries.FirstOrDefault(e =>
-                e.FullName.Contains("/0.xml") && e.FullName.StartsWith("P-"));
+            using var archive = new ZipArchive(fileStream, ZipArchiveMode.Read, leaveOpen: true);
 
-            if (projectEntry == null)
+            // Check for nested ZIP (P-xxxx.zip) which indicates password protection
+            var innerZipEntry = archive.Entries.FirstOrDefault(e =>
+                e.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
+                e.Name.StartsWith("P-", StringComparison.OrdinalIgnoreCase));
+
+            ZipArchive? innerArchive = null;
+            Stream? innerZipStream = null;
+
+            try
             {
-                throw new InvalidOperationException("Invalid .knxproj file: No project data found");
-            }
+                if (innerZipEntry != null)
+                {
+                    context.ProgressCallback?.Invoke("CheckPassword", 0);
 
-            using var stream = projectEntry.Open();
-            var doc = await XDocument.LoadAsync(stream, LoadOptions.None, CancellationToken.None);
+                    // Extract nested password-protected ZIP
+                    innerZipStream = new MemoryStream();
+                    using (var entryStream = innerZipEntry.Open())
+                    {
+                        await entryStream.CopyToAsync(innerZipStream);
+                    }
+                    innerZipStream.Position = 0;
 
-            // Define XML namespaces (works for both ETS5 and ETS6)
-            XNamespace knx = "http://knx.org/xml/project/20";
+                    // Use SharpZipLib to handle password-protected ZIP
+                    if (!string.IsNullOrEmpty(context.ProjectPassword))
+                    {
+                        Console.WriteLine($"[Parser] Opening password-protected ZIP with password length: {context.ProjectPassword.Length}");
+                        var zipFile = new SharpZipLib.ZipFile(innerZipStream);
+                        zipFile.Password = context.ProjectPassword;
 
-            // Try alternative namespace if first one doesn't work
-            if (doc.Root?.Name.Namespace.NamespaceName != knx.NamespaceName)
-            {
-                knx = doc.Root?.Name.Namespace ?? knx;
-            }
+                        // Extract to memory stream and create ZipArchive
+                        var extractedStream = new MemoryStream();
+                        using (var zipStream = new SharpZipLib.ZipOutputStream(extractedStream))
+                        {
+                            zipStream.IsStreamOwner = false;
 
-            // Parse Group Addresses
-            var groupAddressElements = doc.Descendants(knx + "GroupAddress");
+                            var fileCount = 0;
+                            foreach (SharpZipLib.ZipEntry entry in zipFile)
+                            {
+                                if (!entry.IsFile) continue;
+
+                                fileCount++;
+                                Console.WriteLine($"[Parser] Extracting: {entry.Name}");
+                                zipStream.PutNextEntry(new SharpZipLib.ZipEntry(entry.Name));
+                                using var entryStream = zipFile.GetInputStream(entry);
+                                await entryStream.CopyToAsync(zipStream);
+                                zipStream.CloseEntry();
+                            }
+                            Console.WriteLine($"[Parser] Extracted {fileCount} files from password-protected ZIP");
+                        }
+
+                        extractedStream.Position = 0;
+                        innerArchive = new ZipArchive(extractedStream, ZipArchiveMode.Read);
+                        Console.WriteLine($"[Parser] Created ZipArchive with {innerArchive.Entries.Count} entries");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Project is password protected but no password was provided");
+                    }
+                }
+
+                context.ProgressCallback?.Invoke("CheckPassword", 100);
+
+                // Use inner archive if available, otherwise use outer archive
+                var workingArchive = innerArchive ?? archive;
+
+                // Find the project file (0.xml contains group addresses and topology)
+                var projectEntry = workingArchive.Entries.FirstOrDefault(e =>
+                    e.Name == "0.xml" || (e.FullName.Contains("/0.xml") && e.FullName.StartsWith("P-")));
+
+                if (projectEntry == null)
+                {
+                    throw new InvalidOperationException("Invalid .knxproj file: No project data found");
+                }
+
+                using var stream = projectEntry.Open();
+                var doc = await XDocument.LoadAsync(stream, LoadOptions.None, CancellationToken.None);
+
+                // Define XML namespaces (works for both ETS5 and ETS6)
+                XNamespace knx = "http://knx.org/xml/project/20";
+
+                // Try alternative namespace if first one doesn't work
+                if (doc.Root?.Name.Namespace.NamespaceName != knx.NamespaceName)
+                {
+                    knx = doc.Root?.Name.Namespace ?? knx;
+                }
+
+                context.ProgressCallback?.Invoke("ParseGroupAddresses", 0);
+
+                // Parse Group Addresses
+                var groupAddressElements = doc.Descendants(knx + "GroupAddress");
+                Console.WriteLine($"[Parser] Found {groupAddressElements.Count()} GroupAddress elements");
 
             foreach (var gaElement in groupAddressElements)
             {
@@ -64,8 +149,13 @@ public class KnxProjectParserService : IKnxProjectParserService
                 }
             }
 
-            // Parse Devices
-            var deviceElements = doc.Descendants(knx + "DeviceInstance");
+                Console.WriteLine($"[Parser] Parsed {groupAddresses.Count} group addresses");
+                context.ProgressCallback?.Invoke("ParseGroupAddresses", 100);
+                context.ProgressCallback?.Invoke("ParseDevices", 0);
+
+                // Parse Devices
+                var deviceElements = doc.Descendants(knx + "DeviceInstance");
+                Console.WriteLine($"[Parser] Found {deviceElements.Count()} DeviceInstance elements");
 
             foreach (var deviceElement in deviceElements)
             {
@@ -113,6 +203,19 @@ public class KnxProjectParserService : IKnxProjectParserService
                         ProductName = productName
                     });
                 }
+            }
+
+                context.ProgressCallback?.Invoke("ParseDevices", 100);
+                context.ProgressCallback?.Invoke("Validate", 0);
+
+                // Validation step
+                context.ProgressCallback?.Invoke("Validate", 100);
+            }
+            finally
+            {
+                // Cleanup
+                innerArchive?.Dispose();
+                innerZipStream?.Dispose();
             }
         }
         catch (Exception ex)

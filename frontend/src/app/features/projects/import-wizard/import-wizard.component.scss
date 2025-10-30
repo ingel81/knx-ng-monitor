@@ -1,0 +1,238 @@
+.wizard-content {
+  min-width: 500px;
+  min-height: 400px;
+  padding: 24px;
+  overflow: visible;
+}
+
+.wizard-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.75);
+  }
+}
+
+.file-input-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0;
+
+  .file-name {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+  }
+}
+
+.full-width {
+  width: 100%;
+}
+
+.requirement-section {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-bottom: 16px;
+
+  h4 {
+    margin: 0 0 12px 0;
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .requirement-message {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .error-message {
+    color: #ff6b6b;
+    font-size: 0.95rem;
+    margin: 8px 0;
+    font-weight: 500;
+  }
+}
+
+.analysis-text {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin: 16px 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.steps-list {
+  margin-top: 24px;
+  max-height: 300px;
+  overflow-y: auto;
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+
+    &.step-completed {
+      background: rgba(76, 175, 80, 0.15);
+      .step-icon {
+        color: #66bb6a;
+      }
+      .step-name, .step-progress {
+        color: rgba(255, 255, 255, 0.9);
+      }
+    }
+
+    &.step-in-progress {
+      background: rgba(33, 150, 243, 0.15);
+      .step-icon {
+        color: #42a5f5;
+      }
+      .step-name, .step-progress {
+        color: rgba(255, 255, 255, 0.9);
+      }
+    }
+
+    &.step-failed {
+      background: rgba(244, 67, 54, 0.15);
+      .step-icon {
+        color: #ef5350;
+      }
+      .step-name, .step-progress {
+        color: rgba(255, 255, 255, 0.9);
+      }
+    }
+
+    &.step-pending {
+      background: rgba(255, 255, 255, 0.03);
+      .step-icon {
+        color: #9e9e9e;
+      }
+      .step-name, .step-progress {
+        color: rgba(255, 255, 255, 0.6);
+      }
+    }
+
+    .step-icon {
+      font-weight: bold;
+      width: 24px;
+      text-align: center;
+      font-size: 1rem;
+    }
+
+    .step-name {
+      flex: 1;
+      font-size: 0.95rem;
+    }
+
+    .step-progress {
+      font-size: 0.9rem;
+      min-width: 40px;
+      text-align: right;
+    }
+  }
+}
+
+.success-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px 32px 24px;
+
+  h3 {
+    margin: 16px 0;
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .success-icon {
+    font-size: 72px;
+    width: 72px;
+    height: 72px;
+    color: #66bb6a;
+    margin-top: 8px;
+  }
+
+  .error-icon {
+    font-size: 72px;
+    width: 72px;
+    height: 72px;
+    color: #ef5350;
+    margin-top: 8px;
+  }
+}
+
+.import-summary {
+  margin-top: 24px;
+  text-align: left;
+  width: 100%;
+  max-width: 450px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 20px;
+
+  p {
+    margin: 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.6;
+
+    strong {
+      min-width: 160px;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 500;
+    }
+  }
+
+  .inline-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #66bb6a;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+
+  .secure-info {
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+}
+
+.error-message {
+  color: #ff6b6b;
+  margin-top: 12px;
+  font-size: 1rem;
+  line-height: 1.5;
+}

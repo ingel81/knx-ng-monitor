@@ -7,11 +7,10 @@
       }
     </div>
     <div class="page-header-right">
-      <button mat-raised-button color="primary" (click)="fileInput.click()" [disabled]="isUploading">
+      <button mat-raised-button color="primary" (click)="openImportWizard()">
         <mat-icon>upload_file</mat-icon>
-        {{ isUploading ? 'Uploading...' : 'Upload .knxproj' }}
+        Projekt importieren
       </button>
-      <input #fileInput type="file" accept=".knxproj" (change)="onFileSelected($event)" style="display: none">
     </div>
   </div>
 
@@ -31,9 +30,9 @@
         <h2>No Projects Yet</h2>
         <p class="description">Get started by importing your first ETS project</p>
         <p class="hint">Upload a .knxproj file to begin monitoring KNX telegrams</p>
-        <button mat-raised-button color="primary" (click)="fileInput.click()" class="upload-button">
+        <button mat-raised-button color="primary" (click)="openImportWizard()" class="upload-button">
           <mat-icon>upload_file</mat-icon>
-          Import Project
+          Projekt importieren
         </button>
       </div>
     </div>

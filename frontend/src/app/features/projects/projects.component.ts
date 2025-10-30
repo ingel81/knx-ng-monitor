@@ -8,7 +8,10 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ProjectService, ProjectDto, ProjectDetailsDto } from '../../core/services/project.service';
+import { ImportWizardComponent } from './import-wizard/import-wizard.component';
+import { ImportJob, ImportStatus } from '../../shared/models/import-job.model';
 
 @Component({
   selector: 'app-projects',
@@ -21,7 +24,8 @@ import { ProjectService, ProjectDto, ProjectDetailsDto } from '../../core/servic
     MatSlideToggleModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
-    MatExpansionModule
+    MatExpansionModule,
+    MatDialogModule
   ],
   templateUrl: './projects.component.html',
   styleUrl: './projects.component.scss'
@@ -29,11 +33,11 @@ import { ProjectService, ProjectDto, ProjectDetailsDto } from '../../core/servic
 export class ProjectsComponent implements OnInit {
   private projectService = inject(ProjectService);
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
 
   projects: ProjectDto[] = [];
   expandedProject: ProjectDetailsDto | null = null;
   isLoading = false;
-  isUploading = false;
 
   displayedColumns: string[] = ['name', 'fileName', 'importDate', 'stats', 'isActive', 'actions'];
 
@@ -53,36 +57,22 @@ export class ProjectsComponent implements OnInit {
     }
   }
 
-  onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.uploadProject(input.files[0]);
-      input.value = ''; // Reset input
-    }
-  }
+  openImportWizard() {
+    const dialogRef = this.dialog.open(ImportWizardComponent, {
+      width: '600px',
+      disableClose: true
+    });
 
-  async uploadProject(file: File) {
-    try {
-      this.isUploading = true;
-
-      const project = await this.projectService.uploadProject(file).toPromise();
-
-      if (project) {
+    dialogRef.afterClosed().subscribe((result: ImportJob | null) => {
+      if (result && result.status === ImportStatus.Completed) {
         this.snackBar.open(
-          `Project "${project.name}" uploaded successfully! Found ${project.groupAddressCount} group addresses and ${project.deviceCount} devices.`,
-          'Close',
+          `Projekt "${result.projectName}" erfolgreich importiert! ${result.groupAddressCount} Gruppenadressen und ${result.deviceCount} Geräte gefunden.`,
+          'Schließen',
           { duration: 5000 }
         );
-
-        await this.loadProjects();
+        this.loadProjects();
       }
-    } catch (error: any) {
-      console.error('Failed to upload project:', error);
-      const errorMessage = error?.error?.error || 'Failed to upload project file';
-      this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
-    } finally {
-      this.isUploading = false;
-    }
+    });
   }
 
   async toggleActivation(project: ProjectDto) {

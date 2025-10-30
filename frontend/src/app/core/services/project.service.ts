@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment.development';
+import { ImportJob, ProvideInput } from '../../shared/models/import-job.model';
 
 export interface ProjectDto {
   id: number;
@@ -46,10 +47,22 @@ export class ProjectService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/projects`;
 
-  uploadProject(file: File): Observable<ProjectDto> {
+  uploadProject(file: File): Observable<ImportJob> {
     const formData = new FormData();
     formData.append('file', file, file.name);
-    return this.http.post<ProjectDto>(`${this.apiUrl}/upload`, formData);
+    return this.http.post<ImportJob>(`${this.apiUrl}/upload`, formData);
+  }
+
+  getImportStatus(jobId: string): Observable<ImportJob> {
+    return this.http.get<ImportJob>(`${this.apiUrl}/imports/${jobId}`);
+  }
+
+  provideInput(jobId: string, input: ProvideInput): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/imports/${jobId}/provide-input`, input);
+  }
+
+  cancelImport(jobId: string): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${this.apiUrl}/imports/${jobId}`);
   }
 
   getAllProjects(): Observable<ProjectDto[]> {
