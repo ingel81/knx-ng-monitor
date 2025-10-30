@@ -38,7 +38,15 @@ builder.Configuration["Jwt:Secret"] = jwtSecret;
 // Add services to the container.
 // Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    options.UseSqlite(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqliteOptions =>
+        {
+            // Use split queries for better performance when loading multiple collections
+            sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+        });
+});
 
 // JWT Settings
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
@@ -161,7 +169,12 @@ if (app.Environment.IsProduction())
     app.UseStaticFiles();
 }
 
-app.UseHttpsRedirection();
+// Only use HTTPS redirection if HTTPS is configured
+var httpsPort = builder.Configuration["HTTPS_PORT"];
+if (!string.IsNullOrEmpty(httpsPort) || app.Urls.Any(u => u.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("AllowFrontend");
 
@@ -180,7 +193,54 @@ if (app.Environment.IsProduction())
 try
 {
     Log.Information("Starting KNX Monitor API");
-    app.Run();
+
+    // Start the application in a background task
+    var runTask = Task.Run(() => app.Run());
+
+    // Wait a moment for Kestrel to start
+    await Task.Delay(500);
+
+    // Get the configured URLs and make them browser-friendly
+    var urls = app.Urls;
+    var primaryUrl = urls.FirstOrDefault() ?? "http://localhost:8080";
+
+    // Convert 0.0.0.0 to localhost for display (0.0.0.0 doesn't work in browsers)
+    var displayUrl = primaryUrl.Replace("0.0.0.0", "localhost");
+
+    // Log the URL(s) - modern terminals will make these clickable
+    Log.Information("====================================");
+    Log.Information("KNX Monitor API is running!");
+    Log.Information("Server listening on: " + primaryUrl);
+
+    if (app.Environment.IsDevelopment())
+    {
+        Log.Information("Backend API: {Url}", displayUrl);
+        Log.Information("Frontend Dev Server: http://localhost:4200");
+        Log.Information("Note: In Development, start the frontend separately with 'ng serve'");
+    }
+    else
+    {
+        Log.Information("Access the application at: {Url}", displayUrl);
+        if (urls.Count > 1)
+        {
+            foreach (var url in urls.Skip(1))
+            {
+                var altDisplayUrl = url.Replace("0.0.0.0", "localhost");
+                Log.Information("Alternative URL: {Url}", altDisplayUrl);
+            }
+        }
+    }
+
+    Log.Information("====================================");
+
+    // Check if we should open the browser (only in Production)
+    if (ShouldOpenBrowser(app.Environment))
+    {
+        Log.Information("Opening browser...");
+        OpenBrowser(primaryUrl);
+    }
+
+    await runTask;
 }
 catch (Exception ex)
 {
@@ -189,4 +249,97 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+static bool ShouldOpenBrowser(IWebHostEnvironment environment)
+{
+    // Only open browser in Production (where frontend is served by backend)
+    if (environment.IsDevelopment())
+    {
+        return false;
+    }
+
+    // Don't open browser in Docker
+    if (IsRunningInDocker())
+    {
+        return false;
+    }
+
+    // Don't open browser if not running interactively
+    if (!Environment.UserInteractive)
+    {
+        return false;
+    }
+
+    // Don't open browser if output is redirected (piped to file, etc.)
+    if (Console.IsOutputRedirected)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+static bool IsRunningInDocker()
+{
+    // Check for Docker environment indicator
+    if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+    {
+        return true;
+    }
+
+    // Alternative check: Look for .dockerenv file (Linux containers)
+    if (File.Exists("/.dockerenv"))
+    {
+        return true;
+    }
+
+    // Alternative check: Look for docker in cgroup (Linux)
+    try
+    {
+        if (File.Exists("/proc/1/cgroup"))
+        {
+            var cgroup = File.ReadAllText("/proc/1/cgroup");
+            if (cgroup.Contains("docker") || cgroup.Contains("containerd"))
+            {
+                return true;
+            }
+        }
+    }
+    catch
+    {
+        // Ignore errors reading cgroup
+    }
+
+    return false;
+}
+
+static void OpenBrowser(string url)
+{
+    try
+    {
+        // Convert 0.0.0.0 to localhost for browser
+        url = url.Replace("0.0.0.0", "localhost");
+
+        if (OperatingSystem.IsWindows())
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            System.Diagnostics.Process.Start("xdg-open", url);
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            System.Diagnostics.Process.Start("open", url);
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Could not open browser automatically");
+    }
 }

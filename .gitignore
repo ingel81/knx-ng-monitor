@@ -97,6 +97,10 @@ Thumbs.db
 # Security
 .jwt-secret
 
+# Local development builds
+/publish/
+/backend/KnxMonitor.Api/wwwroot/
+
 # OS
 .DS_Store
 .DS_Store?
