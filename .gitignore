@@ -32,6 +32,10 @@ bld/
 [Oo]bj/
 [Oo]ut/
 msbuild.log
+
+# Project-local Claude Code skills (the [Rr]elease/ rule above would otherwise hide them)
+!.claude/skills/release/
+!.claude/skills/release/**
 msbuild.err
 msbuild.wrn
 

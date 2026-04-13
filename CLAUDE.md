@@ -4,227 +4,224 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-KNX-NG-Monitor is a modern KNX bus monitoring tool with a web interface that displays, historizes, and presents KNX telegrams in real-time. The application is deployed as a Docker container combining a .NET 9 backend with an Angular frontend.
+KNX-NG-Monitor is a KNX bus monitoring tool with a web UI that displays, historizes and presents KNX telegrams in real time. It ships as a Docker image or as a single self-contained binary. As of v0.1.0 the parser supports ETS 4 / 5 / 6, password-protected projects (incl. ETS6 PBKDF2/AES wrapping) and `.knxkeys` keyring decryption.
 
 ## Tech Stack
 
 ### Backend
-- **.NET 9** (ASP.NET Core Web API)
-- **Entity Framework Core 9** with SQLite
-- **SignalR** for real-time communication
-- **Knx.Net Library** for KNX bus integration
-- **JWT Authentication** (Access Token + Refresh Token)
+- **.NET 9** (ASP.NET Core Web API) — see `backend/global.json` (none — uses installed SDK)
+- **Entity Framework Core 9** with SQLite (`Microsoft.EntityFrameworkCore.Sqlite`)
+- **SignalR** for real-time telegram broadcasting
+- **[Knx.Falcon.Sdk](https://www.nuget.org/packages/Knx.Falcon.Sdk)** for KNX bus integration
+- **JWT auth** (access + refresh tokens, secret auto-generated)
+- **SharpZipLib 1.4.2** for AES-encrypted ZIP entries (ETS6-Password + KNX Secure)
 
 ### Frontend
-- **Angular** (latest LTS version)
-- **UI Framework**: Angular Material / PrimeNG / AG-Grid (to be decided)
-- **RxJS** for reactive streams
-- **SignalR Client** for WebSocket connection
-- **Angular CDK Virtual Scrolling** for performance
+- **Angular 20** (standalone components)
+- **Angular Material** (dialogs, forms, theming)
+- **AG-Grid Community** (live-view, virtual scrolling)
+- **RxJS**, SignalR client, Angular CDK virtual scrolling
 
 ### Database
-- **SQLite** - embedded database
-- Stores: KNX telegrams, group addresses, configuration, projects
+- **SQLite** — embedded, single file under `./data/knxmonitor.db`
 
 ## Project Structure
 
 ```
 knx-ng-monitor/
 ├── backend/
-│   ├── KnxMonitor.Api/              # ASP.NET Core Web API
-│   ├── KnxMonitor.Core/             # Domain Layer (Entities, Interfaces, DTOs)
-│   └── KnxMonitor.Infrastructure/   # Infrastructure Layer (Data, Repositories, Services)
-├── frontend/                        # Angular Application
+│   ├── KnxMonitor.Api/                   # ASP.NET Core Web API + SignalR Hubs + Program.cs (DI)
+│   ├── KnxMonitor.Core/                  # Domain layer (Entities, Interfaces, DTOs, Enums)
+│   ├── KnxMonitor.Infrastructure/        # EF Core, repositories, KNX bus, project import, adapter to ProjectParser
+│   ├── KnxMonitor.ProjectParser/         # Standalone parser library (ETS 4/5/6 loaders, FeatureDetector, KeyringReader, ZipHandler)
+│   ├── KnxMonitor.ProjectParser.Tests/   # xUnit tests (187, ~99 % line cov), uses Xunit.SkippableFact for proprietary fixtures
+│   └── KnxMonitor.ParserTool/            # CLI: `parse` / `detect` with --password / --keyring / --keyring-password
+├── frontend/
 │   └── src/app/
-│       ├── core/                    # Singleton Services (auth, signalr, api)
-│       ├── features/                # Feature modules (login, dashboard, live-view, etc.)
-│       └── shared/                  # Reusable components, pipes, models
-├── data/                            # SQLite database (not in git)
-├── Dockerfile                       # Multi-stage build
-└── docker-compose.yml               # Optional: development
+│       ├── core/                         # Singleton services (auth, signalr, project)
+│       ├── features/                     # Feature modules (login, live-view, projects/import-wizard, settings)
+│       └── shared/                       # Reusable components, models, layout
+├── docs/
+│   ├── samples/xknxproject/              # Public test fixtures (MIT, mirrored from XKNX/xknxproject)
+│   ├── samples/own/                      # Private fixtures (gitignored)
+│   ├── PARSER_LIBRARY_PLAN_PART1/2.md    # Historic library-extraction plan
+│   ├── PARSER_LIBRARY_PROGRESS.md        # Implementation status of the parser library
+│   ├── SAMPLE_TESTS.md                   # Manual / CLI test recipes per sample
+│   └── ai/{PROJECT_PLAN,RELEASE_PLAN,DOKUMENTATION,TODO}.md
+├── scripts/                              # build.sh / run-release.sh (+ .ps1 / .bat) — local prod-build mirror of CI
+├── test-all-samples.sh / .ps1            # CLI smoke-test against every sample (skips own/ when missing)
+├── Dockerfile                            # Multi-stage build (Node → SDK → debian:12-slim, ~120 MB)
+└── docker-compose.yml
 ```
 
 ## Architecture Principles
 
 ### Backend (Clean Architecture)
-- **Core Layer**: Entities, Interfaces, DTOs (no dependencies)
-- **Infrastructure Layer**: Implementations, EF Core, external libraries
-- **API Layer**: Controllers, SignalR Hubs, Middleware
-- **Patterns**: Repository Pattern, Dependency Injection, Async/Await throughout
+- **Core** — Entities, Interfaces, DTOs (no dependencies)
+- **ProjectParser** — Pure library, no EF / no Infrastructure dependency. Reusable as NuGet.
+- **Infrastructure** — EF Core, repositories, KNX bus, adapter from `IKnxProjectParserService` → library `IProjectParser`. Holds `ProjectImportService` (job state machine, two-stage wizard, auto-activate).
+- **Api** — Controllers, SignalR Hubs, JWT middleware, Program.cs DI registration.
+- **Patterns** — Repository, Dependency Injection, async/await throughout.
 
 ### Frontend
-- **Modular structure**: Core, Features, Shared
-- **Reactive Programming** with RxJS
-- **Smart/Dumb Components Pattern**:
-  - Smart: Containers with business logic
-  - Dumb: Presentational components
-- **Route Guards** for authentication
-- **HTTP Interceptors** for JWT
-- **Lazy Loading** for features
+- Standalone components (no NgModules), Angular Material + AG-Grid
+- Reactive programming with RxJS
+- Smart/dumb component split, route guards, JWT HTTP interceptor, lazy loading per feature
 
 ## Development Commands
 
 ### Backend (.NET)
 ```bash
-# Navigate to backend directory
 cd backend
-
-# Restore dependencies
 dotnet restore
-
-# Build the solution
 dotnet build
+dotnet run --project KnxMonitor.Api                                    # http://localhost:8080 (dev: scalar/v1 docs)
 
-# Run the API project
-dotnet run --project KnxMonitor.Api
+# Tests — parser library carries the bulk of the coverage
+dotnet test KnxMonitor.ProjectParser.Tests/KnxMonitor.ProjectParser.Tests.csproj
 
-# Run tests
-dotnet test
+# Coverage (cobertura → coverage-tmp/, ignored by git)
+dotnet test KnxMonitor.ProjectParser.Tests/KnxMonitor.ProjectParser.Tests.csproj \
+  --collect:"XPlat Code Coverage" --results-directory ../coverage-tmp
 
-# Create a new migration
-dotnet ef migrations add <MigrationName> --project KnxMonitor.Infrastructure --startup-project KnxMonitor.Api
-
-# Update database
-dotnet ef database update --project KnxMonitor.Infrastructure --startup-project KnxMonitor.Api
-
-# Publish for production
-dotnet publish -c Release -o /app/publish
+# EF migrations (run from repo root)
+dotnet ef migrations add <Name> --project backend/KnxMonitor.Infrastructure --startup-project backend/KnxMonitor.Api
+dotnet ef database update      --project backend/KnxMonitor.Infrastructure --startup-project backend/KnxMonitor.Api
 ```
 
 ### Frontend (Angular)
 ```bash
-# Navigate to frontend directory
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
-ng serve
-
-# Build for production
+ng serve                                                                # http://localhost:4200, hot-reload
 ng build --configuration production
-
-# Run tests
 ng test
+```
 
-# Run end-to-end tests
-ng e2e
+### CLI parser tool
+```bash
+dotnet run --project backend/KnxMonitor.ParserTool -- detect <file.knxproj>
+dotnet run --project backend/KnxMonitor.ParserTool -- parse  <file.knxproj> --password <pw>
+dotnet run --project backend/KnxMonitor.ParserTool -- parse  <file.knxproj> --password <pw> \
+  --keyring <file.knxkeys> --keyring-password <kpw>
 
-# Generate a new component
-ng generate component features/<feature-name>/<component-name>
+bash test-all-samples.sh        # full smoke test, public + own samples
+```
 
-# Generate a new service
-ng generate service core/<service-name>
+### Local production build (mirror of CI)
+```bash
+bash scripts/build.sh           # Angular → wwwroot, dotnet publish → ./publish
+bash scripts/run-release.sh     # runs ./publish/KnxMonitor.Api on :8080
 ```
 
 ### Docker
 ```bash
-# Build Docker image
 docker build -t knx-ng-monitor .
-
-# Run container
 docker run -p 8080:8080 -v ./data:/app/data knx-ng-monitor
-
-# Using docker-compose (development)
-docker-compose up --build
-
-# Stop containers
-docker-compose down
+docker-compose up --build       # dev/prod stack
 ```
+
+### Release
+Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml` → 6 platform binaries + Docker image + GitHub Release.
+There is a `/release` skill in `.claude/skills/release/SKILL.md` that automates the steps (version bump, README update, tag, push, watch).
 
 ## Database Schema
 
-### Core Entities
-- **Users**: Authentication and user management
-- **Projects**: Imported .knxproj files
-- **GroupAddresses**: KNX group addresses from ETS projects (linked to Projects)
-- **Devices**: KNX devices from ETS projects (linked to Projects)
-- **KnxTelegrams**: Logged KNX telegrams (main monitoring data)
-- **KnxConfigurations**: KNX connection settings (IP, port, connection type)
-- **RefreshTokens**: JWT refresh tokens for authentication
+| Entity | Notes |
+|---|---|
+| `Users` / `RefreshTokens` | Auth |
+| `Projects` | Imported `.knxproj`; exactly one is `IsActive` |
+| `GroupAddresses` | Per-project (Address `m/m/s`, Name, Description, DPT, …) |
+| `Devices` | Per-project (PhysicalAddress `a.l.d`, Name, Manufacturer, ProductName) |
+| `KnxTelegrams` | Logged bus traffic (timestamp, source, dest, type, raw + decoded value) |
+| `KnxConfigurations` | KNX interface settings |
 
-## API Endpoints Structure
+Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 
-- `/api/auth/*` - Authentication (login, refresh, logout)
-- `/api/projects/*` - Project management and .knxproj import
-- `/api/groupaddresses/*` - Group address queries
-- `/api/telegrams/*` - Telegram queries, search, and export
-- `/api/knx/*` - KNX configuration and connection management
-- `/hubs/telegram` - SignalR hub for real-time telegram broadcasting
+## API Endpoints
 
-## Key Features
+- `/api/auth/*` — login, refresh, logout
+- `/api/projects/*` — list, import (multipart), `provide-input`, activate, delete
+- `/api/groupaddresses/*` — search/list
+- `/api/telegrams/*` — query, search, export
+- `/api/knx/*` — config, test-connection, status
+- `/hubs/telegram` — SignalR hub (JWT-authenticated)
 
-1. **Real-time KNX Monitoring**: Live view of KNX telegrams via SignalR
-2. **ETS Project Import**: Parse .knxproj files (ZIP archives with XML) to extract group addresses, devices, and DPT mappings
-3. **Live View UI**: Grid-based display with virtual scrolling, color-coding (Read=Blue, Write=Green, Response=Yellow), pause/resume, auto-scroll
-4. **Advanced Filtering**: By group address, device, time range, message type, value range, free text
-5. **KNX Connection Configuration**: IP-based KNX interface connection (Tunneling/Routing)
-6. **JWT Authentication**: Access tokens (15 min) + Refresh tokens (7 days)
+## Key Implementation Notes
 
-## Important Implementation Notes
+### Project parser library (`KnxMonitor.ProjectParser`)
+- **ZipHandler.LoadAsync** returns a `ProjectFileMap` (in-memory `Dictionary<string, byte[]>` over the inner files). For password-protected archives it copies the inner `P-XXXX.zip` into a `MemoryStream` and reads it with `SharpZipFile` (AES-capable). For ETS6 the user password is first run through `PBKDF2-HMAC-SHA256(UTF-16-LE, salt="21.project.ets.knx.org", 65536, 32)` → Base64 before being given to SharpZipLib.
+- **Loaders (`Ets4/5/6ProjectLoader`)** consume a `ProjectFileMap` (no `ZipArchive` plumbing). ETS6 also handles the `Line → Segment → DeviceInstance` nesting introduced by ETS 6.
+- **FeatureDetector** has both `DetectAsync(stream)` (cheap pre-scan) and `DetectAfterUnlockAsync(stream, password)` (re-scans the decrypted inner XML for KNX Secure indicators).
+- **KeyringReader** parses `.knxkeys` XML and decrypts ToolKey, BackboneKey, ManagementPassword, Authentication and per-GA keys with PBKDF2-HMAC-SHA256(UTF-8, salt="1.keyring.ets.knx.org", 65536, 16) + AES-128-CBC. IV is `SHA-256(Created)[:16]`.
+- **`ParserOptions`** carries `Password`, `KeyringStream`, `KeyringPassword`. Library returns `ParseResult` with `Features`, `GroupAddresses`, `Devices`, `Statistics` and (optional) `Keyring`.
 
-### .knxproj Parser
-- .knxproj files are ZIP archives containing XML files
-- Extract and parse to get group addresses, devices, DPT types
-- Handle different ETS versions with version detection
+### Sample fixtures — do not duplicate
+- Master location: `docs/samples/`
+  - `xknxproject/` — public (committed)
+  - `own/` — private (gitignored)
+  - `other/` — unclear license (gitignored)
+- The test project links these into `bin/Debug/.../TestData/` via `<None Include="..\..\docs\samples\..." Link="TestData\..." />`. **Never put test files directly into `backend/KnxMonitor.ProjectParser.Tests/TestData/`** (that whole folder is gitignored as a build sink).
+- Tests that require `own/` use `[SkippableFact]` + `Skip.IfNot(TestSamples.Exists("..."))` so CI / fresh clones still pass.
 
-### DPT Conversion
-- Implement DPT (Datapoint Type) decoder for common types
-- Convert raw KNX values to human-readable formats
-- Located in `KnxMonitor.Infrastructure/KnxConnection/DptConverter.cs`
+### Wizard flow (`ProjectImportService`)
+1. Upload → fast `IProjectFeatureDetector` scan → if password needed, `WaitingForInput`.
+2. After `ProjectPassword` is fulfilled, the service calls `IFeatureDetector.DetectAfterUnlockAsync` on the original bytes. If KNX Secure is detected, it adds `KeyringFile` + `KeyringPassword` as **optional** requirements and stays in `WaitingForInput`.
+3. Frontend renders requirements with an `IsOptional` flag — optional ones get a "Skip" button that submits empty values.
+4. When all (non-optional) requirements are fulfilled (or user skipped optional), `ContinueImportAsync` runs the real parse via the adapter.
+5. If no other project is active yet, the new project is auto-activated and the cache is refreshed.
 
-### Performance Considerations
-- Use **Virtual Scrolling** in Angular for large telegram lists (1000+ items)
-- Implement **SignalR throttling** for high-frequency telegram bursts
-- Use **OnPush Change Detection** strategy where possible
-- Implement **debounced filtering** to avoid excessive re-renders
-- Database indexing on frequently queried fields (timestamp, group address)
+### DPT conversion
+- `KnxMonitor.Infrastructure/KnxConnection/DptConverter.cs` covers the common DPT-1/2/3/5/6/7/8/9/10/11/12/13/14/16/17/18/19/20 types, falls back to hex for unknown.
 
-### SignalR Authentication
-- SignalR hub must validate JWT tokens
-- Implement authentication in hub configuration
+### Performance
+- Virtual scrolling in AG-Grid for live view (1000+ rows)
+- `GroupAddressCacheService` (singleton) — `ConcurrentDictionary` of the active project's GAs, refreshed only on project change
+- DB indices on `Timestamp`, `DestinationAddress`
+- SignalR throttling on bursts; debounced filter inputs in the UI
+
+### SignalR auth
+- The `TelegramHub` is decorated with `[Authorize]`; the JWT bearer scheme is also wired into the SignalR pipeline (token via query string for the WebSocket negotiation).
 
 ## Docker Multi-Stage Build
 
-The Dockerfile uses three stages:
-1. **Node.js** - Build Angular frontend
-2. **.NET SDK** - Build backend
-3. **.NET Runtime** - Final image with compiled backend + Angular static files in wwwroot
+1. **Node 20** — `ng build --configuration production`
+2. **.NET 9 SDK** — `dotnet publish -c Release -r <RID> --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true`
+3. **debian:12-slim** runtime — copies the single-file binary, installs `libicu72`, `ENTRYPOINT ["/app/KnxMonitor.Api"]`. Final image ≈ 120 MB.
 
 ## Environment Variables
 
-```
-ASPNETCORE_ENVIRONMENT=Production|Development
-JWT_SECRET=<secret-key>
-JWT_ISSUER=knx-ng-monitor
-JWT_AUDIENCE=knx-ng-monitor-client
-DATABASE_PATH=/app/data/knxmonitor.db
-```
+| Variable | Default | Purpose |
+|---|---|---|
+| `ASPNETCORE_ENVIRONMENT` | `Production` | `Development` enables CORS for `:4200` and Scalar OpenAPI docs |
+| `ASPNETCORE_URLS` | `http://+:8080` | Listen URL |
+
+`./data/.jwt-secret` is auto-generated on first start; never commit it.
 
 ## Current Implementation Status
 
-The project is in the planning phase. Refer to PROJECT_PLAN.md for detailed implementation phases (Phase 1-17) and task checklists.
+`v0.1.0` is live (Docker + binaries on GitHub Releases, see `README.md`). Parser library + wizard + tests are stable. Open work — see `docs/ai/TODO.md` and the "Next" section of `README.md`:
 
-Next steps according to the plan:
-1. Create project structure (backend solution + frontend Angular app)
-2. Set up backend fundamentals (EF Core, entities, repositories)
-3. Implement authentication system
-4. Integrate KNX library and implement monitoring
-5. Build .knxproj parser
-6. Create frontend architecture and UI components
-7. Implement Docker deployment
+- Telegram-time decryption with the stored tool keys (KNX Secure runtime)
+- Communication objects, topology, locations, functions parsing (currently out of scope)
+- Frontend: nachträgliches Bearbeiten / Hochladen des Keyrings am Projekt
+- Logging cleanup (Serilog templates, removal of `Console.WriteLine` in `ProjectImportService`)
 
 ## Design Guidelines
 
-- **Dark theme** as primary (for monitoring environments)
-- **Responsive layout** (desktop-focused but mobile-capable)
-- Use **virtual scrolling** for performance with large datasets
-- **Keyboard shortcuts** for common actions (e.g., Space for pause, / for filter)
-- Provide **tooltips** for all icons and buttons
-- Show **loading indicators** for all async operations
-- Display **user-friendly error messages**
-- WCAG 2.1 Level AA compliance for accessibility
-- schreibe commits generell immer kompakt und immer ohne claude footer.
-- never commit on your own
-- parallel läuft immer bereits ng serve
+- **Dark theme** as primary (monitoring environments)
+- Responsive layout, desktop-focused but mobile-capable
+- Virtual scrolling everywhere we expect > 1000 rows
+- Keyboard shortcuts: `Space` = pause, `/` = focus filter
+- Tooltips for all icons / buttons; loading indicators for all async actions
+- User-friendly error messages, never raw stack traces
+- WCAG 2.1 Level AA
+
+## House Rules
+
+- Schreibe Commits generell immer kompakt und immer ohne Claude-Footer.
+- Never commit on your own. (Exception: when the user explicitly says so.)
+- Parallel läuft immer bereits `ng serve`.
+- Sample files: nie eigene/proprietäre Files committen. `docs/samples/own/` und `docs/samples/other/` sind gitignored, ebenso `backend/KnxMonitor.ProjectParser.Tests/TestData/`.
+- Vor `dotnet publish`: laufenden `KnxMonitor.Api`-Prozess killen (`powershell -Command "Get-Process -Name KnxMonitor.Api -ErrorAction SilentlyContinue | Stop-Process -Force"`), sonst sind die DLLs gelockt.
+- README / Doku **vor** dem Tag updaten — der Tag wird auf einen Commit gesetzt und der Inhalt des Tags ist das, was im "Source code"-Asset des GitHub-Releases liegt.

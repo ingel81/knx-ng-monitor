@@ -1,8 +1,15 @@
 # KNX-NG-Monitor - Technische Dokumentation
 
+> **Stand: 2026-04-13 (v0.1.0).** Diese Datei beschreibt den aktuellen Architekturstand. Die ursprüngliche
+> Skizze vom 26.10.2025 ist stark erweitert worden — insbesondere wurde der Parser in eine eigenständige
+> Library `KnxMonitor.ProjectParser` ausgelagert, KNX Secure (Password + `.knxkeys` Keyring) End-to-End
+> implementiert und der Import-Wizard auf einen zweistufigen Flow umgestellt. Die Sammelübersicht der
+> Phasen liegt in [`PROJECT_PLAN.md`](PROJECT_PLAN.md), die Implementierungs-Detailgeschichte in
+> [`../PARSER_LIBRARY_PROGRESS.md`](../PARSER_LIBRARY_PROGRESS.md).
+
 ## Projektübersicht
 
-KNX-NG-Monitor ist ein modernes KNX-Bus-Monitoring-Tool mit Webinterface zur Echtzeitüberwachung, Historisierung und Visualisierung von KNX-Telegrammen. Die Anwendung besteht aus einem .NET 9 Backend und einem Angular Frontend.
+KNX-NG-Monitor ist ein modernes KNX-Bus-Monitoring-Tool mit Webinterface zur Echtzeitüberwachung, Historisierung und Visualisierung von KNX-Telegrammen. Die Anwendung besteht aus einem .NET 9 Backend (in mehrere Projekte aufgeteilt) und einem Angular Frontend.
 
 ## Technologie-Stack
 
@@ -25,50 +32,53 @@ KNX-NG-Monitor ist ein modernes KNX-Bus-Monitoring-Tool mit Webinterface zur Ech
 
 ## Architektur
 
-### Backend (Clean Architecture)
+### Backend (Clean Architecture, mehrere Projekte)
 
 ```
 backend/
-├── KnxMonitor.Api/              # ASP.NET Core Web API
-│   ├── Controllers/
-│   │   └── ProjectsController.cs
-│   ├── Hubs/
-│   │   └── TelegramHub.cs
-│   ├── Services/
-│   │   └── TelegramBroadcastService.cs
-│   └── Program.cs
+├── KnxMonitor.Api/                   # ASP.NET Core Web API
+│   ├── Controllers/                   # AuthController, ProjectsController, KnxController, ...
+│   ├── Hubs/TelegramHub.cs            # SignalR (JWT-authentifiziert)
+│   ├── Services/TelegramBroadcastService.cs  # Hosted Service, Bridge KnxConnection → SignalR
+│   └── Program.cs                     # DI, JWT, Static Files, Migrations on startup
 │
-├── KnxMonitor.Core/             # Domain Layer
-│   ├── Entities/
-│   │   ├── Project.cs
-│   │   ├── GroupAddress.cs
-│   │   ├── Device.cs
-│   │   ├── KnxTelegram.cs
-│   │   └── KnxConfiguration.cs
-│   ├── DTOs/
-│   │   ├── ProjectDto.cs
-│   │   ├── ProjectDetailsDto.cs
-│   │   ├── GroupAddressDto.cs
-│   │   └── DeviceDto.cs
-│   └── Interfaces/
-│       ├── IProjectService.cs
-│       ├── IProjectRepository.cs
-│       └── IKnxProjectParserService.cs
+├── KnxMonitor.Core/                  # Domain Layer (keine Abhängigkeiten)
+│   ├── Entities/                      # Project, GroupAddress, Device, KnxTelegram,
+│   │                                  # KnxConfiguration, User, RefreshToken
+│   ├── DTOs/                          # ProjectDto, ImportRequirementDto (inkl. IsOptional), ...
+│   └── Interfaces/                    # IProjectService, IKnxProjectParserService,
+│                                      # IProjectFeatureDetector, IImportJobManager, ...
 │
-└── KnxMonitor.Infrastructure/   # Infrastructure Layer
-    ├── Data/
-    │   ├── ApplicationDbContext.cs
-    │   └── Migrations/
-    ├── KnxConnection/
-    │   ├── KnxConnectionService.cs
-    │   └── DptConverter.cs
-    ├── Repositories/
-    │   ├── ProjectRepository.cs
-    │   └── GroupAddressRepository.cs
-    └── Services/
-        ├── ProjectService.cs
-        ├── KnxProjectParserService.cs
-        └── GroupAddressCacheService.cs
+├── KnxMonitor.Infrastructure/        # Implementations
+│   ├── Data/                          # ApplicationDbContext + Migrations
+│   ├── KnxConnection/                 # KnxConnectionService (Knx.Falcon.Sdk), DptConverter
+│   ├── Repositories/                  # ProjectRepository, GroupAddressRepository, ...
+│   └── Services/
+│       ├── ProjectService.cs           # CRUD + ActivateProject
+│       ├── ProjectImportService.cs     # Wizard state machine, two-stage flow, auto-activate
+│       ├── ProjectFeatureDetector.cs   # Pre-scan vor dem Library-Detector (für den Wizard)
+│       ├── KnxProjectParserService.cs  # **Adapter** zum ProjectParser-Library (kein Parser-Code mehr!)
+│       ├── GroupAddressCacheService.cs # ConcurrentDictionary, refresh on project switch
+│       └── ImportJobManager.cs         # In-Memory Job-Status, Requirements, Steps
+│
+├── KnxMonitor.ProjectParser/         # Standalone-Library — die einzige Parser-Implementierung
+│   ├── Core/Interfaces/                # IProjectParser, IProjectLoader, IFeatureDetector, IKeyringReader
+│   ├── Core/Models/                    # ParserOptions (incl. KeyringStream/-Password),
+│   │                                   # ParseResult (incl. Keyring), ProjectFeatures,
+│   │                                   # ProjectFileMap (in-memory file map),
+│   │                                   # KeyringData / KeyringDevice / KeyringGroupAddress
+│   ├── Core/Enums/                     # EtsVersion, AddressingStyle, ParseStep, MediumType
+│   ├── Helpers/AddressConverter.cs     # ThreeLevel / TwoLevel / Free
+│   ├── Helpers/KeyringCrypto.cs        # PBKDF2-HMAC-SHA256 + AES-128-CBC + ExtractPasswordString
+│   ├── Loaders/                        # BaseProjectLoader + Ets4/5/6 Loader
+│   └── Services/                       # ProjectParser, FeatureDetector, ZipHandler, KeyringReader
+│
+├── KnxMonitor.ProjectParser.Tests/   # xUnit (187 Tests, ~99% Line Coverage)
+│   ├── Fixtures/                       # SampleFileFixture, TestSamples (Skip-Helper), TestZipBuilder
+│   ├── Integration/                    # Ets4/5/6 ProjectTests, KeyringTests
+│   └── Unit/                           # Helpers, Services, Loaders, Models
+│
+└── KnxMonitor.ParserTool/            # CLI: parse / detect, --keyring etc.
 ```
 
 ### Frontend (Modulare Struktur)
@@ -119,13 +129,32 @@ frontend/src/app/
   - Triggert Cache-Refresh bei Projektwechsel
 
 - **KnxProjectParserService** (`backend/KnxMonitor.Infrastructure/Services/KnxProjectParserService.cs`):
-  - Parst .knxproj-Dateien (ZIP-Archive mit XML)
-  - Extrahiert Gruppenadressen mit DPT-Typen
-  - Extrahiert Geräte mit Hersteller- und Produktinformationen
-  - Konvertiert KNX-Adressen in lesbare Formate:
-    - Gruppenaddresse: `x/y/z` (z.B. `1/2/3`)
-    - Physikalische Adresse: `x.y.z` (z.B. `1.1.5`)
-  - Unterstützt verschiedene ETS-Versionen durch Namespace-Erkennung
+  - **Reiner Adapter** seit v0.1.0 — delegiert zur Library `KnxMonitor.ProjectParser`.
+  - Reicht Project-Password und (optional) Keyring-Stream + Keyring-Password aus dem `ImportContext`
+    durch zur Library und mappt das `ParseResult` der Library auf die Infrastructure-Entities
+    (`GroupAddress`, `Device`).
+
+- **`KnxMonitor.ProjectParser` Library** (Hauptkomponente für ETS-Parsing):
+  - `IProjectParser.ParseAsync(stream, options)` ist der Einstiegspunkt
+  - `ZipHandler.LoadAsync` öffnet das äußere ZIP, extrahiert für password-protected
+    Projekte das innere `P-XXXX.zip` (für ETS6 mit
+    `Convert.ToBase64String(PBKDF2-HMAC-SHA256(UTF-16-LE-pw, salt="21.project.ets.knx.org", 65536, 32))`
+    als ZIP-Password) und liefert eine `ProjectFileMap` (in-memory `Dictionary<string, byte[]>`)
+  - Drei `IProjectLoader`-Implementierungen für ETS 4 / 5 / 6 (ETS 6 berücksichtigt das
+    `<Line>/<Segment>/<DeviceInstance>`-Nesting)
+  - `KeyringReader` liest `.knxkeys`-Dateien mit PBKDF2-HMAC-SHA256(UTF-8-pw,
+    salt="1.keyring.ets.knx.org", 65536, 16) als Schlüssel, IV = `SHA-256(Created)[:16]`,
+    AES-128-CBC pro Wert. Strings (ManagementPassword, Authentication) werden über
+    `KeyringCrypto.ExtractPasswordString` ent-padded.
+  - `IFeatureDetector.DetectAfterUnlockAsync` ermöglicht den 2-stufigen Wizard-Flow:
+    Pre-Detection → Password → Re-Detection im entschlüsselten 0.xml → ggf. Keyring-Step
+
+- **ProjectImportService** (`backend/KnxMonitor.Infrastructure/Services/ProjectImportService.cs`):
+  - Hält die Wizard-State-Machine (Status / Requirements / Steps in `IImportJobManager`)
+  - Two-stage Flow für KNX Secure: nach Erfüllen des `ProjectPassword`-Requirements wird
+    `IFeatureDetector.DetectAfterUnlockAsync` aufgerufen; bei detektiertem KNX Secure werden
+    `KeyringFile` + `KeyringPassword` als **optionale** Requirements ergänzt
+  - Auto-Activate: das erste importierte Projekt wird sofort aktiv geschaltet
 
 **Frontend-Komponenten**:
 - **ProjectsComponent** (`frontend/src/app/features/projects/projects.component.ts`):
@@ -323,36 +352,61 @@ KnxConfigurations
 
 ## Dependency Injection
 
-**Backend** (`backend/KnxMonitor.Api/Program.cs`):
+**Backend** (`backend/KnxMonitor.Api/Program.cs`, gekürzt):
 ```csharp
-// Services
+// Repositories + Project-Services
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IGroupAddressRepository, GroupAddressRepository>();
+
+// Parser-Library (Singleton, weil zustandslos)
+builder.Services.AddSingleton<IFeatureDetector, FeatureDetector>();
+builder.Services.AddSingleton<IKeyringReader, KeyringReader>();
+builder.Services.AddSingleton<IProjectLoader, Ets4ProjectLoader>();
+builder.Services.AddSingleton<IProjectLoader, Ets5ProjectLoader>();
+builder.Services.AddSingleton<IProjectLoader, Ets6ProjectLoader>();
+builder.Services.AddSingleton<IProjectParser, ProjectParser>();
+
+// Adapter zur Library
 builder.Services.AddScoped<IKnxProjectParserService, KnxProjectParserService>();
 
-// Singleton Services
+// Import-Wizard + Cache + KNX-Bus
+builder.Services.AddSingleton<IImportJobManager, ImportJobManager>();
+builder.Services.AddScoped<IProjectFeatureDetector, ProjectFeatureDetector>();
+builder.Services.AddScoped<ProjectImportService>();
 builder.Services.AddSingleton<IGroupAddressCacheService, GroupAddressCacheService>();
+builder.Services.AddSingleton<IKnxConnectionService, KnxConnectionService>();
 builder.Services.AddHostedService<TelegramBroadcastService>();
-builder.Services.AddSingleton<KnxConnectionService>();
 ```
 
 **Wichtig**:
-- **Singleton**: KnxConnectionService, GroupAddressCacheService (Zustandsbehaftet)
-- **Scoped**: Repositories, ProjectService (pro HTTP-Request)
-- **HostedService**: TelegramBroadcastService (Hintergrund-Worker)
+- **Singleton**: Library-Services (zustandslos), `KnxConnectionService`,
+  `GroupAddressCacheService`, `ImportJobManager`
+- **Scoped**: Repositories, `ProjectService`, `KnxProjectParserService`-Adapter,
+  `ProjectImportService`, `ProjectFeatureDetector`
+- **HostedService**: `TelegramBroadcastService`
+
+`IKnxSecureService` und seine Implementierung `KnxSecureService` (alter Versuch
+auf Infrastructure-Ebene das Keyring als verschlüsseltes ZIP zu lesen) wurden
+mit v0.1.0 entfernt — der Keyring wird jetzt vollständig in der Library
+behandelt.
 
 ## API-Endpunkte
 
+### Auth
+- `POST /api/auth/login` / `POST /api/auth/refresh` / `POST /api/auth/logout`
+
 ### Projekte
-- `POST /api/projects/upload` - .knxproj-Datei hochladen
+- `POST /api/projects/import` - .knxproj-Datei hochladen (multipart) → liefert `ImportJobDto` zurück
+- `GET /api/projects/import-status/{jobId}` - Polling-Status für den Wizard
+- `POST /api/projects/import/{jobId}/provide-input` - Password / Keyring nachreichen
 - `GET /api/projects` - Alle Projekte abrufen
 - `GET /api/projects/{id}` - Projektdetails abrufen
 - `PUT /api/projects/{id}/activate` - Projekt aktivieren
 - `DELETE /api/projects/{id}` - Projekt löschen
 
 ### SignalR
-- `/hubs/telegram` - WebSocket-Hub für Echtzeit-Telegramme
+- `/hubs/telegram` - WebSocket-Hub für Echtzeit-Telegramme (JWT-authentifiziert)
   - Event: `ReceiveTelegram` - Neues KNX-Telegram
 
 ## Frontend-Services
@@ -454,19 +508,27 @@ export const environment = {
 
 ## Bekannte Offene Punkte
 
-Aus `TODO.md`:
+Konsolidierter Stand siehe [`PROJECT_PLAN.md`](PROJECT_PLAN.md) → "Nächste Schritte". Highlights:
+
+### Parser / KNX Secure
+- Telegramm-Decryption zur Laufzeit mit den abgespeicherten ToolKeys / GA-Keys (KNX Data Secure am Bus)
+- Communication Objects, Topology, Locations, Functions noch nicht geparst
+- Frontend: Keyring-Datei nachträglich pro Projekt hochladen / aktualisieren
 
 ### Logging
-- Backend: Integration von Serilog mit Console Sink und präzisem Template
-- Backend: Aufräumen vorhandener Log-Statements
+- Backend: Serilog-Templates vereinheitlichen
+- `Console.WriteLine`-Statements aus `ProjectImportService` durch ILogger ersetzen
 - Frontend: Aufräumen vorhandener Console-Logs
 
-### Optimierungen
-- DB-Zugriffe bei Mapping-Auflösungen sind implementiert (GroupAddressCacheService)
+### Tests / Qualität
+- API-Integration- und E2E-Tests (Cypress/Playwright)
+- Frontend Unit-Test-Coverage ausbauen
+- Health-Check-Endpoint
+- Mobile-Ansicht systematisch optimieren, Accessibility-Audit
 
 ## Lizenz
 
-[Lizenz-Information hier einfügen]
+MIT
 
 ## Autor
 
@@ -474,4 +536,4 @@ Jörg
 
 ---
 
-**Stand**: 26. Oktober 2025
+**Stand**: 13. April 2026 (v0.1.0)

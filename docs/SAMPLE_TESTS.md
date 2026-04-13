@@ -1,226 +1,116 @@
-# KNX Project Parser - Sample Test Commands
+# KNX Project Parser — Sample Test Recipes
 
-## Quick Start
+Manual / CLI test commands for every sample we keep around. Run from the
+repository root.
 
-### Run All Tests (Automated)
+The CLI tool lives in `backend/KnxMonitor.ParserTool` and reads its input
+directly from disk — no need to copy files anywhere.
 
-**PowerShell (Windows):**
-```powershell
-.\test-all-samples.ps1
-```
-
-**Bash (Linux/WSL):**
-```bash
-./test-all-samples.sh
-```
-
----
-
-## Individual Test Commands
-
-All commands assume you're in the `backend/KnxMonitor.ParserTool` directory.
-
-### ETS5 Projects
-
-#### 1. ETS5 - Large Project (841 GAs, 94 Devices)
-**File:** `myProject_ets_v5.7.7.knxproj` (No Password)
+## Quick start (all samples in one go)
 
 ```bash
-# Detect
-dotnet run -- detect "../KnxMonitor.ProjectParser.Tests/TestData/myProject_ets_v5.7.7.knxproj"
-
-# Parse
-dotnet run -- parse "../KnxMonitor.ProjectParser.Tests/TestData/myProject_ets_v5.7.7.knxproj"
-
-# Parse with JSON output
-dotnet run -- parse "../KnxMonitor.ProjectParser.Tests/TestData/myProject_ets_v5.7.7.knxproj" --format json
-
-# Parse with CSV output
-dotnet run -- parse "../KnxMonitor.ProjectParser.Tests/TestData/myProject_ets_v5.7.7.knxproj" --format csv > output.csv
+bash test-all-samples.sh           # Linux / macOS / Git Bash on Windows
+./test-all-samples.ps1             # PowerShell
 ```
 
-#### 2. ETS5 - Password Protected
-**File:** `TestMitSecure_ets_v5.7.7_secure.knxproj` (Password: `affe`)
+Both scripts iterate over the public xknxproject samples and the proprietary
+samples in `docs/samples/own/`. Missing files are reported as `[SKIP]` and do
+not fail the run.
+
+## CLI options
+
+```
+parse <file>                                  # plain
+      --password <pw>                         # for password-protected projects
+      --keyring <file.knxkeys>                # KNX Secure: read tool keys / GA keys
+      --keyring-password <kpw>                # password for the .knxkeys file
+      --format console | json | csv           # output format (default: console)
+      --verbose                               # progress + debug logging on stderr
+
+detect <file>                                  # fast pre-scan: ETS version / password / Secure / addressing style
+       --format console | json | csv
+```
+
+## Public xknxproject samples (always tracked)
+
+These live under `docs/samples/xknxproject/` and are committed to the repo
+under their original MIT licence (mirrored from
+[XKNX/xknxproject](https://github.com/XKNX/xknxproject)).
+
+| # | Sample | Password | What it exercises |
+|---|---|---|---|
+| 1 | `test_project-ets4-no_password.knxproj` | – | ETS 4 plain |
+| 2 | `test_project-ets4.knxproj` | `test` | ETS 4 + password (standard ZIP encryption) |
+| 3 | `ets6_free.knxproj` | – | ETS 6 + Free addressing (16-bit raw integers) |
+| 4 | `ets6_two_level.knxproj` | – | ETS 6 + Two-level addressing (`main/sub`) |
+| 5 | `testprojekt-ets6.knxproj` | `test` | **ETS 6 + password** — exercises the PBKDF2(UTF-16-LE)/Base64 → AES wrapping |
+
+Example commands:
 
 ```bash
-# Detect
-dotnet run -- detect "../KnxMonitor.ProjectParser.Tests/TestData/TestMitSecure_ets_v5.7.7_secure.knxproj"
+SAMPLES=docs/samples/xknxproject
 
-# Parse
-dotnet run -- parse "../KnxMonitor.ProjectParser.Tests/TestData/TestMitSecure_ets_v5.7.7_secure.knxproj" --password affe
-
-# Parse with verbose logging
-dotnet run -- parse "../KnxMonitor.ProjectParser.Tests/TestData/TestMitSecure_ets_v5.7.7_secure.knxproj" --password affe --verbose
+dotnet run --project backend/KnxMonitor.ParserTool -- parse  "$SAMPLES/ets6_free.knxproj"
+dotnet run --project backend/KnxMonitor.ParserTool -- parse  "$SAMPLES/test_project-ets4.knxproj" --password test
+dotnet run --project backend/KnxMonitor.ParserTool -- parse  "$SAMPLES/testprojekt-ets6.knxproj" --password test
+dotnet run --project backend/KnxMonitor.ParserTool -- detect "$SAMPLES/testprojekt-ets6.knxproj"
 ```
 
----
+## Proprietary samples (gitignored, expected under `docs/samples/own/`)
 
-### ETS4 Projects
+These are typically your own ETS exports. They are listed here as the contract
+for what the test suite and `test-all-samples` scripts look for; the files
+themselves are not tracked.
 
-#### 3. ETS4 - No Password
-**File:** `test_project-ets4-no_password.knxproj`
+| # | Sample | Password | Keyring | Keyring PW | Notes |
+|---|---|---|---|---|---|
+| 6 | `myProject_ets_v5.7.7.knxproj` | – | – | – | Large ETS 5 project, used by the integration tests for line counts (841 GAs / 94 devices) |
+| 7 | `TestMitSecure_ets_v5.7.7_secure.knxproj` | `affe` | `TestMitSecure_ets_v5.7.7_secure.knxkeys` | `affe` | KNX Secure end-to-end — exercises both the project-password unlock and the keyring decryption |
+
+KNX Secure CLI run:
 
 ```bash
-# Detect
-dotnet run -- detect "../KnxMonitor.ProjectParser.Tests/TestData/test_project-ets4-no_password.knxproj"
+OWN=docs/samples/own
 
-# Parse
-dotnet run -- parse "../KnxMonitor.ProjectParser.Tests/TestData/test_project-ets4-no_password.knxproj"
+dotnet run --project backend/KnxMonitor.ParserTool -- parse \
+  "$OWN/TestMitSecure_ets_v5.7.7_secure.knxproj" \
+  --password affe \
+  --keyring "$OWN/TestMitSecure_ets_v5.7.7_secure.knxkeys" \
+  --keyring-password affe
 ```
 
-#### 4. ETS4 - Password Protected
-**File:** `test_project-ets4.knxproj` (Password: `test`)
+Expected tail of the output:
 
-```bash
-# Detect
-dotnet run -- detect "../KnxMonitor.ProjectParser.Tests/TestData/test_project-ets4.knxproj"
-
-# Parse
-dotnet run -- parse "../KnxMonitor.ProjectParser.Tests/TestData/test_project-ets4.knxproj" --password test
+```
+Keyring: 1 device(s), 0 GA key(s), backbone=yes
 ```
 
----
+## UI walkthrough
 
-### ETS6 Projects
+End-to-end through the Angular wizard at `http://localhost:8080`:
 
-#### 5. ETS6 - Free Addressing
-**File:** `ets6_free.knxproj` (No Password)
+| Sample | Wizard prompts | Notes |
+|---|---|---|
+| `myProject_ets_v5.7.7.knxproj` | none | Auto-activated if first project |
+| `test_project-ets4.knxproj` (`test`) | password | |
+| `ets6_free` / `ets6_two_level` | none | |
+| `testprojekt-ets6.knxproj` (`test`) | password → optional keyring (Skip works) | `<Security>` blocks present, but no Data-Secure GA |
+| `TestMitSecure_..._secure.knxproj` (`affe`) | password → optional keyring | If keyring + `affe` provided, tool keys are decrypted and stored |
 
-```bash
-# Detect
-dotnet run -- detect "../KnxMonitor.ProjectParser.Tests/TestData/ets6_free.knxproj"
+## Adding more samples
 
-# Parse
-dotnet run -- parse "../KnxMonitor.ProjectParser.Tests/TestData/ets6_free.knxproj"
-```
+1. Drop the file into `docs/samples/own/` (private) or — if licence allows —
+   `docs/samples/xknxproject/` (committed).
+2. Add a new row in `test-all-samples.sh` and `test-all-samples.ps1`.
+3. If you also want it covered by integration tests, add a `[SkippableFact]`
+   in `backend/KnxMonitor.ProjectParser.Tests/Integration/`. Use
+   `Skip.IfNot(TestSamples.Exists("filename"))` to keep CI happy when the
+   file is missing.
 
-#### 6. ETS6 - Two Level Addressing
-**File:** `ets6_two_level.knxproj` (No Password)
+## Why the test project no longer has a `TestData/` folder in git
 
-```bash
-# Detect
-dotnet run -- detect "../KnxMonitor.ProjectParser.Tests/TestData/ets6_two_level.knxproj"
-
-# Parse
-dotnet run -- parse "../KnxMonitor.ProjectParser.Tests/TestData/ets6_two_level.knxproj"
-```
-
-#### 7. ETS6 - Password Protected ⚠️ SKIP
-**File:** `testprojekt-ets6.knxproj` (Password: `test`)
-
-**NOTE:** This file has SharpZipLib compatibility issues. Skip this test.
-
-```bash
-# Detect works
-dotnet run -- detect "../KnxMonitor.ProjectParser.Tests/TestData/testprojekt-ets6.knxproj"
-
-# Parse FAILS with SharpZipLib error
-# dotnet run -- parse "../KnxMonitor.ProjectParser.Tests/TestData/testprojekt-ets6.knxproj" --password test
-```
-
----
-
-## CLI Command Reference
-
-### Detect Command
-Quickly detect project features without full parsing.
-
-```bash
-dotnet run -- detect <file.knxproj> [--format console|json|csv]
-```
-
-**Output includes:**
-- Project ID (e.g., P-046B)
-- ETS Version (Ets4, Ets5, Ets6)
-- Password protection (Yes/No)
-- KNX Secure (Yes/No)
-- Addressing Style (ThreeLevel, TwoLevel, Free)
-
-### Parse Command
-Full project parsing with group addresses and devices.
-
-```bash
-dotnet run -- parse <file.knxproj> [options]
-```
-
-**Options:**
-- `--password <password>` - Password for encrypted projects
-- `--format console|json|csv` - Output format (default: console)
-- `--verbose` - Enable verbose logging
-
-**Output includes:**
-- All features (from detect)
-- Group Addresses (raw address, formatted address, name, DPT)
-- Devices (physical address, name, manufacturer, product)
-- Statistics (duration, counts, warnings)
-
----
-
-## Expected Results
-
-### ETS5 Large Project
-```
-Statistics:
-  Duration:      ~80-120 ms
-  Group Addrs:   841
-  Devices:       94
-  Addressing:    ThreeLevel (5/3/8)
-```
-
-### ETS5 Password Protected
-```
-Statistics:
-  Duration:      ~40-50 ms
-  Group Addrs:   1
-  Devices:       2
-  Password:      Yes (affe)
-```
-
-### ETS4 Projects
-```
-Statistics:
-  Duration:      ~50-150 ms
-  Group Addrs:   Varies
-  Devices:       Varies
-  ETS Version:   Ets4
-```
-
-### ETS6 Projects
-```
-Statistics:
-  Duration:      ~30-50 ms
-  Group Addrs:   4 (ets6_free/two_level)
-  Devices:       0 (minimal samples)
-  ETS Version:   Ets6
-
-⚠️  WARNING: ETS6 Segment-Tag fallback may log warning if no Segment tags found
-```
-
----
-
-## Troubleshooting
-
-### Issue: "Could not find file"
-**Solution:** Run commands from `backend/KnxMonitor.ParserTool` directory or use absolute paths.
-
-### Issue: "Wrong password"
-**Solution:** Check password in table above. Case-sensitive!
-
-### Issue: ETS6 SharpZipLib error
-**Expected:** Known issue with `testprojekt-ets6.knxproj`. Skip this file.
-
-### Issue: No devices found in ETS6
-**Expected:** The `ets6_free.knxproj` and `ets6_two_level.knxproj` samples are minimal and don't contain device definitions.
-
----
-
-## Performance Benchmarks
-
-| Project | ETS Version | GAs | Devices | Duration |
-|---------|-------------|-----|---------|----------|
-| myProject | ETS5 | 841 | 94 | ~80ms |
-| TestMitSecure | ETS5 | 1 | 2 | ~44ms |
-| test_project-ets4 | ETS4 | Varies | Varies | ~100ms |
-| ets6_free | ETS6 | 4 | 0 | ~33ms |
-
-**Target:** <500ms for medium projects ✅ **Achieved!**
+`backend/KnxMonitor.ProjectParser.Tests/TestData/` is a build sink: the
+project's `.csproj` `<None Include>` entries copy the sample files from
+`docs/samples/{xknxproject,own}/` into that folder at build time so the test
+binaries can find them next to the assembly. The directory is **gitignored**
+to avoid duplicating sample bytes between `docs/samples/` and `TestData/`.

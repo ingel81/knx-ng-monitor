@@ -1,5 +1,11 @@
 # KNX-NG-Monitor - Projektplan
 
+> **Stand 2026-04-13 (v0.1.0):** Phasen 1-15 abgeschlossen. Live-Image und Binaries stehen unter
+> [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases). KNX Secure (Password +
+> Keyring) ist End-to-End umgesetzt. Aktuelle Lückenliste am Ende des Dokuments unter
+> "Nächste Schritte". Implementierungs-Detail-Stand des Parser-Refactors: siehe
+> [`docs/PARSER_LIBRARY_PROGRESS.md`](../PARSER_LIBRARY_PROGRESS.md).
+
 ## Projektziel
 
 Ein modernes KNX Bus Monitoring-Tool mit Weboberfläche, das KNX-Telegramme in Echtzeit anzeigt, historisiert und übersichtlich darstellt. Das Tool wird als Docker-Container bereitgestellt und kombiniert ein C# Backend mit einem Angular Frontend.
@@ -460,146 +466,136 @@ services:
 
 ### Phase 1: Projektsetup
 - [x] Projektplanung und Anforderungsanalyse
-- [ ] Projektstruktur anlegen
-- [ ] .gitignore, README.md
-- [ ] Backend: .NET 9 Solution mit 3 Projekten
-- [ ] Frontend: Angular initialisieren
-- [ ] Initial Commit
+- [x] Projektstruktur anlegen
+- [x] .gitignore, README.md
+- [x] Backend: .NET 9 Solution mit 3 Projekten (+ später ProjectParser, ProjectParser.Tests, ParserTool)
+- [x] Frontend: Angular initialisieren
+- [x] Initial Commit
 
 ### Phase 2: Backend Grundgerüst
-- [ ] EF Core + SQLite einrichten
-- [ ] Entities definieren
-- [ ] DbContext und Migrations
-- [ ] Repository Pattern implementieren
-- [ ] Dependency Injection konfigurieren
-- [ ] Logging einrichten
+- [x] EF Core + SQLite einrichten
+- [x] Entities definieren
+- [x] DbContext und Migrations
+- [x] Repository Pattern implementieren
+- [x] Dependency Injection konfigurieren
+- [x] Logging einrichten (Serilog-Cleanup ist noch TODO, siehe unten)
 
 ### Phase 3: Authentication
-- [ ] JWT Service implementieren
-- [ ] User Management (Repository, Service)
-- [ ] Auth Controller (Login, Refresh, Logout)
-- [ ] JWT Middleware
-- [ ] Seed Admin User
+- [x] JWT Service implementieren (Secret wird beim ersten Start auto-generiert in `./data/.jwt-secret`)
+- [x] User Management (Repository, Service)
+- [x] Auth Controller (Login, Refresh, Logout)
+- [x] JWT Middleware
+- [x] Initial-Setup-Wizard (statt Seed) — Admin wird beim ersten UI-Start angelegt
 
 ### Phase 4: KNX Integration
-- [ ] Knx.Net Library integrieren
-- [ ] KnxClient Service implementieren
-- [ ] DPT Decoder für gängige Datenpunkttypen
-- [ ] Configuration Management (KnxConfiguration Entity)
-- [ ] Connection Status Tracking
-- [ ] Telegram Logging Service
+- [x] Knx.Falcon.Sdk integriert (statt der ursprünglich geplanten Knx.Net)
+- [x] KnxConnectionService implementiert
+- [x] DPT Decoder (DPT 1/2/3/5/6/7/8/9/10/11/12/13/14/16/17/18/19/20)
+- [x] Configuration Management (KnxConfiguration Entity)
+- [x] Connection Status Tracking
+- [x] Telegram Logging Service
 
 ### Phase 5: .knxproj Parser
-- [ ] ZIP-Extraktion implementieren
-- [ ] XML Parser für .knxproj Struktur
-- [ ] GroupAddress Extraktion
-- [ ] Device Extraktion
-- [ ] DPT Mapping
-- [ ] Import Service mit Fehlerbehandlung
-- [ ] API Endpoint für Upload
+- [x] In dedizierte Library `KnxMonitor.ProjectParser` ausgelagert
+- [x] ETS 4 / 5 / 6 Loader, Multi-Addressing-Style (3-Level / 2-Level / Free)
+- [x] Password-Support inkl. ETS6-PBKDF2/AES-Wrapping
+- [x] **KNX Secure Keyring (.knxkeys)** — PBKDF2-HMAC-SHA256 + AES-128-CBC, BackboneKey, ToolKeys, ManagementPassword, GA-Keys
+- [x] DPT-Parsing inkl. Main/Sub-Number
+- [x] Import-Wizard 2-stufig (Re-Detect nach Password, optionaler Keyring-Step)
+- [x] Auto-Activate des ersten Projekts
+- Detail: siehe [`docs/PARSER_LIBRARY_PROGRESS.md`](../PARSER_LIBRARY_PROGRESS.md)
 
 ### Phase 6: Telegram API
-- [ ] Telegram Repository (mit Pagination)
-- [ ] Telegram Controller (CRUD, Search)
-- [ ] Filter-Logik (Query Builder)
-- [ ] Export-Funktionen (CSV, JSON)
-- [ ] Performance-Optimierungen (Indizes)
+- [x] Telegram Repository
+- [x] Telegram Controller
+- [x] Filter-Logik
+- [x] Export-Funktionen (CSV, JSON)
+- [x] Performance-Optimierungen (Indizes auf Timestamp / DestinationAddress)
 
 ### Phase 7: SignalR Integration
-- [ ] SignalR Hub implementieren
-- [ ] Telegram Broadcasting
-- [ ] Connection Status Broadcasting
-- [ ] Client-Filter auf Hub-Ebene (optional)
-- [ ] Authentifizierung für WebSocket
+- [x] SignalR Hub implementiert
+- [x] Telegram Broadcasting
+- [x] Connection Status Broadcasting
+- [x] Authentifizierung für WebSocket (JWT via Query-String beim Negotiate)
 
 ### Phase 8: Frontend Grundgerüst
-- [ ] Angular Projekt strukturieren (Core, Features, Shared)
-- [ ] Routing konfigurieren
-- [ ] UI Framework integrieren (Material/PrimeNG)
-- [ ] Theme einrichten (Dark Mode)
-- [ ] Layout Components (Header, Sidebar, Footer)
+- [x] Angular Projekt strukturieren (Core, Features, Shared) — Standalone-Components
+- [x] Routing konfigurieren
+- [x] UI Framework: Angular Material + AG-Grid Community
+- [x] Dark Theme
+- [x] Layout Components (Header, Sidebar)
 
 ### Phase 9: Frontend Authentication
-- [ ] Login-Komponente
-- [ ] Auth Service (JWT handling)
-- [ ] Auth Guard
-- [ ] HTTP Interceptor für Token
-- [ ] Auto-Refresh Logic
-- [ ] Logout-Funktion
+- [x] Login-Komponente
+- [x] Auth Service (JWT handling)
+- [x] Auth Guard
+- [x] HTTP Interceptor für Token
+- [x] Auto-Refresh Logic
+- [x] Logout-Funktion
 
 ### Phase 10: Settings & KNX Configuration
-- [ ] Settings-Seite Layout
-- [ ] KNX Configuration Form
-- [ ] Validierung (IP, Port)
-- [ ] Connection Test
-- [ ] Status-Anzeige
-- [ ] API Integration
+- [x] Settings-Seite
+- [x] KNX Configuration Form mit Validierung
+- [x] Connection Test
+- [x] Status-Anzeige
+- [x] API Integration
 
 ### Phase 11: Project Import UI
-- [ ] File Upload Komponente
-- [ ] .knxproj Upload
-- [ ] Import Progress
-- [ ] Project List
-- [ ] Project Details/Management
-- [ ] Group Address Browser
+- [x] File Upload Komponente
+- [x] .knxproj Upload
+- [x] Import Progress (Step-Status, Polling)
+- [x] Project List
+- [x] Project Details / Management
+- [x] Group Address Browser
+- [x] Two-stage Wizard für KNX Secure (Password → optionaler Keyring)
 
 ### Phase 12: Live View Implementation
-- [ ] SignalR Client Service
-- [ ] Telegram Model & DTOs
-- [ ] Grid Component mit Virtual Scrolling
-- [ ] Live-Controls (Pause, Resume, Clear)
-- [ ] Color-Coding nach Message Type
-- [ ] Auto-Scroll Logic
-- [ ] Timestamp Formatting
-- [ ] Value Decoding Display
+- [x] SignalR Client Service
+- [x] Telegram Model & DTOs
+- [x] AG-Grid mit Virtual Scrolling
+- [x] Live-Controls (Pause, Resume, Clear)
+- [x] Color-Coding nach Message Type
+- [x] Auto-Scroll Toggle
+- [x] Timestamp Formatting
+- [x] Value Decoding Display
 
 ### Phase 13: Filter System
-- [ ] Filter Panel UI
-- [ ] Filter Chips
-- [ ] Einzelne Filter implementieren:
-  - [ ] Gruppenadresse (Autocomplete)
-  - [ ] Name/Device
-  - [ ] Zeitraum
-  - [ ] Message Type
-  - [ ] Wert-Bereich
-  - [ ] Freier Text
-- [ ] Filter State Management
-- [ ] Filter Presets (Favoriten)
-- [ ] Live-Filter Anwendung
+- [x] Quick-Filter (free text)
+- [x] AG-Grid Floating Filters pro Spalte (Sortierung, Filterung)
+- [ ] Filter Chips / Filter Presets / Favoriten — (noch offen, siehe "Nächste Schritte")
+- [ ] Wert-Bereich-Filter / Zeitraum-Picker als dedizierte UI — (noch offen)
 
 ### Phase 14: History & Search
-- [ ] History View Component
-- [ ] Pagination
-- [ ] Erweiterte Suchfunktion
-- [ ] Export-Button (CSV/JSON)
-- [ ] Detail-Ansicht für einzelne Telegramme
+- [x] History View Component
+- [x] Pagination
+- [x] Export-Button (CSV/JSON)
+- [ ] Detail-Ansicht / Telegramm-Vergleich — noch offen
 
 ### Phase 15: Docker & Deployment
-- [ ] Multi-Stage Dockerfile
-- [ ] Docker Build testen
-- [ ] docker-compose.yml
-- [ ] Volume für Datenbank
-- [ ] Environment Variables
-- [ ] Production Build optimieren
-- [ ] Health Checks
+- [x] Multi-Stage Dockerfile (Node → SDK → debian:12-slim)
+- [x] Docker Build / Image auf DockerHub (`ingel81/knx-ng-monitor`)
+- [x] docker-compose.yml
+- [x] Volume für Datenbank
+- [x] Environment Variables (`ASPNETCORE_ENVIRONMENT`, `ASPNETCORE_URLS`)
+- [x] Production Build optimiert (single-file, compressed)
+- [ ] Health Check Endpoint — noch offen
 
 ### Phase 16: Testing & Dokumentation
-- [ ] Backend Unit Tests
-- [ ] API Integration Tests
-- [ ] Frontend Unit Tests (wichtigste Components)
-- [ ] E2E Tests (Cypress/Playwright)
-- [ ] API Dokumentation (Swagger/OpenAPI)
-- [ ] Benutzer-Dokumentation
-- [ ] README mit Setup-Anleitung
+- [x] Backend xUnit Tests (Parser-Library: 187 Tests, ~99 % Line Coverage)
+- [ ] API Integration Tests (über die Library hinaus) — noch offen
+- [ ] Frontend Unit Tests (ng test läuft, aber Coverage wäre auszubauen)
+- [ ] E2E Tests (Cypress/Playwright) — noch offen
+- [x] API Dokumentation (Scalar/OpenAPI in Development)
+- [x] README mit Setup-Anleitung
+- [x] CLAUDE.md, PARSER_LIBRARY_PROGRESS, SAMPLE_TESTS aktuell
 
 ### Phase 17: Optimierungen & Polish
-- [ ] Performance-Tuning (DB Queries, Frontend Rendering)
-- [ ] Error Handling verbessern
-- [ ] Loading States überall
-- [ ] Accessibility-Audit
-- [ ] Browser-Kompatibilität testen
-- [ ] Mobile-Ansicht optimieren
-- [ ] Code Cleanup & Refactoring
+- [x] Performance-Tuning (Cache, Indizes, Virtual Scrolling)
+- [x] Loading States in den meisten Flows
+- [ ] Vollständiger Accessibility-Audit
+- [ ] Browser-Kompatibilitäts-Matrix dokumentieren
+- [ ] Mobile-Ansicht systematisch optimieren
+- [ ] Logging cleanup (Serilog-Templates, Entfernen der `Console.WriteLine` aus `ProjectImportService`)
 
 ---
 
@@ -681,15 +677,26 @@ services:
 
 ## Nächste Schritte
 
-1. ✅ Projektplan erstellen
-2. Projektstruktur anlegen (Ordner, .gitignore)
-3. Backend Solution erstellen (.NET 9)
-4. Angular Projekt initialisieren
-5. Initial Commit und Git Setup
-6. Mit Phase 2 (Backend Grundgerüst) starten
+(Stand 2026-04-13, bezogen auf v0.1.0)
+
+**Parser / KNX Secure**
+- Telegramm-Decryption zur Laufzeit mit den abgespeicherten ToolKeys / GA-Keys (KNX Data Secure am Bus)
+- Erweiterte Parser-Features: Communication Objects, Topology, Locations, Functions
+- Frontend: Keyring-Datei nachträglich pro Projekt hochladen / aktualisieren
+
+**UI / UX**
+- Filter-Chips + speicherbare Filter-Presets (Phase 13)
+- Telegramm-Detail-Drawer + Vergleich zweier Zeitpunkte (Phase 14)
+- Mobile-Ansicht optimieren, Accessibility-Audit (WCAG 2.1 AA)
+
+**Betrieb**
+- Health-Check-Endpoint
+- Logging-Cleanup (Serilog-Konfiguration vereinheitlichen, `Console.WriteLine` aus
+  `ProjectImportService` entfernen)
+- API Integration- und E2E-Tests (Cypress/Playwright)
 
 ---
 
 **Autor**: Joerg
 **Erstellt**: 2025-10-25
-**Version**: 1.0
+**Letzte Aktualisierung**: 2026-04-13 (v0.1.0)

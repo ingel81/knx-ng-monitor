@@ -1,22 +1,38 @@
 # KNX Project Parser - Implementation Progress
 
 **Start Date:** 2025-11-01
+**Last Update:** 2026-04-13 (v0.1.0 release)
 **Plan Reference:** PARSER_LIBRARY_PLAN_PART1.md, PARSER_LIBRARY_PLAN_PART2.md
 
 ---
+
+## Final State (v0.1.0)
+
+- ✅ Library is the single parser implementation. Old `KnxProjectParserService` is now an adapter only.
+- ✅ ETS 4 / 5 / 6 supported with explicit per-version loaders.
+- ✅ Password-protected projects across all ETS versions, including the **ETS6 PBKDF2(UTF-16-LE)/Base64 → AES ZIP** wrapping.
+- ✅ KNX Secure keyring (`.knxkeys`) reading with full AES-128-CBC decryption of backbone key, tool keys, management password, authentication and per-GA keys.
+- ✅ `IFeatureDetector.DetectAfterUnlockAsync` enables the wizard's two-stage flow (re-detect KNX Secure after the project password unlocks the inner archive).
+- ✅ `KnxMonitor.ParserTool` CLI (`parse` / `detect`, console / json / csv, `--password`, `--keyring`, `--keyring-password`).
+- ✅ **187 xUnit tests, 0 skipped on a complete checkout, ~99 % line coverage** (`Xunit.SkippableFact` keeps tests that depend on private fixtures green when those fixtures are absent).
+- ✅ Sample fixtures live in a single place (`docs/samples/`) and are linked into the test output dir at build time. `backend/KnxMonitor.ProjectParser.Tests/TestData/` is a build sink and gitignored.
+- ✅ Wizard UX: keyring is **optional** — user can skip when only IP-Secure is detected (no Data-Secure GAs).
+- ✅ Auto-activate on first import.
 
 ## Overall Status
 
 | Phase | Status | Start | End | Notes |
 |-------|--------|-------|-----|-------|
-| **Phase 1: Library-Grundgerüst** | ✅ Completed | 2025-11-01 | 2025-11-01 | All basic structure implemented and compiles successfully |
-| **Phase 2: Parser-Code migrieren** | ✅ Completed | 2025-11-01 | 2025-11-01 | All core parsing logic implemented, ETS5 fully functional |
-| **Phase 3: Adapter-Layer** | ✅ Completed | 2025-11-01 | 2025-11-01 | Infrastructure adapter created, old parser code removed, DI configured |
-| **Phase 4: CLI-Tool** | ✅ Completed | 2025-11-01 | 2025-11-01 | Parse + Detect commands with 3 formatters (Console, JSON, CSV) implemented and tested |
-| **Phase 5: xUnit Tests** | ✅ Completed | 2025-11-02 | 2025-11-02 | 114 tests, 100% pass rate, ~75% code coverage |
-| **Phase 6: Erweiterungen & Fixes** | 🔄 Partially Completed | 2025-11-02 | 2025-11-02 | Multi-Addressing-Style support implemented |
-| **Phase 7: Integration & Validation** | ✅ Completed | 2025-11-01 | 2025-11-01 | E2E tested with UI, 3 bugs found and fixed, performance validated (80ms) |
-| **Phase 8: Dokumentation** | ⏸️ Pending | - | - | - |
+| **Phase 1: Library-Grundgerüst** | ✅ Completed | 2025-11-01 | 2025-11-01 | Project skeleton, interfaces, models |
+| **Phase 2: Parser-Code migrieren** | ✅ Completed | 2025-11-01 | 2025-11-01 | ETS5 parsing logic in library |
+| **Phase 3: Adapter-Layer** | ✅ Completed | 2025-11-01 | 2025-11-01 | Old `KnxProjectParserService` reduced to adapter, DI updated |
+| **Phase 4: CLI-Tool** | ✅ Completed | 2025-11-01 | 2025-11-01 | Parse + Detect, 3 formatters |
+| **Phase 5: xUnit Tests** | ✅ Completed | 2025-11-02 | 2025-11-02 | initial 114 tests; later expanded |
+| **Phase 6: Erweiterungen & Fixes** | ✅ Completed | 2025-11-02 | 2026-04-13 | Multi-addressing-style + ETS4 / ETS6 loaders + ETS6-Password fix |
+| **Phase 7: Integration & Validation** | ✅ Completed | 2025-11-01 | 2025-11-01 | E2E with UI, 3 bugs fixed, ~80 ms for 841 GAs |
+| **Phase 8: Dokumentation** | ✅ Completed | 2026-04-13 | 2026-04-13 | README, CLAUDE.md, this file, SAMPLE_TESTS.md updated |
+| **Phase 9: KNX Secure Keyring** | ✅ Completed | 2026-04-13 | 2026-04-13 | KeyringReader + KeyringCrypto, two-stage wizard, optional keyring |
+| **Phase 10: Refactor + Coverage** | ✅ Completed | 2026-04-13 | 2026-04-13 | `ProjectFileMap` instead of `ZipArchive` plumbing; coverage ~99 % |
 
 ---
 
@@ -513,9 +529,9 @@ Based on test execution:
   - [x] FeatureDetector: AddressingStyle aus project.xml auslesen
   - [x] Loader Integration: Style beim Parsing verwenden
   - [x] Tests für alle 3 Adressstile (45 neue Tests)
-- [ ] 6.2 ETS4 Loader (Optional - nicht implementiert)
-- [ ] 6.3 ETS6 Loader (Optional - nicht implementiert)
-- [ ] 6.4 Extended Features (Optional - nicht implementiert)
+- [x] 6.2 ETS4 Loader — `Ets4ProjectLoader` + Integration tests against `test_project-ets4.knxproj` (with password "test") and `test_project-ets4-no_password.knxproj`
+- [x] 6.3 ETS6 Loader — `Ets6ProjectLoader` + ETS6-specific `Line → Segment → DeviceInstance` nesting + ETS6-Password support (PBKDF2/AES wrapping, see Phase 9 details)
+- [ ] 6.4 Extended Features (CommunicationObjects, Topology, Locations, Functions) — still out of scope; tracked under "Next" in README
 
 ### Progress Log
 
@@ -708,9 +724,69 @@ result.GroupAddresses = await ParseGroupAddressesAsync(
 
 ---
 
-## Phase 8: Dokumentation (Tag 17)
+## Phase 8: Dokumentation
 
-**Status:** Not Started
+**Status:** ✅ Completed (2026-04-13)
+
+- README rewritten for v0.1.0 (KNX Secure highlights, CLI usage, sample-file layout)
+- CLAUDE.md updated — no longer claims "planning phase", reflects the library / adapter / wizard split
+- This progress doc updated with phases 9 + 10 and final state
+- SAMPLE_TESTS.md aligned with the new sample layout (`docs/samples/`) and the `--keyring` CLI option
+- README now also documents the two-stage wizard flow and the auto-activate behaviour
+
+---
+
+## Phase 9: KNX Secure Keyring (Tag 18)
+
+**Goal:** Read `.knxkeys` files end-to-end and surface the result through the wizard.
+
+### Tasks
+- [x] 9.1 `KeyringCrypto` helper — PBKDF2-HMAC-SHA256 with salt `1.keyring.ets.knx.org`, 65536 iterations, 16 bytes key + AES-128-CBC + `ExtractPasswordString` for length-prefixed strings
+- [x] 9.2 `KeyringReader` — XML parsing, decrypts BackboneKey, Devices (ToolKey, ManagementPassword, Authentication), GroupAddresses (Key)
+- [x] 9.3 `IKeyringReader` interface, DI registration in API and CLI
+- [x] 9.4 `ParserOptions.KeyringStream` + `ParserOptions.KeyringPassword`; `ParseResult.Keyring`
+- [x] 9.5 Adapter `KnxProjectParserService` forwards keyring stream from `ImportContext`
+- [x] 9.6 Removed obsolete `KnxSecureService` / `IKnxSecureService` from Infrastructure / Core (their previous implementation tried to read the keyring as an encrypted ZIP, which was wrong)
+- [x] 9.7 `IFeatureDetector.DetectAfterUnlockAsync` — re-scans the decrypted inner XML for `<Security>` blocks / `DataSecurity="1"` GAs
+- [x] 9.8 `ProjectImportService.ProvideInputAsync` — after the project password is fulfilled, runs the re-detect; if KNX Secure is present, adds `KeyringFile` + `KeyringPassword` as **optional** requirements and stays in `WaitingForInput`
+- [x] 9.9 `ImportRequirementDto.IsOptional` propagated to frontend; wizard renders an "Überspringen" button next to the keyring upload
+- [x] 9.10 Integration tests with the proprietary `TestMitSecure_ets_v5.7.7_secure.{knxproj,knxkeys}` fixture (skipped automatically when the file is not present)
+
+### Test vectors used (TestMitSecure)
+- Password: `affe`
+- BackboneKey (decrypted): `97a62b652cb473fa5a2f16f10e27e4af`
+- Device 1.1.0 ToolKey: `b91d1106635b6112544ce7a0b7026c28`
+
+### Auto-activate first project
+- `ContinueImportAsync` checks for an existing active project (`projectRepository.GetActiveProjectAsync()`); if none, the freshly imported project is set `IsActive = true` and the cache is refreshed in the same step.
+
+**Status:** ✅ Completed
+
+---
+
+## Phase 10: Refactor + Coverage (Tag 19)
+
+**Goal:** Replace the brittle re-zip-with-no-password roundtrip in `ZipHandler` and push the parser library to ~99 % line coverage.
+
+### Tasks
+- [x] 10.1 New `ProjectFileMap` model — case-insensitive `Dictionary<string, byte[]>` with `Find{First,All}ByName` helpers
+- [x] 10.2 Rewrite `ZipHandler.LoadAsync` → returns `ProjectFileMap` directly. No more `ZipOutputStream` round-trip. Password path uses `SharpZipFile` (AES-capable) on the in-memory buffer of the inner archive
+- [x] 10.3 ETS6-Password fix — derive ZIP password as `Convert.ToBase64String(Rfc2898DeriveBytes(UTF-16-LE, "21.project.ets.knx.org", 65536, 32))` (mirrors xknxproject)
+- [x] 10.4 `IProjectLoader.LoadAsync` and `BaseProjectLoader` switched from `ZipArchive` to `ProjectFileMap`. All three loaders simplified accordingly. Hardware lookup helper moved to the base class
+- [x] 10.5 Single-source-of-truth for sample fixtures: `.csproj` links from `docs/samples/{xknxproject,own}/*` into the test output's `TestData/` folder. The folder itself is gitignored
+- [x] 10.6 `Xunit.SkippableFact` added; integration tests using proprietary fixtures use `Skip.IfNot(File.Exists(...))`
+- [x] 10.7 New unit tests filled the remaining gaps:
+  - `ProjectFileMapTests` — Contains, GetBytes, OpenRead, FindByName, FindAllByName
+  - `FeatureDetectorUnitTests` — synthetic in-memory ZIPs for every namespace / addressing style / KNX-Secure pattern
+  - `ZipHandlerUnitTests` — happy path + missing-password / missing-nested-zip error paths
+  - `ProjectParserUnitTests` — Moq-based loader-throws + no-loader-found cases
+  - `LoaderErrorPathTests` — ETS5 missing 0.xml, ETS6 fallback when no Segment tag
+  - `KeyringReaderUnitTests` — synthetic XML with GroupAddresses section
+  - `ModelPropertyTests` — getter/setter roundtrip for unused properties
+  - `AddressConverterEdgeCaseTests` — unknown `AddressingStyle`
+- [x] 10.8 Result: **99.26 % line coverage**. The remaining 0.74 % are async state-machine artifacts in compiler-generated `<…>d__N` types — the corresponding code paths are exercised by real tests but coverlet's line tracking does not always credit them.
+
+**Status:** ✅ Completed
 
 ---
 
