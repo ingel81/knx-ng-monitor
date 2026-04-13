@@ -226,6 +226,38 @@ export class ImportWizardComponent implements OnInit, OnDestroy {
     return this.importJob?.requirements.some(r => r.type === type && !r.isFulfilled) || false;
   }
 
+  isOptional(type: RequirementType): boolean {
+    return this.importJob?.requirements.some(r => r.type === type && r.isOptional) || false;
+  }
+
+  getRequirementMessage(type: RequirementType): string {
+    return this.importJob?.requirements.find(r => r.type === type)?.message || '';
+  }
+
+  skipKeyring(): void {
+    if (!this.importJob) return;
+
+    this.projectService.provideInput(this.importJob.id, {
+      type: RequirementType.KeyringFile,
+      keyringFile: ''
+    })
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: () => {
+        this.projectService.provideInput(this.importJob!.id, {
+          type: RequirementType.KeyringPassword,
+          password: ''
+        })
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: () => { this.currentStep = 'importing'; },
+          error: (e) => console.error('Failed to skip keyring password:', e)
+        });
+      },
+      error: (e) => console.error('Failed to skip keyring file:', e)
+    });
+  }
+
   getEtsVersionLabel(version?: EtsVersion): string {
     switch (version) {
       case EtsVersion.Ets4:

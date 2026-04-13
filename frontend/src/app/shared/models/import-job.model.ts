@@ -47,6 +47,7 @@ export interface ImportRequirement {
   type: RequirementType;
   message: string;
   isFulfilled: boolean;
+  isOptional: boolean;
   remainingAttempts: number;
 }
 

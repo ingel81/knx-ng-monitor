@@ -37,6 +37,19 @@
   }
 }
 
+.optional-tag {
+  margin-left: 8px;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
 .full-width {
   width: 100%;
 }
@@ -163,7 +176,8 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 48px 24px 32px 24px;
+  padding: 24px;
+  padding-top: 32px;
 
   h3 {
     margin: 16px 0;
@@ -172,19 +186,19 @@
   }
 
   .success-icon {
-    font-size: 72px;
-    width: 72px;
-    height: 72px;
+    font-size: 80px;
+    width: 80px;
+    height: 80px;
     color: #66bb6a;
-    margin-top: 8px;
+    line-height: 1;
   }
 
   .error-icon {
-    font-size: 72px;
-    width: 72px;
-    height: 72px;
+    font-size: 80px;
+    width: 80px;
+    height: 80px;
     color: #ef5350;
-    margin-top: 8px;
+    line-height: 1;
   }
 }
 

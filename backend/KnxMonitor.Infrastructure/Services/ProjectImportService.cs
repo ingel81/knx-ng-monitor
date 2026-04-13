@@ -4,6 +4,7 @@ using KnxMonitor.Core.Entities;
 using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
+using LibraryFeatureDetector = KnxMonitor.ProjectParser.Core.Interfaces.IFeatureDetector;
 
 namespace KnxMonitor.Infrastructure.Services;
 
@@ -11,15 +12,18 @@ public class ProjectImportService
 {
     private readonly IImportJobManager _jobManager;
     private readonly IProjectFeatureDetector _featureDetector;
+    private readonly LibraryFeatureDetector _libraryFeatureDetector;
     private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public ProjectImportService(
         IImportJobManager jobManager,
         IProjectFeatureDetector featureDetector,
+        LibraryFeatureDetector libraryFeatureDetector,
         IServiceScopeFactory serviceScopeFactory)
     {
         _jobManager = jobManager;
         _featureDetector = featureDetector;
+        _libraryFeatureDetector = libraryFeatureDetector;
         _serviceScopeFactory = serviceScopeFactory;
     }
 
@@ -89,8 +93,58 @@ public class ProjectImportService
         // Store updated context
         _jobManager.StoreJobContext(jobId, context);
 
+        // After password fulfilled, recheck KNX Secure inside the now-decryptable archive
+        // and add Keyring requirements if needed (requirements were unknown until decrypt).
+        if (input.Type == RequirementType.ProjectPassword
+            && !string.IsNullOrEmpty(context.ProjectPassword)
+            && !job.Requirements.Any(r => r.Type == RequirementType.KeyringFile))
+        {
+            try
+            {
+                using var detectStream = new MemoryStream(jobData.Value.FileData, writable: false);
+                var unlocked = await _libraryFeatureDetector.DetectAfterUnlockAsync(
+                    detectStream,
+                    context.ProjectPassword);
+
+                if (unlocked.HasKnxSecure)
+                {
+                    Console.WriteLine($"[ImportJob {jobId}] KNX Secure detected after unlock, adding keyring requirements");
+                    if (context.DetectedFeatures != null)
+                    {
+                        context.DetectedFeatures.HasKnxSecureDevices = true;
+                        context.DetectedFeatures.RequiresKeyring = true;
+                    }
+                    _jobManager.StoreJobContext(jobId, context);
+
+                    _jobManager.AddRequirement(jobId, new ImportRequirementDto
+                    {
+                        Type = RequirementType.KeyringFile,
+                        Message = "KNX Secure erkannt. Optional: Keyring-Datei (.knxkeys) hochladen, um Tool-Keys zu speichern.",
+                        IsFulfilled = false,
+                        IsOptional = true
+                    });
+                    _jobManager.AddRequirement(jobId, new ImportRequirementDto
+                    {
+                        Type = RequirementType.KeyringPassword,
+                        Message = "Passwort für die Keyring-Datei.",
+                        IsFulfilled = false,
+                        IsOptional = true
+                    });
+
+                    // Job stays in WaitingForInput
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ImportJob {jobId}] Re-detect after password failed: {ex.Message}");
+                // fall through; ContinueImport will hit the same error if the password is wrong
+            }
+        }
+
         // Check if all requirements are fulfilled
-        var allFulfilled = job.Requirements.All(r => r.IsFulfilled);
+        var refreshed = _jobManager.GetJob(jobId);
+        var allFulfilled = refreshed != null && refreshed.Requirements.All(r => r.IsFulfilled);
         if (allFulfilled)
         {
             Console.WriteLine($"[ImportJob {jobId}] All requirements fulfilled, resuming import");
@@ -239,6 +293,15 @@ public class ProjectImportService
             // Save parsed data
             project.GroupAddresses = groupAddresses;
             project.Devices = devices;
+
+            // Auto-activate when no other project is active yet (first import).
+            var existingActive = await projectRepository.GetActiveProjectAsync();
+            if (existingActive == null)
+            {
+                project.IsActive = true;
+                Console.WriteLine($"[ImportJob {jobId}] No active project yet, auto-activating {project.Id}");
+            }
+
             await projectRepository.UpdateAsync(project);
 
             _jobManager.UpdateStep(jobId, ImportStepType.Save, "completed", 100);
