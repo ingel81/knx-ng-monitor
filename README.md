@@ -9,7 +9,8 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 ## Features
 
 - **Real-time KNX Monitoring**: Live view of KNX telegrams via SignalR WebSocket
-- **ETS Project Import**: Parse .knxproj files to extract group addresses, devices, and DPT mappings
+- **ETS Project Import**: Parse .knxproj files (ETS4 / ETS5 / ETS6) to extract group addresses, devices, and DPT mappings
+- **KNX Secure Support**: Password-protected projects (incl. ETS6 PBKDF2/AES) and `.knxkeys` keyring decryption
 - **Live View UI**: Grid-based display with virtual scrolling, color-coding, pause/resume, auto-scroll
 - **Advanced Filtering**: By group address, device, time range, message type, value range, free text
 - **KNX Connection Configuration**: IP-based KNX interface connection (Tunneling/Routing)
@@ -241,7 +242,22 @@ Joerg
 
 ## Releases
 
-### v0.0.1 (Latest)
+### v0.1.0 (Latest)
+
+**New:**
+- ✅ Standalone `KnxMonitor.ProjectParser` library with ETS4 / ETS5 / ETS6 loaders
+- ✅ Password-protected projects across all ETS versions, including ETS6 PBKDF2/AES wrapping
+- ✅ KNX Secure keyring (.knxkeys) decryption (PBKDF2-HMAC-SHA256 + AES-128-CBC)
+- ✅ Two-stage import wizard: re-detects KNX Secure after password unlock and asks for the keyring (optional)
+- ✅ First imported project is auto-activated
+- ✅ `KnxMonitor.ParserTool` CLI with `parse` / `detect`, console / JSON / CSV output, and `--keyring` support
+- ✅ 187 xUnit tests (~99 % line coverage) for the parser library
+
+**Downloads:**
+- Docker: `docker pull ingel81/knx-ng-monitor:v0.1.0`
+- Binaries: [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases/tag/v0.1.0)
+
+### v0.0.1
 
 **Production-Ready Features:**
 - ✅ Self-contained binaries for 6 platforms (Linux, Windows, macOS - x64 & ARM64)
@@ -251,13 +267,9 @@ Joerg
 - ✅ Environment-based configuration (Dev/Prod separation)
 - ✅ Backend serves frontend in production (single port deployment)
 
-**Downloads:**
-- Docker: `docker pull ingel81/knx-ng-monitor:v0.0.1`
-- Binaries: [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases/tag/v0.0.1)
-
 ## Project Status
 
-**Current:** v0.0.1 - Production ready for basic KNX monitoring
-**Next:** Performance optimizations, additional features
+**Current:** v0.1.0 - KNX Secure (password + keyring) end-to-end, production-ready
+**Next:** Communication objects, topology, telegram-time decryption
 
 See [docs/ai/PROJECT_PLAN.md](docs/ai/PROJECT_PLAN.md) for detailed implementation phases and [docs/ai/RELEASE_PLAN.md](docs/ai/RELEASE_PLAN.md) for release automation details.
