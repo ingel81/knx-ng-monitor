@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\KnxMonitor.Core\KnxMonitor.Core.csproj" />
+    <ProjectReference Include="..\KnxMonitor.ProjectParser\KnxMonitor.ProjectParser.csproj" />
   </ItemGroup>
 
   <ItemGroup>

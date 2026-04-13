@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\KnxMonitor.Core\KnxMonitor.Core.csproj" />
     <ProjectReference Include="..\KnxMonitor.Infrastructure\KnxMonitor.Infrastructure.csproj" />
+    <ProjectReference Include="..\KnxMonitor.ProjectParser\KnxMonitor.ProjectParser.csproj" />
   </ItemGroup>
 
 </Project>

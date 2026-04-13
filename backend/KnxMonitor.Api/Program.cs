@@ -116,7 +116,30 @@ builder.Services.AddScoped<IKnxConfigurationRepository, KnxConfigurationReposito
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+
+// Parser Library Services (Singleton for performance)
+builder.Services.AddSingleton<KnxMonitor.ProjectParser.Core.Interfaces.IFeatureDetector,
+    KnxMonitor.ProjectParser.Services.FeatureDetector>();
+
+// Register all ETS version loaders
+builder.Services.AddSingleton<KnxMonitor.ProjectParser.Core.Interfaces.IProjectLoader,
+    KnxMonitor.ProjectParser.Loaders.Ets4ProjectLoader>();
+
+builder.Services.AddSingleton<KnxMonitor.ProjectParser.Core.Interfaces.IProjectLoader,
+    KnxMonitor.ProjectParser.Loaders.Ets5ProjectLoader>();
+
+builder.Services.AddSingleton<KnxMonitor.ProjectParser.Core.Interfaces.IProjectLoader,
+    KnxMonitor.ProjectParser.Loaders.Ets6ProjectLoader>();
+
+builder.Services.AddSingleton<KnxMonitor.ProjectParser.Core.Interfaces.IKeyringReader,
+    KnxMonitor.ProjectParser.Services.KeyringReader>();
+
+builder.Services.AddSingleton<KnxMonitor.ProjectParser.Core.Interfaces.IProjectParser,
+    KnxMonitor.ProjectParser.Services.ProjectParser>();
+
+// Infrastructure Adapter (uses Library)
 builder.Services.AddScoped<IKnxProjectParserService, KnxProjectParserService>();
+
 builder.Services.AddSingleton<IGroupAddressCacheService, GroupAddressCacheService>();
 builder.Services.AddSingleton<IKnxConnectionService, KnxConnectionService>();
 builder.Services.AddHostedService<TelegramBroadcastService>();
@@ -124,7 +147,6 @@ builder.Services.AddHostedService<TelegramBroadcastService>();
 // Import Services
 builder.Services.AddSingleton<IImportJobManager, ImportJobManager>();
 builder.Services.AddScoped<IProjectFeatureDetector, ProjectFeatureDetector>();
-builder.Services.AddScoped<IKnxSecureService, KnxSecureService>();
 builder.Services.AddScoped<ProjectImportService>();
 
 // SignalR

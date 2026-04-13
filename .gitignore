@@ -110,3 +110,14 @@ Thumbs.db
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Local-only KNX sample projects (private / unclear license).
+# Public-domain xknxproject samples in docs/samples/xknxproject/ are tracked.
+docs/samples/own/
+docs/samples/other/
+
+# Tests link sample files into TestData/ at build time; nothing here belongs in git.
+backend/KnxMonitor.ProjectParser.Tests/TestData/
+
+# Coverage report scratch directory
+/coverage-tmp/

@@ -38,16 +38,9 @@ public class ProjectFeatureDetector : IProjectFeatureDetector
                 features.EtsVersion = await DetectEtsVersionFromXmlAsync(masterStream);
             }
 
-            // Check for signature files (indicates secure/signed project)
-            var hasSignature = archive.Entries.Any(e => e.Name.EndsWith(".signature"));
-            var hasCertificate = archive.Entries.Any(e => e.Name.EndsWith(".certificate"));
-
-            if (hasSignature || hasCertificate)
-            {
-                // This is a secure/signed project, might need keyring later
-                features.HasKnxSecureDevices = true;
-                features.RequiresKeyring = true;
-            }
+            // Note: .signature files are present in ALL ETS projects and do NOT indicate KNX Secure
+            // KNX Secure detection must be done by parsing the project XML (0.xml)
+            // For password-protected projects, we cannot detect KNX Secure without the password
         }
         else
         {
@@ -129,11 +122,19 @@ public class ProjectFeatureDetector : IProjectFeatureDetector
             var doc = await XDocument.LoadAsync(xmlStream, LoadOptions.None, CancellationToken.None);
             var ns = doc.Root?.Name.Namespace ?? XNamespace.None;
 
-            // Check if any DeviceInstance has a Security element
-            var hasSecurityElement = doc.Descendants(ns + "DeviceInstance")
-                .Any(d => d.Element(ns + "Security") != null);
+            // Check for Group Addresses with DataSecurity enabled
+            var secureGAs = doc.Descendants(ns + "GroupAddress")
+                .Any(ga => ga.Attribute("DataSecurity")?.Value == "1");
 
-            return hasSecurityElement;
+            if (secureGAs)
+                return true;
+
+            // Check for Devices with Security attributes
+            var secureDevices = doc.Descendants(ns + "DeviceInstance")
+                .Any(d => d.Attribute("IsCoupler")?.Value == "true" &&
+                         d.Parent?.Elements(ns + "Security").Any() == true);
+
+            return secureDevices;
         }
         catch
         {
