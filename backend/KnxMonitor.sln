@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KnxMonitor.ProjectParser.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KnxMonitor.ParserTool", "KnxMonitor.ParserTool\KnxMonitor.ParserTool.csproj", "{614A64EB-8FB6-418F-A314-1FAD634C09F7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KnxMonitor.Infrastructure.Tests", "KnxMonitor.Infrastructure.Tests\KnxMonitor.Infrastructure.Tests.csproj", "{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{614A64EB-8FB6-418F-A314-1FAD634C09F7}.Release|x64.Build.0 = Release|Any CPU
 		{614A64EB-8FB6-418F-A314-1FAD634C09F7}.Release|x86.ActiveCfg = Release|Any CPU
 		{614A64EB-8FB6-418F-A314-1FAD634C09F7}.Release|x86.Build.0 = Release|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Debug|Any CPU.Build.0 = Debug|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Debug|x64.ActiveCfg = Debug|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Debug|x64.Build.0 = Debug|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Debug|x86.ActiveCfg = Debug|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Debug|x86.Build.0 = Debug|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Release|Any CPU.ActiveCfg = Release|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Release|Any CPU.Build.0 = Release|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Release|x64.ActiveCfg = Release|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Release|x64.Build.0 = Release|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Release|x86.ActiveCfg = Release|Any CPU
+			{CAB208EC-AAD3-49FF-BD9C-A9A9F06EF728}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
