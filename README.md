@@ -239,7 +239,15 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.1.1 (latest)
+### v0.1.2 (latest)
+
+- **CI** — release workflow's `actions/checkout`, `setup-node`, `setup-dotnet`, `upload-artifact`, `download-artifact` bumped to `@v5` so the build keeps working past the GitHub Actions Node 20 → Node 24 deprecation deadline
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.1.2
+```
+
+### v0.1.1
 
 - **SignalR + refresh-token hardening** — token factory reads from the auth service on every reconnect (no more stale-token loops after a refresh); concurrent 401s share a single refresh via `shareReplay` instead of triggering a refresh-storm that the backend's revoke-on-rotate then locked out
 - **Atomic refresh-token rotation** — old token is revoked and the new one inserted in a single `SaveChanges`, so a crash mid-rotation can no longer lock the user out
@@ -272,7 +280,7 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.1.1, hardened auth flow + container, batched telegram persistence.
+**Current** — v0.1.2, CI bumped past the Node 20 deprecation; hardened auth flow + container, batched telegram persistence (v0.1.1).
 **Next** — Telegram-time decryption using stored tool keys; communication objects, topology, locations.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.
