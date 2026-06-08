@@ -30,11 +30,9 @@ export class SignalrService {
   constructor(private authService: AuthService) {}
 
   public async startConnection(): Promise<void> {
-    const token = this.authService.getAccessToken();
-
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(`${environment.hubUrl}/telegram`, {
-        accessTokenFactory: () => token || ''
+        accessTokenFactory: () => this.authService.getAccessToken() ?? ''
       })
       .withAutomaticReconnect()
       .build();

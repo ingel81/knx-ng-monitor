@@ -46,30 +46,37 @@ FROM debian:12-slim
 
 WORKDIR /app
 
-# Install runtime dependencies for .NET self-contained apps
+# Install runtime dependencies for .NET self-contained apps.
+# wget is used by the HEALTHCHECK below.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libicu72 \
-        ca-certificates && \
+        ca-certificates \
+        wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy self-contained application
-COPY --from=backend-build /app/publish .
+# Create unprivileged user (uid 1000 = first non-system uid on Debian).
+RUN groupadd --system --gid 1000 app && \
+    useradd  --system --uid 1000 --gid app --home /app --shell /usr/sbin/nologin app
 
-# Create data volume directory
-RUN mkdir -p /app/data
+# Copy self-contained application with non-root ownership.
+COPY --from=backend-build --chown=app:app /app/publish .
+
+# Data volume directory owned by app user.
+RUN mkdir -p /app/data && chown app:app /app/data
 VOLUME /app/data
 
-# Expose port
 EXPOSE 8080
 
-# Set environment variables
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
-# Make the binary executable
 RUN chmod +x /app/KnxMonitor.Api
 
-# Start application (no 'dotnet' command needed - it's self-contained!)
+USER app
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD wget --quiet --spider http://localhost:8080/healthz || exit 1
+
 ENTRYPOINT ["/app/KnxMonitor.Api"]

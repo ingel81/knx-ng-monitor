@@ -53,4 +53,10 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
     {
         return await _dbSet.CountAsync();
     }
+
+    public async Task AddRangeAsync(IEnumerable<KnxTelegram> telegrams)
+    {
+        await _dbSet.AddRangeAsync(telegrams);
+        await _context.SaveChangesAsync();
+    }
 }

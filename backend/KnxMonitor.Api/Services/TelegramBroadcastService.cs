@@ -11,18 +11,18 @@ public class TelegramBroadcastService : IHostedService
 {
     private readonly IKnxConnectionService _knxService;
     private readonly IHubContext<TelegramHub> _hubContext;
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IGroupAddressCacheService _cache;
     private readonly ILogger<TelegramBroadcastService> _logger;
 
     public TelegramBroadcastService(
         IKnxConnectionService knxService,
         IHubContext<TelegramHub> hubContext,
-        IServiceScopeFactory scopeFactory,
+        IGroupAddressCacheService cache,
         ILogger<TelegramBroadcastService> logger)
     {
         _knxService = knxService;
         _hubContext = hubContext;
-        _scopeFactory = scopeFactory;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -44,16 +44,12 @@ public class TelegramBroadcastService : IHostedService
     {
         try
         {
-            // Use cache to get GroupAddress info efficiently
             string? groupAddressName = null;
             string? datapointType = null;
 
             if (telegram.GroupAddressId.HasValue)
             {
-                using var scope = _scopeFactory.CreateScope();
-                var cacheService = scope.ServiceProvider.GetRequiredService<IGroupAddressCacheService>();
-                var groupAddress = cacheService.GetByAddress(telegram.DestinationAddress);
-
+                var groupAddress = _cache.GetByAddress(telegram.DestinationAddress);
                 if (groupAddress != null)
                 {
                     groupAddressName = groupAddress.Name;

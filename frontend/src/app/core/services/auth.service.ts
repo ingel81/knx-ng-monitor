@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, tap, shareReplay, finalize, throwError } from 'rxjs';
 import { LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse, InitialSetupRequest, NeedsSetupResponse } from '../models/auth.models';
 import { environment } from '../../../environments/environment.development';
 
@@ -16,6 +16,8 @@ export class AuthService {
 
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasValidToken());
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+
+  private refreshInFlight$: Observable<RefreshTokenResponse> | null = null;
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, credentials)
@@ -42,20 +44,25 @@ export class AuthService {
   }
 
   refreshToken(): Observable<RefreshTokenResponse> {
-    const refreshToken = this.getRefreshToken();
+    if (this.refreshInFlight$) {
+      return this.refreshInFlight$;
+    }
 
+    const refreshToken = this.getRefreshToken();
     if (!refreshToken) {
-      throw new Error('No refresh token available');
+      return throwError(() => new Error('No refresh token available'));
     }
 
     const request: RefreshTokenRequest = { refreshToken };
 
-    return this.http.post<RefreshTokenResponse>(`${this.apiUrl}/auth/refresh`, request)
+    this.refreshInFlight$ = this.http.post<RefreshTokenResponse>(`${this.apiUrl}/auth/refresh`, request)
       .pipe(
-        tap(response => {
-          this.storeTokens(response);
-        })
+        tap(response => this.storeTokens(response)),
+        shareReplay(1),
+        finalize(() => { this.refreshInFlight$ = null; })
       );
+
+    return this.refreshInFlight$;
   }
 
   getAccessToken(): string | null {

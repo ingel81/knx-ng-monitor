@@ -4,6 +4,7 @@ import { Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '../../core/services/auth.service';
+import { SignalrService } from '../../core/services/signalr.service';
 import { ToastService } from '../../core/services/toast.service';
 
 @Component({
@@ -14,12 +15,19 @@ import { ToastService } from '../../core/services/toast.service';
 })
 export class Layout {
   private authService = inject(AuthService);
+  private signalr = inject(SignalrService);
   private router = inject(Router);
   private toast = inject(ToastService);
 
   currentUser$ = this.authService.currentUser$;
 
-  logout(): void {
+  async logout(): Promise<void> {
+    try {
+      await this.signalr.stopConnection();
+    } catch {
+      // ignore — proceed with logout anyway
+    }
+
     this.authService.logout().subscribe({
       next: () => {
         this.toast.info('Logged out successfully');

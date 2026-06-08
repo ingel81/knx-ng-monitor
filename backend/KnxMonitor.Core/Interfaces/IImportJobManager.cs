@@ -24,4 +24,5 @@ public interface IImportJobManager
     ProjectFeatures? GetJobFeatures(Guid jobId);
     void StoreJobContext(Guid jobId, ImportContext context);
     ImportContext? GetJobContext(Guid jobId);
+    int SweepCompleted(TimeSpan maxAge);
 }

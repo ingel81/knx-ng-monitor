@@ -10,4 +10,5 @@ public interface ITelegramRepository : IRepository<KnxTelegram>
     Task<IEnumerable<KnxTelegram>> GetByMessageTypeAsync(MessageType messageType);
     Task<IEnumerable<KnxTelegram>> GetPagedAsync(int page, int pageSize);
     Task<int> GetTotalCountAsync();
+    Task AddRangeAsync(IEnumerable<KnxTelegram> telegrams);
 }

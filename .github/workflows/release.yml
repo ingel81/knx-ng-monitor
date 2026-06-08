@@ -10,6 +10,9 @@ jobs:
     name: Build ${{ matrix.rid }} Binary
     runs-on: ${{ matrix.os }}
 
+    permissions:
+      contents: read
+
     strategy:
       matrix:
         include:
@@ -103,6 +106,9 @@ jobs:
   build-docker:
     name: Build Docker Images
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code

@@ -94,17 +94,21 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// CORS
-builder.Services.AddCors(options =>
+// CORS — only needed for `ng serve` against the API in Development.
+// In Production the frontend is served from the same origin (wwwroot), so no CORS is required.
+if (builder.Environment.IsDevelopment())
 {
-    options.AddPolicy("AllowFrontend", policy =>
+    builder.Services.AddCors(options =>
     {
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        options.AddPolicy("AllowFrontend", policy =>
+        {
+            policy.WithOrigins("http://localhost:4200")
+                  .AllowAnyHeader()
+                  .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                  .AllowCredentials();
+        });
     });
-});
+}
 
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -142,10 +146,18 @@ builder.Services.AddScoped<IKnxProjectParserService, KnxProjectParserService>();
 
 builder.Services.AddSingleton<IGroupAddressCacheService, GroupAddressCacheService>();
 builder.Services.AddSingleton<IKnxConnectionService, KnxConnectionService>();
+
+// Telegram persistence: one bounded channel, drop-oldest under burst.
+// The same instance backs the queue (writer) and the hosted worker (reader).
+builder.Services.AddSingleton<TelegramPersistenceService>();
+builder.Services.AddSingleton<ITelegramQueue>(sp => sp.GetRequiredService<TelegramPersistenceService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramPersistenceService>());
+
 builder.Services.AddHostedService<TelegramBroadcastService>();
 
 // Import Services
 builder.Services.AddSingleton<IImportJobManager, ImportJobManager>();
+builder.Services.AddHostedService<ImportJobCleanupService>();
 builder.Services.AddScoped<IProjectFeatureDetector, ProjectFeatureDetector>();
 builder.Services.AddScoped<ProjectImportService>();
 
@@ -209,10 +221,15 @@ if (!string.IsNullOrEmpty(httpsPort) || app.Urls.Any(u => u.StartsWith("https://
     app.UseHttpsRedirection();
 }
 
-app.UseCors("AllowFrontend");
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("AllowFrontend");
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapGet("/healthz", () => Results.Ok("ok")).AllowAnonymous();
 
 app.MapControllers();
 app.MapHub<TelegramHub>("/hubs/telegram");

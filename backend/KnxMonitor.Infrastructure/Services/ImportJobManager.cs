@@ -149,10 +149,46 @@ public class ImportJobManager : IImportJobManager
 
     public void RemoveJob(Guid jobId)
     {
+        if (_jobData.TryRemove(jobId, out var data))
+        {
+            // Scrub uploaded bytes — .knxproj contents may include encrypted
+            // material, and we don't want it lingering in the heap.
+            if (data.FileData is { Length: > 0 } fd)
+                Array.Clear(fd, 0, fd.Length);
+        }
+
+        if (_jobContexts.TryRemove(jobId, out var ctx))
+        {
+            if (ctx.FileData is { Length: > 0 } cf)
+                Array.Clear(cf, 0, cf.Length);
+            if (ctx.KeyringFile is { Length: > 0 } kf)
+                Array.Clear(kf, 0, kf.Length);
+            // Passwords are immutable strings; the best we can do is drop the
+            // reference so the GC can reclaim them on the next collection.
+            ctx.ProjectPassword = null;
+            ctx.KeyringPassword = null;
+        }
+
         _jobs.TryRemove(jobId, out _);
-        _jobData.TryRemove(jobId, out _);
         _jobFeatures.TryRemove(jobId, out _);
-        _jobContexts.TryRemove(jobId, out _);
+    }
+
+    public int SweepCompleted(TimeSpan maxAge)
+    {
+        var threshold = DateTime.UtcNow - maxAge;
+        var removed = 0;
+        foreach (var (id, job) in _jobs)
+        {
+            var isTerminal = job.Status == ImportStatus.Completed
+                          || job.Status == ImportStatus.Failed
+                          || job.Status == ImportStatus.Cancelled;
+            if (isTerminal && job.CompletedAt.HasValue && job.CompletedAt.Value < threshold)
+            {
+                RemoveJob(id);
+                removed++;
+            }
+        }
+        return removed;
     }
 
     public void StoreJobData(Guid jobId, string fileName, byte[] fileData)

@@ -69,13 +69,22 @@ public class AuthService : IAuthService
             return null;
         }
 
-        // Revoke old refresh token
+        // Atomic rotation: revoke old + add new in single SaveChanges so
+        // a failure mid-way cannot leave the user with no usable refresh token.
+        var newRefreshToken = new RefreshToken
+        {
+            UserId = refreshToken.UserId,
+            Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
+            CreatedAt = DateTime.UtcNow,
+            IsRevoked = false
+        };
+
         refreshToken.IsRevoked = true;
+        _context.RefreshTokens.Add(newRefreshToken);
         await _context.SaveChangesAsync();
 
-        // Generate new tokens
         var accessToken = GenerateAccessToken(refreshToken.User);
-        var newRefreshToken = await GenerateRefreshTokenAsync(refreshToken.UserId);
 
         return new RefreshTokenResponse
         {

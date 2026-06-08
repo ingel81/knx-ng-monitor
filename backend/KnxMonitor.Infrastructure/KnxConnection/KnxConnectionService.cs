@@ -7,17 +7,16 @@ using KnxMonitor.Core.Enums;
 using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Services;
 using KnxMonitor.Infrastructure.Services;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace KnxMonitor.Infrastructure.KnxConnection;
 
-public class KnxConnectionService : IKnxConnectionService, IDisposable
+public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<KnxConnectionService> _logger;
-    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IGroupAddressCacheService _groupAddressCache;
+    private readonly ITelegramQueue _telegramQueue;
     private KnxBus? _knxBus;
     private KnxConfiguration? _activeConfiguration;
     private bool _isConnected;
@@ -28,12 +27,12 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
 
     public KnxConnectionService(
         ILogger<KnxConnectionService> logger,
-        IServiceScopeFactory scopeFactory,
-        IGroupAddressCacheService groupAddressCache)
+        IGroupAddressCacheService groupAddressCache,
+        ITelegramQueue telegramQueue)
     {
         _logger = logger;
-        _scopeFactory = scopeFactory;
         _groupAddressCache = groupAddressCache;
+        _telegramQueue = telegramQueue;
     }
 
     public async Task<bool> ConnectAsync(KnxConfiguration configuration)
@@ -178,20 +177,12 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
             // Raise event for SignalR broadcasting (now with GroupAddressId set!)
             TelegramReceived?.Invoke(this, telegram);
 
-            // Save to database asynchronously (fire and forget)
-            Task.Run(async () =>
+            // Enqueue for batched persistence. Channel drops oldest on overflow,
+            // so a stalled DB can never block the bus thread or blow memory.
+            if (!_telegramQueue.TryEnqueue(telegram))
             {
-                try
-                {
-                    using var scope = _scopeFactory.CreateScope();
-                    var telegramRepository = scope.ServiceProvider.GetRequiredService<ITelegramRepository>();
-                    await telegramRepository.AddAsync(telegram);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to save telegram to database");
-                }
-            });
+                _logger.LogWarning("Telegram persistence queue full, dropping telegram for {Address}", telegram.DestinationAddress);
+            }
         }
         catch (Exception ex)
         {
@@ -213,41 +204,25 @@ public class KnxConnectionService : IKnxConnectionService, IDisposable
 
     private byte[] GetValueBytes(GroupValue? value)
     {
-        if (value == null)
-            return Array.Empty<byte>();
-
-        try
-        {
-            // GroupValue has internal byte array, access via reflection
-            var valueField = value.GetType().GetField("_value",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            if (valueField != null && valueField.GetValue(value) is byte[] bytes)
-            {
-                return bytes;
-            }
-
-            // Fallback: try to parse from string representation
-            var valueStr = value.ToString();
-            if (!string.IsNullOrEmpty(valueStr) && byte.TryParse(valueStr, out var singleByte))
-            {
-                return new[] { singleByte };
-            }
-
-            return Array.Empty<byte>();
-        }
-        catch
-        {
-            return Array.Empty<byte>();
-        }
+        return value?.Value ?? Array.Empty<byte>();
     }
 
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         _cancellationTokenSource.Cancel();
-        DisconnectAsync().Wait();
+        await DisconnectAsync();
         _cancellationTokenSource.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    public void Dispose()
+    {
+        // Prefer DisposeAsync. The host normally calls that on shutdown
+        // (IServiceProvider awaits IAsyncDisposable). This sync path is a
+        // best-effort fallback and intentionally non-blocking.
+        _cancellationTokenSource.Cancel();
+        _ = DisposeAsync().AsTask();
         GC.SuppressFinalize(this);
     }
 }

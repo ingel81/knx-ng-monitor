@@ -4,6 +4,7 @@ using KnxMonitor.Core.Entities;
 using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using LibraryFeatureDetector = KnxMonitor.ProjectParser.Core.Interfaces.IFeatureDetector;
 
 namespace KnxMonitor.Infrastructure.Services;
@@ -14,17 +15,20 @@ public class ProjectImportService
     private readonly IProjectFeatureDetector _featureDetector;
     private readonly LibraryFeatureDetector _libraryFeatureDetector;
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly ILogger<ProjectImportService> _logger;
 
     public ProjectImportService(
         IImportJobManager jobManager,
         IProjectFeatureDetector featureDetector,
         LibraryFeatureDetector libraryFeatureDetector,
-        IServiceScopeFactory serviceScopeFactory)
+        IServiceScopeFactory serviceScopeFactory,
+        ILogger<ProjectImportService> logger)
     {
         _jobManager = jobManager;
         _featureDetector = featureDetector;
         _libraryFeatureDetector = libraryFeatureDetector;
         _serviceScopeFactory = serviceScopeFactory;
+        _logger = logger;
     }
 
     public async Task<ImportJobDto> StartImportAsync(string fileName, byte[] fileData)
@@ -72,20 +76,16 @@ public class ProjectImportService
         // Add provided input to context
         if (input.Type == RequirementType.ProjectPassword)
         {
-            Console.WriteLine($"[ImportJob {jobId}] Storing project password");
             context.ProjectPassword = input.Password;
             _jobManager.FulfillRequirement(jobId, RequirementType.ProjectPassword);
         }
         else if (input.Type == RequirementType.KeyringFile && input.KeyringFile != null)
         {
-            Console.WriteLine($"[ImportJob {jobId}] Storing keyring file ({input.KeyringFile.Length} chars Base64)");
-            // Decode Base64 string to byte array
             context.KeyringFile = Convert.FromBase64String(input.KeyringFile);
             _jobManager.FulfillRequirement(jobId, RequirementType.KeyringFile);
         }
         else if (input.Type == RequirementType.KeyringPassword)
         {
-            Console.WriteLine($"[ImportJob {jobId}] Storing keyring password");
             context.KeyringPassword = input.Password;
             _jobManager.FulfillRequirement(jobId, RequirementType.KeyringPassword);
         }
@@ -108,7 +108,7 @@ public class ProjectImportService
 
                 if (unlocked.HasKnxSecure)
                 {
-                    Console.WriteLine($"[ImportJob {jobId}] KNX Secure detected after unlock, adding keyring requirements");
+                    _logger.LogInformation("Job {JobId}: KNX Secure detected after unlock, adding keyring requirements", jobId);
                     if (context.DetectedFeatures != null)
                     {
                         context.DetectedFeatures.HasKnxSecureDevices = true;
@@ -137,7 +137,7 @@ public class ProjectImportService
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ImportJob {jobId}] Re-detect after password failed: {ex.Message}");
+                _logger.LogWarning(ex, "Job {JobId}: re-detect after password failed", jobId);
                 // fall through; ContinueImport will hit the same error if the password is wrong
             }
         }
@@ -147,8 +147,7 @@ public class ProjectImportService
         var allFulfilled = refreshed != null && refreshed.Requirements.All(r => r.IsFulfilled);
         if (allFulfilled)
         {
-            Console.WriteLine($"[ImportJob {jobId}] All requirements fulfilled, resuming import");
-            Console.WriteLine($"[ImportJob {jobId}] Context: Password={!string.IsNullOrEmpty(context.ProjectPassword)}, KeyringFile={context.KeyringFile != null}, KeyringPassword={!string.IsNullOrEmpty(context.KeyringPassword)}");
+            _logger.LogInformation("Job {JobId}: all requirements fulfilled, resuming import", jobId);
             // Resume import in background
             _ = Task.Run(async () => await ContinueImportAsync(jobId, jobData.Value.FileName, jobData.Value.FileData, context));
         }
@@ -165,15 +164,15 @@ public class ProjectImportService
     {
         try
         {
-            Console.WriteLine($"[ImportJob {jobId}] ExecuteImportAsync started");
+            _logger.LogInformation("Job {JobId}: ExecuteImportAsync started for {FileName}", jobId, fileName);
             _jobManager.UpdateStep(jobId, ImportStepType.UploadFile, "completed", 100);
             _jobManager.UpdateStep(jobId, ImportStepType.OpenZip, "in-progress", 0);
 
             // Step 1: Detect features
-            Console.WriteLine($"[ImportJob {jobId}] Detecting features...");
             using var fileStream = new MemoryStream(fileData);
             var features = await _featureDetector.DetectFeaturesAsync(fileStream);
-            Console.WriteLine($"[ImportJob {jobId}] Features detected: Password={features.IsPasswordProtected}, Secure={features.HasKnxSecureDevices}");
+            _logger.LogInformation("Job {JobId}: features detected (PasswordProtected={Password}, KnxSecure={Secure})",
+                jobId, features.IsPasswordProtected, features.HasKnxSecureDevices);
 
             _jobManager.UpdateStep(jobId, ImportStepType.OpenZip, "completed", 100);
             _jobManager.UpdateStep(jobId, ImportStepType.DetectFeatures, "in-progress", 0);
@@ -216,7 +215,7 @@ public class ProjectImportService
             // If requirements exist, wait for user input
             if (requirements.Any())
             {
-                Console.WriteLine($"[ImportJob {jobId}] Waiting for {requirements.Count} requirements");
+                _logger.LogInformation("Job {JobId}: waiting for {Count} requirements", jobId, requirements.Count);
                 foreach (var req in requirements)
                 {
                     _jobManager.AddRequirement(jobId, req);
@@ -227,7 +226,6 @@ public class ProjectImportService
             }
 
             // No requirements, continue with import
-            Console.WriteLine($"[ImportJob {jobId}] No requirements, continuing with import");
             await ContinueImportAsync(jobId, fileName, fileData, new ImportContext
             {
                 JobId = jobId,
@@ -238,15 +236,13 @@ public class ProjectImportService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ImportJob {jobId}] ERROR in ExecuteImportAsync: {ex.Message}");
-            Console.WriteLine($"[ImportJob {jobId}] StackTrace: {ex.StackTrace}");
+            _logger.LogError(ex, "Job {JobId}: ExecuteImportAsync failed", jobId);
             _jobManager.FailJob(jobId, ex.Message);
         }
     }
 
     private async Task ContinueImportAsync(Guid jobId, string fileName, byte[] fileData, ImportContext context)
     {
-        // Create a new scope for the background task
         using var scope = _serviceScopeFactory.CreateScope();
         var projectRepository = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
         var parserService = scope.ServiceProvider.GetRequiredService<IKnxProjectParserService>();
@@ -254,14 +250,12 @@ public class ProjectImportService
 
         try
         {
-            Console.WriteLine($"[ImportJob {jobId}] ContinueImportAsync started");
+            _logger.LogInformation("Job {JobId}: ContinueImportAsync started", jobId);
             _jobManager.UpdateStatus(jobId, ImportStatus.Importing);
             _jobManager.UpdateStep(jobId, ImportStepType.CheckPassword, "in-progress", 0);
 
-            // Progress callback
             context.ProgressCallback = (stepName, progress) =>
             {
-                Console.WriteLine($"[ImportJob {jobId}] Progress: {stepName} = {progress}%");
                 if (Enum.TryParse<ImportStepType>(stepName, out var stepType))
                 {
                     var status = progress >= 100 ? "completed" : "in-progress";
@@ -269,8 +263,6 @@ public class ProjectImportService
                 }
             };
 
-            // Create project entry
-            Console.WriteLine($"[ImportJob {jobId}] Creating project entry in database");
             var project = new Project
             {
                 Name = Path.GetFileNameWithoutExtension(fileName),
@@ -280,17 +272,14 @@ public class ProjectImportService
             };
 
             await projectRepository.AddAsync(project);
-            Console.WriteLine($"[ImportJob {jobId}] Project created with ID: {project.Id}");
 
-            // Parse the project
-            Console.WriteLine($"[ImportJob {jobId}] Starting parser...");
             using var fileStream = new MemoryStream(fileData);
             var (groupAddresses, devices) = await parserService.ParseProjectFileAsync(fileStream, project.Id, context);
-            Console.WriteLine($"[ImportJob {jobId}] Parser completed: {groupAddresses.Count} addresses, {devices.Count} devices");
+            _logger.LogInformation("Job {JobId}: parser produced {Addresses} addresses, {Devices} devices",
+                jobId, groupAddresses.Count, devices.Count);
 
             _jobManager.UpdateStep(jobId, ImportStepType.Save, "in-progress", 0);
 
-            // Save parsed data
             project.GroupAddresses = groupAddresses;
             project.Devices = devices;
 
@@ -299,7 +288,7 @@ public class ProjectImportService
             if (existingActive == null)
             {
                 project.IsActive = true;
-                Console.WriteLine($"[ImportJob {jobId}] No active project yet, auto-activating {project.Id}");
+                _logger.LogInformation("Job {JobId}: no active project, auto-activating {ProjectId}", jobId, project.Id);
             }
 
             await projectRepository.UpdateAsync(project);
@@ -307,7 +296,6 @@ public class ProjectImportService
             _jobManager.UpdateStep(jobId, ImportStepType.Save, "completed", 100);
             _jobManager.UpdateStep(jobId, ImportStepType.RefreshCache, "in-progress", 0);
 
-            // Refresh cache if project is active
             if (project.IsActive)
             {
                 await cacheService.RefreshAsync();
@@ -315,7 +303,6 @@ public class ProjectImportService
 
             _jobManager.UpdateStep(jobId, ImportStepType.RefreshCache, "completed", 100);
 
-            // Complete job with detected features
             var etsVersion = context.DetectedFeatures?.EtsVersion ?? EtsVersion.Unknown;
             var hasKnxSecure = context.DetectedFeatures?.HasKnxSecureDevices ?? false;
 
@@ -331,8 +318,7 @@ public class ProjectImportService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ImportJob {jobId}] ERROR in ContinueImportAsync: {ex.Message}");
-            Console.WriteLine($"[ImportJob {jobId}] StackTrace: {ex.StackTrace}");
+            _logger.LogError(ex, "Job {JobId}: ContinueImportAsync failed", jobId);
             _jobManager.FailJob(jobId, ex.Message);
         }
     }
