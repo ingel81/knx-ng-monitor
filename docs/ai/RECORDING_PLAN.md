@@ -74,6 +74,18 @@ Spalte; die Tie-Group gleicher Timestamps wird per `Id` klein nachsortiert. **Ke
 neuer Index** in v1 (2-Index-Ziel bleibt). Optionales Tuning später:
 dedizierter `(Timestamp, Id)`-Index, falls Bursts groß werden.
 
+> **Review-Korrektur (Begründung der Index-Reduktion):** Die ursprüngliche
+> Rechtfertigung „weniger Insert-Amplifikation" trägt **nicht** — eine KNX-TP1-Linie
+> macht physikalisch ~max. 50 Telegramme/s (real eher einige/s), Insert-Index-Pflege
+> ist bei diesen Raten irrelevant (siehe §10/R5). Die Reduktion 5→2 ist daher eine
+> **Lese-/Platz-Entscheidung** („keine Indizes pflegen, die niemand abfragt + kleinere
+> DB"), kein Durchsatz-Gewinn. Abwägung: dropt man Standalone-`DestinationAddress`/
+> `MessageType`, werden History-Filter auf *nur* Adresse oder *nur* Typ **ohne**
+> Zeitfenster zum Table-Scan. Wenn solche Filter häufig werden, stattdessen
+> `(DestinationAddress, Timestamp)` als Composite behalten (statt `(Timestamp, Dest)`)
+> — das opfert aber den reinen Zeitbereichs-Scan. Default bleibt 5→2; bewusst als
+> Lese-Trade-off treffen.
+
 **3.3 Source-Filter** ist unterstützt (`TelegramQueryRequest.Source`) → Frontend verdrahtet ihn.
 
 **3.4 Cursor replayable.** Cursor = `base64url("{Timestamp:O}|{Id}")`, deterministisch.
@@ -114,10 +126,19 @@ immer mit Zeitbereich kombiniert wird (→ Composite greift). Dokumentiert.
   `GetMaxIdAsync()`, `DeleteOlderThanIdChunkAsync(thresholdId, chunkSize)`
   (Subquery-Form, da SQLite-DELETE kein `LIMIT`), `CheckpointWalAsync()`.
 - `TelegramPersistenceService.cs` — ctor-Dep `IRecordingSettingsProvider`; nach
-  erfolgreichem Batch-Insert Retention auf **demselben Scope** triggern, wenn
-  `batches>=M || elapsed>=10s`: `RunRetentionAsync` (maxId holen, threshold=maxId−N,
-  gechunkt löschen `ChunkSize=5_000`, `MaxChunksPerPass` cappen, danach
-  `CheckpointWalAsync`). try/catch wie der Insert-Pfad, damit Retention nie den Worker killt.
+  erfolgreichem Batch-Insert Retention triggern, wenn `batches>=M || elapsed>=10s`:
+  `RunRetentionAsync` (maxId holen, threshold=maxId−N, gechunkt löschen
+  `ChunkSize=5_000`, `MaxChunksPerPass` cappen, danach `CheckpointWalAsync`). try/catch
+  wie der Insert-Pfad, damit Retention nie den Worker killt.
+  > **Review-Präzisierung (R1):** „derselbe Scope" heißt **exakt innerhalb** des
+  > bestehenden `using var scope`-Blocks (`TelegramPersistenceService.cs:77-80`),
+  > direkt nach `AddRangeAsync`, auf demselben `DbContext`/Connection. Ein **eigener**
+  > Scope = zweiter SQLite-Connection = genau die Lock-Konkurrenz, die wir vermeiden.
+  > **R2:** Der Worker blockiert bei Stille in `ReadAllAsync` (`:65`), d.h. Retention/
+  > Checkpoint laufen nur bei **aktivem Verkehr** (geprüft an Batch-Grenzen). Bei Idle
+  > kein Wachstum → kein Trim nötig; einzige Folge: ein gesenktes `HotBufferMaxCount`
+  > greift erst, wenn wieder Telegramme fließen. `MaxChunksPerPass` ist wichtig, damit
+  > ein großer Trim (z.B. nach Senken des Limits) den Channel-Drain nicht aushungert.
 - `Program.cs` — `options.AddInterceptors(new SqliteWalConnectionInterceptor())`;
   `AddScoped<IRecordingSettingsRepository,…>`, `AddSingleton<IRecordingSettingsProvider,…>`;
   im Startup-Scope nach `cacheService.InitializeAsync()` →
@@ -141,8 +162,8 @@ Anwendung automatisch beim Start via `DbInitializer.MigrateAsync`.
   `ArchiveDayDto` (`Date,FileName,SizeBytes,Compressed`).
 - `KnxMonitor.Infrastructure/Services/TelegramArchiveService.cs` — Hosted Singleton,
   Tee auf `IKnxConnectionService.TelegramReceived` (wie `TelegramBroadcastService`).
-  Hot-Path: `ArchiveEnabled`-Gate (Snapshot) → in internen Bound-Channel (drop-oldest)
-  enqueuen, nie auf dem Bus-Thread schreiben. Writer-Loop: `StreamWriter` über
+  Hot-Path: `ArchiveEnabled`-Gate (Snapshot) → in internen Bound-Channel enqueuen,
+  nie auf dem Bus-Thread schreiben. Writer-Loop: `StreamWriter` über
   aktuelle Tagesdatei `data/archive/YYYY-MM-DD.ndjson` (`FileMode.Append`,
   `FileShare.Read`); Zeile = `{"t":ISO-O,"s":src,"d":dst,"mt":enum,"r":hex,"v":decoded}`;
   Flush ~5 s (`FlushToDisk`). Mitternachts-Rollover: alten Tag gzippen → `.gz`,
@@ -150,6 +171,19 @@ Anwendung automatisch beim Start via `DbInitializer.MigrateAsync`.
   (Datum<heute) nachträglich gzippen. Archiv-Retention: bei Rollover/Start Dateien
   älter als `ArchiveRetentionDays` löschen (null=behalten). Clock-Seam (`Func<DateTime>`)
   für Tests. `StopAsync`: unsubscribe, drain, final flush — aktuellen Tag NICHT gzippen.
+  > **Review-Präzisierungen:**
+  > **R3 (Handler-Isolation):** Archiv und Broadcast hängen am selben Multicast-Event
+  > (`KnxConnectionService.cs:178`). Wirft der **synchrone** Teil eines Handlers vor dem
+  > ersten `await`, bricht die Invocation ab und nachfolgende Handler laufen nicht. Der
+  > Archiv-Hot-Path (`ArchiveEnabled`-Check + Enqueue) **muss** synchron exception-proof
+  > sein (eigenes try/catch), sonst kann er den Live-Broadcast killen.
+  > **R4 (Overflow-Policy):** Der interne Channel ist **nicht** wie der Hot-Tier
+  > drop-oldest „egal" — Vollständigkeit ist der Zweck des Archivs. Großzügig
+  > dimensionieren + **Drop-Zähler/Log** (Lücken sichtbar machen), **nicht** `Wait`
+  > (würde den Bus-Thread blocken). Positiv: weil das Archiv am *Event* teet (nicht an
+  > der SQLite-Queue), unterliegt es **nicht** dem drop-oldest des Hot-Tiers → kann
+  > *vollständiger* sein als die DB. Bei KNX-Raten (zig/s) hält der gzip-Append-Writer
+  > ohnehin mühelos mit; echte Drops nur bei länger stehender Platte.
 - `KnxMonitor.Api/Controllers/TelegramsController.cs` und `RecordingController.cs`.
 
 ### Geänderte Dateien
@@ -190,7 +224,13 @@ AG-Grid ist **Community** (`ag-grid-community@34`) → **Infinite Row Model**
   gegen `${apiUrl}/recording/settings`.
 - `features/history/history.component.{ts,html,scss}` — Grid wie Live-View, aber
   `rowModelType:'infinite'` + `IDatasource` (bridged: `blockIndex→cursor`-Map,
-  Block 0 ohne Cursor, `successCallback(rows, nextCursor==null? total : -1)`).
+  Block 0 ohne Cursor, `successCallback(rows, lastRow)`).
+  > **Review-Korrektur (R6):** `lastRow` **nicht** aus `/count` speisen. Solange
+  > `nextCursor != null` → `lastRow = -1` (unbekannt). Erst wenn das Ende erreicht ist
+  > (`nextCursor == null`) → `lastRow = bisher geladene Zeilen`. Grund: gibt man AG-Grid
+  > die exakte Gesamtzahl, erlaubt die Scrollbar einen Sprung zu einem Block, für den wir
+  > **keinen** Cursor haben — Keyset ist forward-only. `/count` daher nur als **Anzeige-
+  > Zahl** im Header nutzen, nicht als bekannte Zeilenzahl des Grids.
   Floating-Filter aus (Server filtert). Filter-Toolbar: `from`/`to`
   (`datetime-local` → `toISOString()`), `address`, `source`, `type` (`mat-select`),
   Apply/Reset (→ Datasource neu, Cursor-Map reset). CSV-Export via Blob-Download-Helper.
@@ -249,3 +289,50 @@ Es existiert nur `KnxMonitor.ProjectParser.Tests`. **Neues Projekt
 - Großer CSV-Export: Browser puffert Blob im RAM (Angular kann nicht to-disk streamen) — v1-Limitation.
 - `datetime-local` ist lokale Zeit → vor dem Senden konsistent nach UTC/ISO wandeln.
 - `environment.development` wird appweit direkt importiert (latenter Prod-Config-Bug) — im Feature nicht mitfixen.
+
+## 10. Review-Befunde (gegen den realen Code verifiziert)
+
+Alle tragenden Annahmen wurden gegen die echten Dateien geprüft. Verdikt:
+**tragfähig, keine Show-Stopper.** Die Verfeinerungen R1–R6 sind oben inline an der
+jeweiligen Stelle eingearbeitet.
+
+### Verifiziert
+| Annahme | Beleg |
+|---|---|
+| Worker = Single-Writer, Scope **pro Batch** | `TelegramPersistenceService.cs:77` |
+| 5 Telegram-Indizes (4 explizit + FK `SetNull`) | `ApplicationDbContext.cs:110-118` |
+| Tee `TelegramReceived`, voll decodiert vor `Invoke` | `KnxConnectionService.cs:175-178` |
+| Broadcast-Service als Hosted-Vorlage | `TelegramBroadcastService.cs:32,43` |
+| SignalR-Payload = DTO-Vorlage, `value`=Hex-String | `TelegramBroadcastService.cs:60-72` ↔ `signalr.service.ts:7-19` |
+| AG-Grid **Community** 34.3, kein Enterprise | `frontend/package.json` |
+| Kein `OnConfiguring`/Interceptor; `AddDbContext`+SplitQuery | `Program.cs:40-49` |
+| Bestehende Repo-Methoden (OFFSET/Count/Range) | `ITelegramRepository.cs:8-13` |
+
+### R1–R6 (inline eingearbeitet)
+- **R1** Retention exakt im Batch-`using`-Block (§4) — sonst zweiter Connection.
+- **R2** Retention/Checkpoint nur bei aktivem Verkehr (§4) — Idle-Verhalten dokumentiert.
+- **R3** Archiv-Handler synchron exception-proof (§5) — sonst Bruch des Multicast-Broadcasts.
+- **R4** Archiv-Overflow: Drop-Zähler/Log statt stiller Verlust, kein `Wait` (§5).
+- **R5** siehe unten — KNX-Durchsatz entschärft Performance, verschiebt Index-Begründung (§3.2).
+- **R6** Infinite-Grid: `lastRow=-1` bis Ende, `/count` nur Anzeige (§6).
+
+### R5 — KNX-Physik als Rahmen
+Eine KNX-TP1-Linie macht physikalisch ~max. **50 Telegramme/s** (real eher einige/s im
+Mittel, bursty mit langen Idle-Phasen). Damit sind Delete-Speed, Archiv-Durchsatz und
+Insert-Index-Amplifikation **allesamt unkritisch**. Konsequenzen:
+- Die Index-Reduktion 5→2 ist eine Lese-/Platz-, **keine** Durchsatz-Entscheidung (§3.2).
+- Ring-Sizing ist eine Frage der **Aufbewahrungsdauer**, nicht des Durchsatzes:
+  1.000.000 Zeilen ≈ Tage–Wochen typischen Verkehrs (bei ~40/s Dauerlast ~7 h, real
+  meist viel länger). Wer „immer X Tage" will, nutzt das (unbegrenzte) Archiv.
+
+### Grüne Notizen (kein Handlungszwang)
+- SignalR sendet live `Id=0` (`:62`, Id erst nach Persist) — Bestandsverhalten;
+  History-DTO hat echte Ids, Modell-Reuse bleibt valide.
+- WAL erzeugt `-wal`/`-shm`-Sidecars → „eine DB-Datei" werden drei (Backup/Docker-Volume).
+  `synchronous=NORMAL`: sicher gegen App-Crash, kann bei Stromausfall die letzte Txn
+  verlieren — für einen Monitor akzeptabel.
+- WAL hilft zusätzlich dem Streaming-Export: gleichzeitiger Reader (Export) + Writer
+  (Worker) ohne Block.
+- SplitQuery ist global, aber `Include(GroupAddress)` ist eine Reference → JOIN (nicht
+  gesplittet); Export nutzt flache Projektion. Beides ok.
+- `dotnet ef`-Verfügbarkeit vor Umsetzung prüfen, sonst Migrationen handschreiben.
