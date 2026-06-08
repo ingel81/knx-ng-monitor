@@ -1,0 +1,98 @@
+<div class="history-container">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h2>History</h2>
+      @if (totalCount !== null) {
+        <span class="total-count" matTooltip="Telegrams matching the current filter">
+          <mat-icon>filter_list</mat-icon>
+          {{ totalCount | number }}
+        </span>
+      }
+    </div>
+    <div class="page-header-right">
+      <button mat-stroked-button (click)="exportCsv()" [disabled]="isExporting"
+              matTooltip="Export the full filtered range as CSV">
+        <mat-icon>{{ isExporting ? 'sync' : 'download' }}</mat-icon>
+        {{ isExporting ? 'Exporting...' : 'Export CSV' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <mat-form-field appearance="outline">
+      <mat-label>From</mat-label>
+      <input matInput type="datetime-local" [(ngModel)]="fromValue">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>To</mat-label>
+      <input matInput type="datetime-local" [(ngModel)]="toValue">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Destination</mat-label>
+      <input matInput [(ngModel)]="address" placeholder="1/2/3">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Source</mat-label>
+      <input matInput [(ngModel)]="source" placeholder="1.1.5">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Type</mat-label>
+      <mat-select [(ngModel)]="type">
+        <mat-option value="">All</mat-option>
+        <mat-option value="Write">Write</mat-option>
+        <mat-option value="Read">Read</mat-option>
+        <mat-option value="Response">Response</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <div class="filter-actions">
+      <button mat-raised-button color="primary" (click)="applyFilters()">
+        <mat-icon>search</mat-icon>
+        Apply
+      </button>
+      <button mat-stroked-button (click)="resetFilters()">
+        <mat-icon>clear</mat-icon>
+        Reset
+      </button>
+    </div>
+  </div>
+
+  <div class="grid-container">
+    <ag-grid-angular
+      class="ag-theme-material"
+      [gridOptions]="gridOptions"
+      [columnDefs]="columnDefs"
+      [defaultColDef]="defaultColDef">
+    </ag-grid-angular>
+  </div>
+
+  @if (archiveDays.length > 0) {
+    <mat-card class="archive-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>inventory_2</mat-icon>
+          Archive
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="archive-list">
+          @for (day of archiveDays; track day.fileName) {
+            <div class="archive-row">
+              <span class="archive-date">{{ day.date }}</span>
+              <span class="archive-size">{{ formatBytes(day.sizeBytes) }}</span>
+              <span class="archive-flag">{{ day.compressed ? 'gz' : 'live' }}</span>
+              <button mat-icon-button (click)="downloadArchiveDay(day)"
+                      matTooltip="Download archive day">
+                <mat-icon>download</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

@@ -7,8 +7,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { environment } from '../../../environments/environment.development';
+import { RecordingSettingsService } from '../../core/services/recording-settings.service';
+import { RecordingSettings } from '../../core/models/recording-settings.models';
 
 interface KnxConfiguration {
   id: number;
@@ -33,6 +36,7 @@ interface KnxSettings {
     MatInputModule,
     MatButtonModule,
     MatIconModule,
+    MatSlideToggleModule,
     MatSnackBarModule
   ],
   templateUrl: './settings.html',
@@ -41,6 +45,7 @@ interface KnxSettings {
 export class Settings implements OnInit {
   private http = inject(HttpClient);
   private snackBar = inject(MatSnackBar);
+  private recordingService = inject(RecordingSettingsService);
 
   knxConfig: KnxSettings = {
     ipAddress: '192.168.10.60',
@@ -51,8 +56,68 @@ export class Settings implements OnInit {
   isTesting = false;
   isSaving = false;
 
+  recording: RecordingSettings = {
+    hotBufferMaxCount: 1_000_000,
+    archiveEnabled: false,
+    archiveRetentionDays: null
+  };
+  isSavingRecording = false;
+
   ngOnInit() {
     this.loadSettings();
+    this.loadRecordingSettings();
+  }
+
+  async loadRecordingSettings() {
+    try {
+      const settings = await this.recordingService.getSettings().toPromise();
+      if (settings) {
+        this.recording = settings;
+      }
+    } catch (error) {
+      console.error('Failed to load recording settings:', error);
+    }
+  }
+
+  async saveRecordingSettings() {
+    if (!this.isRecordingFormValid()) {
+      return;
+    }
+    try {
+      this.isSavingRecording = true;
+      const updated = await this.recordingService.updateSettings(this.recording).toPromise();
+      if (updated) {
+        this.recording = updated;
+      }
+      this.snackBar.open('✓ Recording settings applied (live)', 'Close', {
+        duration: 3000,
+        horizontalPosition: 'end',
+        verticalPosition: 'top',
+        panelClass: ['success-snackbar']
+      });
+    } catch (error) {
+      console.error('Failed to save recording settings:', error);
+      this.snackBar.open('✗ Failed to save recording settings', 'Close', {
+        duration: 3000,
+        horizontalPosition: 'end',
+        verticalPosition: 'top',
+        panelClass: ['error-snackbar']
+      });
+    } finally {
+      this.isSavingRecording = false;
+    }
+  }
+
+  isRecordingFormValid(): boolean {
+    if (!this.recording.hotBufferMaxCount || this.recording.hotBufferMaxCount < 1) {
+      return false;
+    }
+    if (this.recording.archiveEnabled &&
+        this.recording.archiveRetentionDays !== null &&
+        this.recording.archiveRetentionDays < 1) {
+      return false;
+    }
+    return true;
   }
 
   async loadSettings() {
