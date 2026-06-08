@@ -239,9 +239,18 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.1.3 (latest)
+### v0.1.4 (latest)
+
+- **CI fix** — restrict the release job's `download-artifact` to `knx-ng-monitor-*`; the bumped `docker/build-push-action@v7` now uploads an extra `.dockerbuild` provenance artifact that broke the unfiltered download and aborted release creation on v0.1.3
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.1.4
+```
+
+### v0.1.3
 
 - **CI (docker actions)** — `docker/setup-buildx-action` and `docker/login-action` bumped from `@v3` → `@v4`, `docker/build-push-action` from `@v5` → `@v7`; finishes the Node 20 → Node 24 migration started in v0.1.2
+- ⚠ Release job failed mid-publish due to unrelated `download-artifact` incompatibility — fixed in v0.1.4. Docker image `ingel81/knx-ng-monitor:v0.1.3` was pushed and is usable; GitHub-Release page is empty for this tag.
 
 ```bash
 docker pull ingel81/knx-ng-monitor:v0.1.3
@@ -288,7 +297,7 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.1.3, CI fully past the Node 20 deprecation; hardened auth flow + container, batched telegram persistence (v0.1.1).
+**Current** — v0.1.4, CI fully past the Node 20 deprecation; hardened auth flow + container, batched telegram persistence (v0.1.1).
 **Next** — Telegram-time decryption using stored tool keys; communication objects, topology, locations.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.

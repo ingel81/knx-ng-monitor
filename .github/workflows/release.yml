@@ -161,6 +161,9 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           path: ./artifacts
+          # docker/build-push-action@v6+ uploads a .dockerbuild provenance artifact
+          # that download-artifact@v5 chokes on. We only want the release archives.
+          pattern: knx-ng-monitor-*
 
       - name: Extract version from tag
         id: version
