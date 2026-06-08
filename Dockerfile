@@ -72,6 +72,11 @@ ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
+# Single-file self-extracting bundle (IncludeNativeLibrariesForSelfExtract=true)
+# defaults its extraction cache to the user's HOME (/app), which is root-owned.
+# Point it at /tmp/.net instead so the non-root `app` user can write there.
+ENV DOTNET_BUNDLE_EXTRACT_BASE_DIR=/tmp/.net
+
 RUN chmod +x /app/KnxMonitor.Api
 
 USER app

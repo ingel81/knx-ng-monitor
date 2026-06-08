@@ -239,7 +239,15 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.1.4 (latest)
+### v0.1.5 (latest)
+
+- **Docker fix** — single-file bundle now extracts to `/tmp/.net` via `DOTNET_BUNDLE_EXTRACT_BASE_DIR`; the non-root `app` user introduced in v0.1.1 could not write to its `/app` home, so startup failed with `Default extraction directory [/app] either doesn't exist or is not accessible for read/write`. Affects every container started from `v0.1.1`–`v0.1.4`.
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.1.5
+```
+
+### v0.1.4
 
 - **CI fix** — restrict the release job's `download-artifact` to `knx-ng-monitor-*`; the bumped `docker/build-push-action@v7` now uploads an extra `.dockerbuild` provenance artifact that broke the unfiltered download and aborted release creation on v0.1.3
 
@@ -297,7 +305,7 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.1.4, CI fully past the Node 20 deprecation; hardened auth flow + container, batched telegram persistence (v0.1.1).
+**Current** — v0.1.5, Docker single-file bundle fixed for non-root container; hardened auth flow + container, batched telegram persistence (v0.1.1).
 **Next** — Telegram-time decryption using stored tool keys; communication objects, topology, locations.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.
