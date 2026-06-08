@@ -18,6 +18,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<KnxTelegram> KnxTelegrams => Set<KnxTelegram>();
     public DbSet<KnxConfiguration> KnxConfigurations => Set<KnxConfiguration>();
+    public DbSet<RecordingSettings> RecordingSettings => Set<RecordingSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,9 +108,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ValueDecoded).HasMaxLength(500);
             entity.Property(e => e.Priority).IsRequired();
 
-            entity.HasIndex(e => e.Timestamp);
-            entity.HasIndex(e => e.DestinationAddress);
-            entity.HasIndex(e => e.MessageType);
+            // Ring-buffer is count-based; only the indices the history/query path actually
+            // uses are kept (composite for time-range/keyset + the GA foreign key).
             entity.HasIndex(e => new { e.Timestamp, e.DestinationAddress });
 
             entity.HasOne(e => e.GroupAddress)
@@ -130,6 +130,16 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PhysicalAddress).IsRequired().HasMaxLength(20);
             entity.Property(e => e.IsActive).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+        });
+
+        // RecordingSettings entity configuration (single-row config)
+        modelBuilder.Entity<RecordingSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.HotBufferMaxCount).IsRequired();
+            entity.Property(e => e.ArchiveEnabled).IsRequired();
+            entity.Property(e => e.ArchiveRetentionDays);
             entity.Property(e => e.UpdatedAt).IsRequired();
         });
     }

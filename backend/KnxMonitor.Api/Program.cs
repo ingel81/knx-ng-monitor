@@ -46,6 +46,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
             // Use split queries for better performance when loading multiple collections
             sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
         });
+    // Enable WAL (+ synchronous=NORMAL) on every opened connection.
+    options.AddInterceptors(new SqliteWalConnectionInterceptor());
 });
 
 // JWT Settings
@@ -116,6 +118,10 @@ builder.Services.AddScoped<ITelegramRepository, TelegramRepository>();
 builder.Services.AddScoped<IGroupAddressRepository, GroupAddressRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IKnxConfigurationRepository, KnxConfigurationRepository>();
+builder.Services.AddScoped<IRecordingSettingsRepository, RecordingSettingsRepository>();
+
+// Live-applied recording settings (cached snapshot, single source of truth)
+builder.Services.AddSingleton<IRecordingSettingsProvider, RecordingSettingsProvider>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -155,6 +161,10 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramPersistenc
 
 builder.Services.AddHostedService<TelegramBroadcastService>();
 
+// Cold-tier archive: tees off the same telegram event, writes NDJSON+gzip day-files (opt-in).
+builder.Services.AddSingleton<TelegramArchiveService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramArchiveService>());
+
 // Import Services
 builder.Services.AddSingleton<IImportJobManager, ImportJobManager>();
 builder.Services.AddHostedService<ImportJobCleanupService>();
@@ -193,6 +203,10 @@ using (var scope = app.Services.CreateScope())
         // Initialize group address cache
         var cacheService = app.Services.GetRequiredService<IGroupAddressCacheService>();
         await cacheService.InitializeAsync();
+
+        // Warm the recording-settings snapshot before the persistence worker's first retention pass.
+        var recordingSettings = app.Services.GetRequiredService<IRecordingSettingsProvider>();
+        await recordingSettings.InitializeAsync();
     }
     catch (Exception ex)
     {

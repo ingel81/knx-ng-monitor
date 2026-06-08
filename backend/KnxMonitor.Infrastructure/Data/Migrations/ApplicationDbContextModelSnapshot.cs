@@ -171,13 +171,7 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DestinationAddress");
-
                     b.HasIndex("GroupAddressId");
-
-                    b.HasIndex("MessageType");
-
-                    b.HasIndex("Timestamp");
 
                     b.HasIndex("Timestamp", "DestinationAddress");
 
@@ -212,6 +206,29 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Projects");
+                });
+
+            modelBuilder.Entity("KnxMonitor.Core.Entities.RecordingSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("ArchiveEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ArchiveRetentionDays")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("HotBufferMaxCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RecordingSettings");
                 });
 
             modelBuilder.Entity("KnxMonitor.Core.Entities.RefreshToken", b =>
