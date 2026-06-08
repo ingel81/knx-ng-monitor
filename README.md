@@ -239,7 +239,21 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.1.0 (latest)
+### v0.1.1 (latest)
+
+- **SignalR + refresh-token hardening** — token factory reads from the auth service on every reconnect (no more stale-token loops after a refresh); concurrent 401s share a single refresh via `shareReplay` instead of triggering a refresh-storm that the backend's revoke-on-rotate then locked out
+- **Atomic refresh-token rotation** — old token is revoked and the new one inserted in a single `SaveChanges`, so a crash mid-rotation can no longer lock the user out
+- **Telegram persistence pipeline** — bounded `Channel<KnxTelegram>` (10 k, drop-oldest) drained by a `BackgroundService` with batched 100-row inserts; bus throughput is no longer coupled to DB latency, and a stalled SQLite cannot blow memory
+- **Import-job cleanup** — terminal jobs older than 1 h are swept every 5 min; `RemoveJob` zeros uploaded buffers and drops password references before evicting
+- **`/healthz`** — anonymous liveness endpoint for container probes
+- **Container hardening** — Dockerfile runs as non-root `app` (uid 1000) with `--chown` on COPY and a `wget`-based `HEALTHCHECK`; `release.yml` jobs locked to `contents: read`
+- **Misc** — `KnxConnectionService` is `IAsyncDisposable` (no more sync `Dispose().Wait()`), `GroupValue.Value` instead of reflecting an internal field, CORS only registered in `Development`, logout stops SignalR before clearing tokens, `Console.WriteLine` removed from `ProjectImportService`
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.1.1
+```
+
+### v0.1.0
 
 - Standalone `KnxMonitor.ProjectParser` library — ETS 4 / 5 / 6 loaders behind a clean interface
 - ETS 6 password-protected archives (PBKDF2-HMAC-SHA256 over UTF-16LE → Base64 + AES ZIP)
@@ -258,7 +272,7 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.1.0, KNX Secure password + keyring end-to-end.
+**Current** — v0.1.1, hardened auth flow + container, batched telegram persistence.
 **Next** — Telegram-time decryption using stored tool keys; communication objects, topology, locations.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.
