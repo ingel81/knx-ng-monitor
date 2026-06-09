@@ -256,10 +256,17 @@ mangels SDK in der Cloud nicht kompiliert → genau deshalb dieses Handover (§4
 
 ## 9. Session lokal fortsetzen
 
+**Variante A — diese Web-Session nach lokal holen (`--teleport`).** Holt die komplette
+Konversations-Historie dieser Cloud-Session ins lokale CLI. `--resume`/`-c` funktioniert dafür
+**nicht** (liest nur lokale Transkripte aus `~/.claude/`); Web-Sessions brauchen `--teleport`:
 ```bash
-git fetch origin claude/last-commit-review-c5s4jg
-git checkout claude/last-commit-review-c5s4jg
+git clone https://github.com/ingel81/knx-ng-monitor.git   # oder bestehender Klon
 cd knx-ng-monitor
-claude --resume session_01VaNFeMceXNbh4KXeoztn9v   # oder: claude --resume und Session wählen
+git checkout claude/last-commit-review-c5s4jg              # Branch ist gepusht
+claude --teleport session_01VaNFeMceXNbh4KXeoztn9v          # oder: claude --teleport (Liste)
 ```
-Dann den Auftrag aus §0 geben (oder einfach „arbeite das Handover-Doc ab").
+Voraussetzungen: selber Claude.ai-User, selbes Repo-Checkout, Branch gepusht (erledigt), keine
+uncommitteten Änderungen. Hinweis: nur einbahnig (Web→lokal); zurück geht nicht.
+
+**Variante B — frische lokale Session.** Ohne Teleport: einfach `claude` im Repo starten und
+„arbeite `docs/ai/RECORDING_HANDOVER.md` ab" sagen. Plan + Handover liefern den vollen Kontext.
