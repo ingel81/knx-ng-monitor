@@ -14,7 +14,7 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 - **Two-stage import wizard** — re-detects KNX Secure after the project password is provided and asks for the optional keyring
 - **Live view UI** — AG-Grid with virtual scrolling, color-coding (Read / Write / Response), pause, auto-scroll, free-text filter
 - **JWT auth** — access tokens (15 min) + refresh tokens (7 days), JWT secret auto-generated on first start
-- **Persistent history** — embedded SQLite, no extra container needed
+- **Data recording** — two-tier, fully self-contained: count-based SQLite hot-tier ring buffer (bounded size) plus an opt-in NDJSON+gzip long-term archive; `/history` view with keyset-paginated query API and server-streamed CSV export
 - **Single-port deployment** — backend serves the Angular frontend in production
 
 ## Tech Stack
@@ -239,7 +239,19 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.1.5 (latest)
+### v0.2.0 (latest)
+
+- **Data recording (two-tier)** — telegrams now persist into a count-based SQLite **hot-tier ring buffer** (default 1,000,000) trimmed in-worker (single SQLite writer) with **WAL** enabled; bounded, constant DB size instead of unbounded growth
+- **Long-term archive** — opt-in **NDJSON + gzip** daily files under `data/archive/` (`YYYY-MM-DD.ndjson`, gzipped at day rollover, startup self-heal, optional retention); captures every telegram independently of the ring buffer
+- **History view** — new `/history` page (AG-Grid infinite scroll) backed by a **keyset-paginated** query API (`/api/telegrams`, `/count`, server-streamed `/export?format=csv`) plus archive day list/download
+- **Recording settings** — configure ring-buffer size, archive on/off and retention from the Settings page, applied live without restart (`/api/recording/settings`)
+- **Schema** — telegram indices reduced 5 → 2; new `RecordingSettings` table (migration `AddRecordingFeature`)
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.2.0
+```
+
+### v0.1.5
 
 - **Docker fix** — single-file bundle now extracts to `/tmp/.net` via `DOTNET_BUNDLE_EXTRACT_BASE_DIR`; the non-root `app` user introduced in v0.1.1 could not write to its `/app` home, so startup failed with `Default extraction directory [/app] either doesn't exist or is not accessible for read/write`. Affects every container started from `v0.1.1`–`v0.1.4`.
 
@@ -305,8 +317,8 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.1.5, Docker single-file bundle fixed for non-root container; hardened auth flow + container, batched telegram persistence (v0.1.1).
-**Next** — Telegram-time decryption using stored tool keys; communication objects, topology, locations.
+**Current** — v0.2.0, two-tier data recording (SQLite hot-tier ring buffer + opt-in NDJSON/gzip long-term archive), history view with keyset-paginated query API + server-streamed CSV export, recording settings with live-apply.
+**Next** — Querying across archive files; telegram-time decryption using stored tool keys; communication objects, topology, locations.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.
 
