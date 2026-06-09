@@ -1,0 +1,135 @@
+/* ============================================================================
+   KNX-NG-Monitor — Design Tokens  ("Instrument" direction)
+   Light, individual petrol/paper palette. Not Material-default.
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ---- Surfaces (warm cool-paper, not pure white app bg) ---- */
+  --paper:        #F0F1ED;   /* app background */
+  --paper-sunk:   #E8EAE4;   /* recessed wells, table head zone */
+  --surface:      #FFFFFF;   /* cards, grid rows */
+  --surface-2:    #FAFAF7;   /* zebra / subtle fill */
+  --surface-3:    #F4F5F1;   /* hover, inactive chip */
+
+  /* ---- Ink (charcoal with a faint petrol undertone) ---- */
+  --ink:          #16201D;   /* primary text */
+  --ink-2:        #51605B;   /* secondary */
+  --ink-3:        #8A958F;   /* muted / placeholders */
+  --ink-on-dark:  #EAF0EC;   /* text on dark/petrol */
+
+  /* ---- Borders / lines ---- */
+  --line:         #E2E5DE;   /* hairlines, row dividers */
+  --line-2:       #D2D6CD;   /* stronger separators */
+  --line-strong:  #B9BFB5;   /* input borders */
+
+  /* ---- Brand: deep petrol / teal ---- */
+  --teal-50:   #ECF5F3;
+  --teal-100:  #D2EAE5;
+  --teal-200:  #A9D6CE;
+  --teal-500:  #15897E;
+  --teal-600:  #117A70;
+  --teal-700:  #0F766E;   /* PRIMARY brand */
+  --teal-800:  #0B574F;
+  --teal-900:  #093F39;
+
+  --brand:        var(--teal-700);
+  --brand-hover:  var(--teal-800);
+  --brand-tint:   var(--teal-50);
+  --brand-tint-2: var(--teal-100);
+
+  /* ---- Header surface (deep petrol, not the old blue gradient) ---- */
+  --header-bg:    #0C2B28;
+  --header-bg-2:  #0F3A35;
+  --header-ink:   #DCE7E3;
+  --header-ink-2: #8FAAA3;
+
+  /* ---- Live accent (a brighter signal teal for the "live" pulse) ---- */
+  --live:         #18A89A;
+  --live-glow:    rgba(24, 168, 154, 0.30);
+
+  /* ---- Semantic message-type colors (disciplined, dot+label) ---- */
+  --write:        #2F7A43;   --write-tint:   #EAF3EC;
+  --read:         #2563A6;   --read-tint:    #E9F0F8;
+  --response:     #B26B07;   --response-tint:#FBF1E2;
+  --groupread:    #6B5BB0;   --groupread-tint:#EFEDF8;
+
+  /* ---- Status ---- */
+  --ok:           #2F7A43;   --ok-tint:   #EAF3EC;
+  --warn:         #B26B07;   --warn-tint: #FBF1E2;
+  --err:          #BC3B2C;   --err-tint:  #FBECE9;
+
+  /* ---- Decoded value semantics ---- */
+  --val-on:       #2F7A43;
+  --val-off:      #97A09B;
+  --val-num:      #16201D;
+  --val-text:     #0F766E;
+
+  /* ---- Typography ---- */
+  --font-ui:   'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --fs-2xs: 0.6875rem;  /* 11 */
+  --fs-xs:  0.75rem;    /* 12 */
+  --fs-sm:  0.8125rem;  /* 13 */
+  --fs-md:  0.875rem;   /* 14 */
+  --fs-base:0.9375rem;  /* 15 */
+  --fs-lg:  1.0625rem;  /* 17 */
+  --fs-xl:  1.3125rem;  /* 21 */
+  --fs-2xl: 1.75rem;    /* 28 */
+  --fs-3xl: 2.5rem;     /* 40 */
+
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semi:   600;
+  --fw-bold:   700;
+
+  /* ---- Spacing (4-based) ---- */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+
+  /* ---- Radius ---- */
+  --r-xs: 3px; --r-sm: 5px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-full: 999px;
+
+  /* ---- Elevation (soft, low-spread) ---- */
+  --sh-1: 0 1px 2px rgba(16,32,29,0.06), 0 1px 1px rgba(16,32,29,0.04);
+  --sh-2: 0 2px 6px rgba(16,32,29,0.08), 0 1px 2px rgba(16,32,29,0.05);
+  --sh-3: 0 8px 24px rgba(16,32,29,0.12), 0 2px 6px rgba(16,32,29,0.06);
+  --sh-pop: 0 12px 40px rgba(9,40,36,0.22);
+
+  /* ---- Motion ---- */
+  --t-fast: 0.12s ease;
+  --t-base: 0.2s ease;
+
+  /* ---- Grid metrics ---- */
+  --row-h-compact: 36px;
+  --row-h-cozy:    48px;
+  --row-flash:     #D2EAE5;
+}
+
+/* ---------- base resets used by both deliverables ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+.knx-body {
+  margin: 0;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: var(--fs-base);
+  line-height: 1.5;
+}
+
+/* monospace helper for technical data */
+.mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1; }
+
+/* custom scrollbar — light, slim */
+.knx-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.knx-scroll::-webkit-scrollbar-track { background: transparent; }
+.knx-scroll::-webkit-scrollbar-thumb {
+  background: var(--line-2); border-radius: var(--r-full);
+  border: 2px solid transparent; background-clip: padding-box;
+}
+.knx-scroll::-webkit-scrollbar-thumb:hover { background: var(--line-strong); }

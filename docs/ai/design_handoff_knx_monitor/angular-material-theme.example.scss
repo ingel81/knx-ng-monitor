@@ -1,0 +1,113 @@
+// ============================================================================
+// KNX-NG-Monitor — Angular Material Theme auf die Design-Tokens mappen
+// Beispiel/Vorlage. An eure Angular-Material-Version anpassen (M3, v17+).
+//
+// Strategie: Material bleibt, wird aber auf das "Instrument"-Token-Set
+// gemappt. Light ist Default; Console-Dark als .theme-dark-Scope.
+// Eigene Komponenten (Grid, Chips, Toolbar, …) nutzen direkt var(--token).
+// ============================================================================
+
+@use '@angular/material' as mat;
+@use 'tokens' as *;          // _tokens.scss aus diesem Paket
+@include mat.core();
+
+// ----------------------------------------------------------------------------
+// Eine Petrol/Teal-Palette für Material (statt mat.$blue-palette).
+// Hinweis: Idealerweise eine echte M3-Palette generieren
+// (https://material-foundation.github.io/material-theme-builder/) mit
+// Primär = #0F766E. Unten eine pragmatische Definition mit Kontrast-Map.
+// ----------------------------------------------------------------------------
+$knx-petrol: (
+  50:  #ECF5F3, 100: #D2EAE5, 200: #A9D6CE, 300: #7BBDB2, 400: #3DA293,
+  500: #15897E, 600: #117A70, 700: #0F766E, 800: #0B574F, 900: #093F39,
+  contrast: (
+    50: #16201D, 100: #16201D, 200: #16201D, 300: #16201D, 400: #FFFFFF,
+    500: #FFFFFF, 600: #FFFFFF, 700: #FFFFFF, 800: #FFFFFF, 900: #FFFFFF,
+  )
+);
+
+// ---- M3-Theme (Angular 17+) ------------------------------------------------
+$knx-light: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: $knx-petrol,
+  ),
+  typography: (
+    brand-family: 'IBM Plex Sans, sans-serif',
+    plain-family: 'IBM Plex Sans, sans-serif',
+  ),
+  density: ( scale: -1 ),   // etwas kompakter, passt zu "Dicht"-Default
+));
+
+$knx-dark: mat.define-theme((
+  color: (
+    theme-type: dark,
+    primary: $knx-petrol,
+  ),
+));
+
+// Light als Default auf html/body
+html {
+  @include mat.all-component-themes($knx-light);
+  color-scheme: light;
+}
+
+// Console-Dark, wenn .theme-dark am Root sitzt
+.theme-dark {
+  @include mat.all-component-colors($knx-dark);
+  color-scheme: dark;
+}
+
+// ----------------------------------------------------------------------------
+// Globale Basis (ersetzt Roboto durch IBM Plex; nutzt Tokens)
+// Fonts via @fontsource/ibm-plex-sans + @fontsource/ibm-plex-mono importieren.
+// ----------------------------------------------------------------------------
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }   // bestehende No-Scroll-Regel
+body {
+  font-family: var(--font-ui);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--fs-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Technische Daten in Monospace mit Tabellenziffern
+.mono { font-family: var(--font-mono); font-feature-settings: "tnum" 1; }
+
+// ----------------------------------------------------------------------------
+// Beispiel: einzelne Material-Komponenten an Tokens angleichen
+// (nur Anhaltspunkte — je nach Bedarf erweitern)
+// ----------------------------------------------------------------------------
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-flat-button.mat-primary {
+  --mdc-filled-button-container-color: var(--brand);
+  --mdc-filled-button-label-text-color: #fff;
+}
+
+.mat-mdc-form-field {
+  --mdc-outlined-text-field-focus-outline-color: var(--brand);
+  --mdc-outlined-text-field-hover-outline-color: var(--ink-3);
+  font-family: var(--font-ui);
+}
+
+// AG-Grid: Theme-Variablen an Tokens hängen (ag-theme-* override)
+.ag-theme-quartz, .ag-theme-alpine {
+  --ag-background-color: var(--surface);
+  --ag-odd-row-background-color: var(--surface-2);
+  --ag-header-background-color: var(--paper-sunk);
+  --ag-border-color: var(--line);
+  --ag-row-hover-color: var(--brand-tint);
+  --ag-foreground-color: var(--ink);
+  --ag-header-foreground-color: var(--ink-2);
+  --ag-font-family: var(--font-ui);
+  --ag-row-height: 36px;        // = --row-h-compact
+  --ag-header-height: 40px;
+}
+
+// Toast/Snackbar-Status (analog zum Bestand, aber Token-basiert)
+.toast-success .mdc-snackbar__surface { background: var(--ok) !important; }
+.toast-error   .mdc-snackbar__surface { background: var(--err) !important; }
+.toast-warning .mdc-snackbar__surface { background: var(--warn) !important; }
+.toast-info    .mdc-snackbar__surface { background: var(--brand) !important; }

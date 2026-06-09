@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KNX-NG-Monitor — Designsystem</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="doc.css">
+</head>
+<body class="knx-body">
+<div class="doc">
+
+  <!-- ============================ SIDEBAR ============================ -->
+  <aside class="doc-side knx-scroll">
+    <div class="doc-brand">
+      <span class="wm"><span class="k">KNX</span><span class="x">·NG</span></span>
+    </div>
+    <div class="doc-tag">Designsystem · v1.0</div>
+    <nav class="doc-nav" id="docNav">
+      <a href="#intro" class="active">Übersicht</a>
+      <a href="#principles">Prinzipien</a>
+      <a href="#directions">Stilrichtungen</a>
+      <div class="grp">Foundations</div>
+      <a href="#color">Farbe</a>
+      <a href="#type">Typografie</a>
+      <a href="#space">Raster &amp; Form</a>
+      <a href="#icons">Icons</a>
+      <div class="grp">Komponenten</div>
+      <a href="#buttons">Buttons &amp; Controls</a>
+      <a href="#message">Nachrichtentypen</a>
+      <a href="#grid">Das Grid</a>
+      <a href="#filter">Suche &amp; Filter</a>
+      <div class="grp">System</div>
+      <a href="#responsive">Responsive</a>
+      <a href="#roadmap">Masterfahrplan</a>
+      <a href="#proto">Prototyp →</a>
+    </nav>
+  </aside>
+
+  <!-- ============================ MAIN ============================ -->
+  <main class="doc-main">
+
+    <!-- INTRO / HERO -->
+    <section id="intro" class="sec">
+      <div class="hero">
+        <p class="eyebrow">KNX-NG-Monitor</p>
+        <h1>Ein Instrument,<br>kein Dashboard. <span class="accent">Vereinheitlicht.</span></h1>
+        <p class="lede">Ein durchgängiges Designsystem für den Live- und History-Bus-Monitor — gebaut für
+          Präzision am Schreibtisch und für den Daumen unterwegs. Privat verständlich, professionell belastbar.</p>
+        <div class="meta-row">
+          <span class="knx-badge"><span class="dot" style="background:var(--live)"></span> Light · individuell</span>
+          <span class="knx-badge">IBM Plex Sans + Mono</span>
+          <span class="knx-badge">Petrol / Paper</span>
+          <span class="knx-badge">Ein Grid, zwei Seiten</span>
+          <span class="knx-badge">Desktop · Tablet · Mobil</span>
+        </div>
+      </div>
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <p><strong>Ausgangslage:</strong> Heute widersprechen sich die beiden Seiten — Live View nutzt
+          Inline-Spaltenfilter, History eine Filterleiste; der Code definiert ein dunkles Theme, die Oberfläche
+          ist hell. Dieses System löst das auf: <strong>eine Grid-Komponente, eine Filtersprache, ein Look</strong>.</p>
+      </div>
+    </section>
+
+    <!-- PRINCIPLES -->
+    <section id="principles" class="sec">
+      <p class="eyebrow">Haltung</p>
+      <h2>Vier Prinzipien</h2>
+      <p class="lede">Sie entscheiden jede Detailfrage, wenn das System wächst.</p>
+      <div class="principles">
+        <div class="principle">
+          <span class="num">01</span>
+          <h4>Daten zuerst</h4>
+          <p>Die Telegramme sind der Held. Chrome tritt zurück: ruhige Flächen, Hairlines statt Kästen,
+             Farbe nur dort, wo sie Bedeutung trägt.</p>
+        </div>
+        <div class="principle">
+          <span class="num">02</span>
+          <h4>Lesbar wie ein Messgerät</h4>
+          <p>Adressen, DPT und Rohwerte stehen in Monospace mit Tabellenziffern — jede Spalte fluchtet,
+             Werte springen nicht.</p>
+        </div>
+        <div class="principle">
+          <span class="num">03</span>
+          <h4>Eine Sprache, jedes Gerät</h4>
+          <p>Dieselben Bausteine skalieren von der großen Tabelle zur Karten­ansicht. Kein zweites,
+             abgespecktes Mobil-UI.</p>
+        </div>
+        <div class="principle">
+          <span class="num">04</span>
+          <h4>Suchen schlägt scrollen</h4>
+          <p>Bei 14.000 Zeilen zählt das Finden. Globale Suche, Quick-Filter und Zeitbereich sind
+             immer einen Griff entfernt.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STYLE DIRECTIONS -->
+    <section id="directions" class="sec">
+      <p class="eyebrow">Zur Auswahl</p>
+      <h2>Drei Stilrichtungen</h2>
+      <p class="lede">Dieselbe Struktur, drei Temperaturen. Der Prototyp ist in „Instrument" gebaut —
+        die anderen zeigen, wohin wir drehen können.</p>
+      <div class="dirs">
+        <!-- A -->
+        <div class="dir reco">
+          <div class="prev" style="background:var(--paper)">
+            <div style="height:34px;background:var(--header-bg);display:flex;align-items:center;padding:0 12px;gap:6px">
+              <span style="color:var(--live);font-weight:700;font-size:12px">KNX</span><span style="color:#fff;font-size:12px;font-weight:700">·NG</span>
+              <span style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--live)"></span>
+            </div>
+            <div style="padding:8px 12px;font-family:var(--font-mono);font-size:10px;line-height:1.9;color:var(--ink-2)">
+              <div>14:56:02 &nbsp; 10/4/46 &nbsp; <span style="color:var(--ink)">EG Küche…</span> &nbsp; <span style="color:var(--write);font-weight:600">2,56</span></div>
+              <div style="background:var(--surface-2)">14:56:01 &nbsp; 0/1/1 &nbsp;&nbsp; <span style="color:var(--ink)">Zähler…</span> &nbsp;&nbsp; <span style="font-weight:600">29364117</span></div>
+              <div>14:56:00 &nbsp; 20/1/236 <span style="color:var(--ink)">Garten…</span> &nbsp; <span style="color:var(--val-off);font-weight:600">Off</span></div>
+            </div>
+          </div>
+          <div class="body">
+            <h4>Instrument <span class="reco-tag">Empfohlen</span></h4>
+            <p>Warmes Papier, tiefes Petrol, Monospace-Daten. Technisch-präzise, ruhig, eigenständig —
+               funktioniert privat wie im Schaltschrank-Kontext.</p>
+          </div>
+        </div>
+        <!-- B -->
+        <div class="dir">
+          <div class="prev" style="background:#fff">
+            <div style="height:34px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 12px;gap:6px">
+              <span style="color:var(--teal-700);font-weight:700;font-size:12px">KNX·NG</span>
+              <span style="margin-left:auto;font-size:9px;color:var(--ink-3)">●●●</span>
+            </div>
+            <div style="padding:10px 12px;font-size:10px;line-height:2.1;color:var(--ink-2)">
+              <div style="display:flex;gap:8px"><span style="color:var(--ink)">EG Küche Geschirr…</span><span style="margin-left:auto;color:var(--write);font-weight:600">2,56</span></div>
+              <div style="display:flex;gap:8px"><span style="color:var(--ink)">Zähler Gesamt</span><span style="margin-left:auto;font-weight:600">29 364 117</span></div>
+              <div style="display:flex;gap:8px"><span style="color:var(--ink)">Garten Ventil 0</span><span style="margin-left:auto;color:var(--val-off);font-weight:600">Off</span></div>
+            </div>
+          </div>
+          <div class="body">
+            <h4>Studio</h4>
+            <p>Reines Weiß, mehr Luft, weichere Kanten. Freundlich und zugänglich — die wohnlichere
+               Variante für rein private Nutzung.</p>
+          </div>
+        </div>
+        <!-- C -->
+        <div class="dir">
+          <div class="prev" style="background:#0E1A18">
+            <div style="height:34px;background:#0A1413;display:flex;align-items:center;padding:0 12px;gap:6px;border-bottom:1px solid rgba(255,255,255,.08)">
+              <span style="color:var(--live);font-weight:700;font-size:12px">KNX·NG</span>
+              <span style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--live)"></span>
+            </div>
+            <div style="padding:8px 12px;font-family:var(--font-mono);font-size:10px;line-height:1.9;color:#9fb3ad">
+              <div>14:56:02 &nbsp; <span style="color:#e6efec">EG Küche…</span> &nbsp; <span style="color:#5fcf8a;font-weight:600">2,56</span></div>
+              <div>14:56:01 &nbsp; <span style="color:#e6efec">Zähler…</span> &nbsp; <span style="color:#e6efec;font-weight:600">29364117</span></div>
+              <div>14:56:00 &nbsp; <span style="color:#e6efec">Garten…</span> &nbsp; <span style="color:#6a7d77;font-weight:600">Off</span></div>
+            </div>
+          </div>
+          <div class="body">
+            <h4>Console</h4>
+            <p>Dunkle Datenfläche für die Dauer-Anzeige — Leitwarte, zweiter Monitor, Nachtbetrieb.
+               Als umschaltbares Dark-Theme aus denselben Tokens.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLOR -->
+    <section id="color" class="sec">
+      <p class="eyebrow">Foundations</p>
+      <h2>Farbe</h2>
+      <p class="lede">Eine ruhige Papier-Bühne, ein tiefes Petrol als Marke, und streng dosierte
+        Semantik. Keine Verläufe, keine Deko-Farbe.</p>
+
+      <h3>Marke — Petrol</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background:var(--teal-50)"></div><div class="meta"><div class="nm">teal-50</div><div class="hx">#ECF5F3</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--teal-100)"></div><div class="meta"><div class="nm">teal-100</div><div class="hx">#D2EAE5</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--teal-500)"></div><div class="meta"><div class="nm">teal-500</div><div class="hx">#15897E</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--teal-700)"></div><div class="meta"><div class="nm">teal-700 · brand</div><div class="hx">#0F766E</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--teal-900)"></div><div class="meta"><div class="nm">teal-900</div><div class="hx">#093F39</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--live)"></div><div class="meta"><div class="nm">live signal</div><div class="hx">#18A89A</div></div></div>
+      </div>
+
+      <h3>Oberflächen &amp; Tinte</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background:var(--paper)"></div><div class="meta"><div class="nm">paper · app</div><div class="hx">#F0F1ED</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--surface);border-bottom:1px solid var(--line)"></div><div class="meta"><div class="nm">surface</div><div class="hx">#FFFFFF</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--header-bg)"></div><div class="meta"><div class="nm">header</div><div class="hx">#0C2B28</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--ink)"></div><div class="meta"><div class="nm">ink</div><div class="hx">#16201D</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--ink-2)"></div><div class="meta"><div class="nm">ink-2</div><div class="hx">#51605B</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--line-2)"></div><div class="meta"><div class="nm">line</div><div class="hx">#D2D6CD</div></div></div>
+      </div>
+
+      <h3>Semantik — sparsam, mit Bedeutung</h3>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background:var(--write)"></div><div class="meta"><div class="nm">Write / On</div><div class="hx">#2F7A43</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--read)"></div><div class="meta"><div class="nm">Read</div><div class="hx">#2563A6</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--response)"></div><div class="meta"><div class="nm">Response</div><div class="hx">#B26B07</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--groupread)"></div><div class="meta"><div class="nm">GroupRead</div><div class="hx">#6B5BB0</div></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--err)"></div><div class="meta"><div class="nm">Error</div><div class="hx">#BC3B2C</div></div></div>
+      </div>
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 4.9v9.8L12 22l-9-5.3V6.9z"/></svg>
+        <p>Die Bestands-Semantik (Write = grün, Read = blau, Response = amber) bleibt erhalten — aber als
+          <strong>Punkt + Label</strong>, nicht als Zeilenflächen. So bleibt Petrol die einzige Markenfarbe und das Grid ruhig.</p>
+      </div>
+    </section>
+
+    <!-- TYPE -->
+    <section id="type" class="sec">
+      <p class="eyebrow">Foundations</p>
+      <h2>Typografie</h2>
+      <p class="lede">Zwei Schnitte einer Familie. <strong>IBM Plex Sans</strong> für Oberfläche,
+        <strong>IBM Plex Mono</strong> für alles Technische — Zeit, Adressen, DPT, Rohwerte.</p>
+      <div class="knx-card" style="padding:var(--sp-6)">
+        <div class="type-row"><span class="lbl">Display / 40</span><span style="font-size:var(--fs-3xl);font-weight:700;letter-spacing:-.02em">Bus-Telegramme</span></div>
+        <div class="type-row"><span class="lbl">H2 / 28</span><span style="font-size:var(--fs-2xl);font-weight:600">Live View &amp; History</span></div>
+        <div class="type-row"><span class="lbl">H3 / 21</span><span style="font-size:var(--fs-xl);font-weight:600">EG Küche Geschirrspüler</span></div>
+        <div class="type-row"><span class="lbl">Body / 15</span><span style="font-size:var(--fs-base)">Komfortable Such- und Filtermöglichkeiten in beiden Ansichten.</span></div>
+        <div class="type-row"><span class="lbl">Label / 12</span><span style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);font-weight:600">Decoded Value</span></div>
+        <div class="type-row"><span class="lbl">Mono / 13</span><span class="mono" style="font-size:var(--fs-sm)">14:56:02,259 · 1.1.9 → 10/4/46 · DPST-14-56 · 4023D70A</span></div>
+        <div class="type-row" style="border:none"><span class="lbl">Mono num / 17</span><span class="mono" style="font-size:var(--fs-lg);font-weight:600">29 364 117 · 660,20 · 101620,00</span></div>
+      </div>
+    </section>
+
+    <!-- SPACE & FORM -->
+    <section id="space" class="sec">
+      <p class="eyebrow">Foundations</p>
+      <h2>Raster, Radius &amp; Höhe</h2>
+      <p class="lede">4-px-Raster. Kleine Radien für ein technisches Gefühl. Flache, weiche Schatten.</p>
+      <table class="spec">
+        <thead><tr><th>Token</th><th>Wert</th><th>Einsatz</th></tr></thead>
+        <tbody>
+          <tr><td class="t">--sp-2 / 4 / 6</td><td class="t">8 / 16 / 24</td><td>Standard-Abstände in Toolbars, Karten, Formularen</td></tr>
+          <tr><td class="t">--r-sm</td><td class="t">5px</td><td>Buttons, Inputs, Tags</td></tr>
+          <tr><td class="t">--r-md / lg</td><td class="t">8 / 12px</td><td>Karten, Sheets, Popover</td></tr>
+          <tr><td class="t">--row-h-compact</td><td class="t">36px</td><td>Grid-Zeile (Standard, dicht)</td></tr>
+          <tr><td class="t">--row-h-cozy</td><td class="t">48px</td><td>Grid-Zeile (komfortabel, optional)</td></tr>
+          <tr><td class="t">--sh-1 / 2 / 3</td><td class="t">soft</td><td>Karte / Toolbar / Popover &amp; Sheet</td></tr>
+        </tbody>
+      </table>
+      <div class="demo">
+        <span class="demo-label">Elevation</span>
+        <div class="knx-card" style="width:120px;height:64px;box-shadow:var(--sh-1);display:grid;place-items:center;font-size:var(--fs-xs);color:var(--ink-3)">sh-1</div>
+        <div class="knx-card" style="width:120px;height:64px;box-shadow:var(--sh-2);display:grid;place-items:center;font-size:var(--fs-xs);color:var(--ink-3)">sh-2</div>
+        <div class="knx-card" style="width:120px;height:64px;box-shadow:var(--sh-3);display:grid;place-items:center;font-size:var(--fs-xs);color:var(--ink-3)">sh-3</div>
+      </div>
+    </section>
+
+    <!-- ICONS -->
+    <section id="icons" class="sec">
+      <p class="eyebrow">Foundations</p>
+      <h2>Icons</h2>
+      <p class="lede">Ein leichtgewichtiges Stroke-Set (1.75px, runde Enden) ersetzt die Material-Icon-Mischung —
+        konsistente Strichstärke auf allen Größen.</p>
+      <div class="demo" id="iconDemo"></div>
+      <p class="muted" style="font-size:var(--fs-sm)">Inline-SVG, an <code>currentColor</code> gekoppelt — färbt sich automatisch passend zum Kontext (Toolbar, Header, Button).</p>
+    </section>
+
+    <!-- BUTTONS & CONTROLS -->
+    <section id="buttons" class="sec">
+      <p class="eyebrow">Komponenten</p>
+      <h2>Buttons &amp; Controls</h2>
+      <p class="lede">Eine kleine, eindeutige Palette. Primär = Petrol, gefüllt. Der Rest tritt zurück.</p>
+
+      <div class="demo">
+        <span class="demo-label">Buttons</span>
+        <button class="knx-btn knx-btn--primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg> Apply</button>
+        <button class="knx-btn knx-btn--outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Export</button>
+        <button class="knx-btn knx-btn--ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg> Clear</button>
+        <button class="knx-btn knx-btn--danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg> Disconnect</button>
+        <button class="knx-btn knx-btn--icon knx-btn--outline" title="Spalten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18v14H3zM9 5v14M15 5v14"/></svg></button>
+      </div>
+
+      <div class="demo on-dark">
+        <span class="demo-label" style="color:var(--header-ink-2)">Auf dem Header</span>
+        <button class="knx-btn knx-btn--outline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Export</button>
+        <button class="knx-btn knx-btn--ghost">History</button>
+        <span class="knx-status knx-status--live" style="margin-left:auto;color:var(--live)"><span class="led"></span> Live · verbunden</span>
+      </div>
+
+      <div class="demo">
+        <span class="demo-label">Chips · Toggle · Segmented · Status</span>
+        <button class="knx-chip is-active"><span class="chip-dot" style="background:var(--write)"></span> Nur Write</button>
+        <button class="knx-chip"><span class="chip-dot" style="background:var(--read)"></span> Read</button>
+        <button class="knx-chip">Heute</button>
+        <label class="knx-switch"><input type="checkbox" checked><span class="track"></span> Auto-scroll</label>
+        <span class="knx-seg">
+          <button class="is-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg> Dicht</button>
+          <button>Komfort</button>
+        </span>
+        <span class="knx-status knx-status--ok"><span class="led"></span> Verbunden</span>
+        <span class="knx-status knx-status--err"><span class="led"></span> Getrennt</span>
+      </div>
+
+      <div class="demo col">
+        <span class="demo-label">Eingabefelder</span>
+        <div class="row-wrap">
+          <div class="knx-field" style="width:280px">
+            <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+            <input class="knx-input knx-input--search" placeholder="Suche Name, Adresse, Wert…">
+          </div>
+          <select class="knx-input" style="width:160px"><option>Alle Typen</option><option>Write</option><option>Read</option></select>
+          <input class="knx-input" style="width:140px" placeholder="Ziel-GA">
+        </div>
+      </div>
+    </section>
+
+    <!-- MESSAGE TYPES -->
+    <section id="message" class="sec">
+      <p class="eyebrow">Komponenten</p>
+      <h2>Nachrichtentypen &amp; Werte</h2>
+      <p class="lede">Telegrammtyp als Punkt-Label. Der dekodierte Wert trägt die Bedeutung über seine
+        Farbe — nicht über eine eingefärbte Zeile.</p>
+      <div class="demo">
+        <span class="knx-type knx-type--write"><span class="dot"></span>WRITE</span>
+        <span class="knx-type knx-type--read"><span class="dot"></span>READ</span>
+        <span class="knx-type knx-type--response"><span class="dot"></span>RESPONSE</span>
+        <span class="knx-type knx-type--groupread"><span class="dot"></span>GROUP&nbsp;READ</span>
+      </div>
+      <div class="demo">
+        <span class="demo-label">Dekodierte Werte</span>
+        <span class="mono val-on" style="font-weight:600">On</span>
+        <span class="mono val-off" style="font-weight:600">Off</span>
+        <span class="mono val-num" style="font-weight:600">29 364 117</span>
+        <span class="mono val-num" style="font-weight:600">660,20<span class="unit">W</span></span>
+        <span class="mono val-num" style="font-weight:600">20,90<span class="unit">°C</span></span>
+        <span class="mono val-text" style="font-weight:600">"wechselhaft"</span>
+      </div>
+      <table class="spec">
+        <thead><tr><th>Zustand</th><th>Farbe</th><th>Beispiel</th></tr></thead>
+        <tbody>
+          <tr><td>Boolean ON / aktiv</td><td><span class="sw" style="background:var(--val-on)"></span>val-on</td><td class="t">On · Auf · Ein</td></tr>
+          <tr><td>Boolean OFF / inaktiv</td><td><span class="sw" style="background:var(--val-off)"></span>val-off</td><td class="t">Off · Zu · Aus</td></tr>
+          <tr><td>Numerisch</td><td><span class="sw" style="background:var(--val-num)"></span>val-num</td><td class="t">Tabellenziffern + Einheit gedimmt</td></tr>
+          <tr><td>Text / String</td><td><span class="sw" style="background:var(--val-text)"></span>val-text</td><td class="t">in Anführungszeichen, Petrol</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- THE GRID -->
+    <section id="grid" class="sec">
+      <p class="eyebrow">Komponenten · Kernstück</p>
+      <h2>Das Grid — eine Komponente, zwei Seiten</h2>
+      <p class="lede">Live View und History rendern <strong>dieselbe</strong> Tabelle. Sie unterscheiden sich nur
+        in der Datenquelle (Stream vs. Abfrage) und der Kopfzeile. Spalten, Sortierung, Dichte, Filter und die
+        mobile Kartenansicht sind identisch.</p>
+      <div class="grid-prev" id="gridDemo"></div>
+      <table class="spec">
+        <thead><tr><th>Spalte</th><th>Schrift</th><th>Mobil-Priorität</th></tr></thead>
+        <tbody>
+          <tr><td>Zeit</td><td class="t">Mono · tnum</td><td>Sekundär (in Meta)</td></tr>
+          <tr><td>Quelle → Ziel</td><td class="t">Mono</td><td>Sekundär (in Meta)</td></tr>
+          <tr><td>Name</td><td class="t">Sans</td><td><strong>Primär</strong></td></tr>
+          <tr><td>DPT</td><td class="t">Mono</td><td>Detail-Sheet</td></tr>
+          <tr><td>Typ</td><td class="t">Punkt-Label</td><td>Detail-Sheet</td></tr>
+          <tr><td>Rohwert</td><td class="t">Mono · gedimmt</td><td>Detail-Sheet</td></tr>
+          <tr><td>Dekodierter Wert</td><td class="t">Mono · semantisch</td><td><strong>Primär</strong></td></tr>
+        </tbody>
+      </table>
+      <p class="muted" style="font-size:var(--fs-sm)">Zustände: <strong>neu eingetroffen</strong> (kurzer Petrol-Flash),
+        <strong>hover</strong> (Petrol-Tint), <strong>zebra</strong> (gerade Zeilen), <strong>sortiert</strong> (Pfeil im Kopf), <strong>leer</strong> &amp; <strong>lädt</strong>.</p>
+    </section>
+
+    <!-- FILTER -->
+    <section id="filter" class="sec">
+      <p class="eyebrow">Komponenten · Kernstück</p>
+      <h2>Eine Filtersprache für beide Seiten</h2>
+      <p class="lede">Schluss mit zwei Bedienkonzepten. Eine Such- &amp; Filterleiste deckt alles ab — gestuft nach
+        Aufwand: <strong>Tippen → Klicken → Verfeinern</strong>.</p>
+      <div class="stack">
+        <div class="knx-card" style="padding:var(--sp-4)">
+          <div class="row-wrap">
+            <div class="knx-field" style="flex:1;min-width:220px">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+              <input class="knx-input knx-input--search" placeholder="Suche über alle Spalten — Name, GA, Wert, DPT…">
+            </div>
+            <button class="knx-chip is-active">Heute</button>
+            <button class="knx-chip">Letzte Stunde</button>
+            <button class="knx-chip"><span class="chip-dot" style="background:var(--write)"></span>Write</button>
+            <button class="knx-chip">Temperatur</button>
+            <button class="knx-btn knx-btn--outline knx-btn--sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18v14H3zM9 5v14M15 5v14"/></svg> Spalten</button>
+          </div>
+        </div>
+      </div>
+      <h3>Drei Ebenen</h3>
+      <table class="spec">
+        <thead><tr><th>Ebene</th><th>Werkzeug</th><th>Für wen</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1 · Tippen</strong></td><td>Globale Volltextsuche, sofort über alle Spalten</td><td>Privat &amp; Profi — „wo ist das Wohnzimmerlicht?"</td></tr>
+          <tr><td><strong>2 · Klicken</strong></td><td>Quick-Chips: Zeitbereich (Heute, 1h, 24h), Typ, häufige Gewerke</td><td>Schnelles Eingrenzen ohne Tippen</td></tr>
+          <tr><td><strong>3 · Verfeinern</strong></td><td>Erweiterte Filter (GA-Bereich, DPT, exakter Zeitraum) + Spalten ein/aus &amp; ordnen</td><td>Profi-Diagnose</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg>
+        <p><strong>Aktive Filter</strong> erscheinen als entfernbare Chips unter der Leiste — auf Live View und History
+          identisch. Im Prototyp ist die globale Suche und der Zeitbereich live bedienbar.</p>
+      </div>
+    </section>
+
+    <!-- RESPONSIVE -->
+    <section id="responsive" class="sec">
+      <p class="eyebrow">System</p>
+      <h2>Responsive — ein UI, drei Größen</h2>
+      <p class="lede">Die Tabelle bleibt am Desktop und Tablet. Auf dem Smartphone wird aus jeder Zeile eine
+        Karte; das vollständige Telegramm öffnet ein Detail-Sheet von unten.</p>
+      <div class="devices">
+        <div>
+          <div class="device desktop"><div class="screen" id="mockDesktop"></div></div>
+          <div class="cap">Desktop · volle Tabelle</div>
+        </div>
+        <div>
+          <div class="device tablet"><div class="screen" id="mockTablet"></div></div>
+          <div class="cap">Tablet · reduzierte Spalten</div>
+        </div>
+        <div>
+          <div class="device phone"><div class="screen" id="mockPhone"></div></div>
+          <div class="cap">Mobil · Karten + Sheet</div>
+        </div>
+      </div>
+      <table class="spec">
+        <thead><tr><th>Breakpoint</th><th>Layout</th><th>Bedienung</th></tr></thead>
+        <tbody>
+          <tr><td class="t">≥ 1280 Desktop</td><td>Alle 7 Spalten, Toolbar einzeilig</td><td>Maus + Tastatur, Hover, Spalten ordnen</td></tr>
+          <tr><td class="t">768–1279 Tablet</td><td>Roh-/DPT-Spalten klappen weg, Toolbar zweizeilig</td><td>Touch-Targets ≥ 44px, Filter im Sheet</td></tr>
+          <tr><td class="t">&lt; 768 Mobil</td><td>Karten statt Zeilen, Nav als Bottom-Bar</td><td>Tippen öffnet Detail-Sheet, Suche immer sichtbar</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ROADMAP -->
+    <section id="roadmap" class="sec">
+      <p class="eyebrow">System</p>
+      <h2>Masterfahrplan</h2>
+      <p class="lede">Vom heutigen Doppel-UI zum einheitlichen System — in vier Schritten.</p>
+      <div class="road">
+        <div class="step"><span class="ph">Phase 1<br>Foundation</span><div><h4>Tokens &amp; Theming</h4><p>Tokens (diese Datei) als CSS-Variablen / SCSS einziehen, Material-Theme darauf mappen. Light als Standard, Dark („Console") aus denselben Tokens.</p></div></div>
+        <div class="step"><span class="ph">Phase 2<br>Grid</span><div><h4>Eine Grid-Komponente</h4><p>Live View &amp; History auf ein gemeinsames Grid umstellen (Spalten, Sortierung, Dichte, Zustände). Datenquelle als Prop: Stream vs. Query.</p></div></div>
+        <div class="step"><span class="ph">Phase 3<br>Filter</span><div><h4>Einheitliche Filterleiste</h4><p>Globale Suche + Quick-Chips + erweiterte Filter + Spalten-Manager. Ersetzt Inline-Spaltenfilter (Live) und separate Leiste (History).</p></div></div>
+        <div class="step"><span class="ph">Phase 4<br>Mobil</span><div><h4>Responsive &amp; Touch</h4><p>Kartenansicht, Detail-Sheet, Bottom-Nav, Touch-Targets. Projects &amp; Settings nachziehen.</p></div></div>
+      </div>
+    </section>
+
+    <!-- PROTOTYPE CTA -->
+    <section id="proto" class="sec">
+      <div class="proto-cta">
+        <div>
+          <h3>Der interaktive Prototyp</h3>
+          <p>Live View &amp; History mit gemeinsamem Grid, echter Suche, Zeitbereich, Dichte-Toggle und Geräte-Umschalter.</p>
+        </div>
+        <a class="knx-btn knx-btn--primary" href="KNX Monitor Prototype.html" style="height:44px;padding:0 var(--sp-5);text-decoration:none">
+          Prototyp öffnen
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="doc-demos.js"></script>
+</body>
+</html>

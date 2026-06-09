@@ -1,0 +1,179 @@
+/* ============================================================================
+   KNX-NG-Monitor — Component Library
+   Reusable classes consumed by BOTH the design-system doc and the prototype.
+   ============================================================================ */
+
+/* ----------------------------------------------------------------- Buttons */
+.knx-btn {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  font-family: var(--font-ui); font-size: var(--fs-md); font-weight: var(--fw-medium);
+  line-height: 1; height: 36px; padding: 0 var(--sp-4);
+  border-radius: var(--r-sm); border: 1px solid transparent;
+  background: transparent; color: var(--ink); cursor: pointer;
+  white-space: nowrap; transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+  -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.knx-btn svg { width: 17px; height: 17px; flex: none; }
+.knx-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.knx-btn--primary { background: var(--brand); color: #fff; }
+.knx-btn--primary:hover:not(:disabled) { background: var(--brand-hover); }
+
+.knx-btn--ghost { color: var(--ink-2); }
+.knx-btn--ghost:hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
+
+.knx-btn--outline { border-color: var(--line-strong); color: var(--ink); background: var(--surface); }
+.knx-btn--outline:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+
+.knx-btn--danger { color: var(--err); }
+.knx-btn--danger:hover:not(:disabled) { background: var(--err-tint); }
+
+.knx-btn--sm { height: 30px; padding: 0 var(--sp-3); font-size: var(--fs-sm); }
+.knx-btn--icon { width: 36px; padding: 0; justify-content: center; }
+.knx-btn--icon.knx-btn--sm { width: 30px; }
+
+/* on dark header */
+.on-dark .knx-btn--ghost { color: var(--header-ink-2); }
+.on-dark .knx-btn--ghost:hover:not(:disabled) { background: rgba(255,255,255,.08); color: #fff; }
+.on-dark .knx-btn--outline { background: transparent; border-color: rgba(255,255,255,.18); color: var(--header-ink); }
+.on-dark .knx-btn--outline:hover:not(:disabled) { border-color: var(--live); color: #fff; }
+
+/* ------------------------------------------------------------------- Chips */
+.knx-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 var(--sp-3); border-radius: var(--r-full);
+  font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--ink-2);
+  background: var(--surface); border: 1px solid var(--line-2); cursor: pointer;
+  white-space: nowrap; transition: all var(--t-fast); user-select: none;
+}
+.knx-chip svg { width: 14px; height: 14px; }
+.knx-chip:hover { border-color: var(--line-strong); color: var(--ink); }
+.knx-chip[aria-pressed="true"], .knx-chip.is-active {
+  background: var(--brand-tint); border-color: var(--teal-200); color: var(--teal-800);
+}
+.knx-chip .chip-x { opacity: .6; }
+.knx-chip .chip-x:hover { opacity: 1; }
+.knx-chip .chip-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ------------------------------------------------------------------ Inputs */
+.knx-field { position: relative; display: inline-flex; align-items: center; }
+.knx-input {
+  font-family: var(--font-ui); font-size: var(--fs-md); color: var(--ink);
+  height: 38px; width: 100%; padding: 0 var(--sp-3); background: var(--surface);
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast); outline: none;
+}
+.knx-input::placeholder { color: var(--ink-3); }
+.knx-input:hover { border-color: var(--ink-3); }
+.knx-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
+.knx-input--search { padding-left: 38px; }
+.knx-field .field-icon {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  width: 17px; height: 17px; color: var(--ink-3); pointer-events: none;
+}
+.knx-field .field-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
+  color: var(--ink-3); cursor: pointer; border: none; background: transparent;
+}
+.knx-field .field-clear:hover { background: var(--surface-3); color: var(--ink); }
+.knx-label { display: block; font-size: var(--fs-xs); font-weight: var(--fw-medium);
+  color: var(--ink-2); margin-bottom: 5px; letter-spacing: .02em; }
+
+select.knx-input { appearance: none; padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238A958F' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center; cursor: pointer; }
+
+/* ------------------------------------------------------------- Badges/pills */
+.knx-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 22px; padding: 0 8px; border-radius: var(--r-full);
+  font-size: var(--fs-xs); font-weight: var(--fw-semi); letter-spacing: .02em;
+  background: var(--surface-3); color: var(--ink-2); white-space: nowrap;
+}
+.knx-badge--count { background: var(--brand-tint); color: var(--teal-800); font-family: var(--font-mono); }
+.knx-badge .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+/* message-type pill */
+.knx-type { display:inline-flex; align-items:center; gap:6px; font-size: var(--fs-xs);
+  font-weight: var(--fw-semi); letter-spacing:.03em; }
+.knx-type .dot { width: 7px; height: 7px; border-radius: 2px; }
+.knx-type--write   { color: var(--write); }   .knx-type--write   .dot { background: var(--write); }
+.knx-type--read    { color: var(--read); }    .knx-type--read    .dot { background: var(--read); }
+.knx-type--response{ color: var(--response); }.knx-type--response.dot, .knx-type--response .dot { background: var(--response); }
+.knx-type--groupread{ color: var(--groupread);}.knx-type--groupread .dot { background: var(--groupread); }
+
+/* connection status dot */
+.knx-status { display:inline-flex; align-items:center; gap:7px; font-size: var(--fs-sm); font-weight: var(--fw-medium); }
+.knx-status .led { width: 9px; height: 9px; border-radius: 50%; flex:none; }
+.knx-status--ok  { color: var(--ok); }  .knx-status--ok .led  { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-tint); }
+.knx-status--err { color: var(--err); } .knx-status--err .led { background: var(--err); box-shadow: 0 0 0 3px var(--err-tint); }
+.knx-status--live { color: var(--live); } .knx-status--live .led { background: var(--live);
+  box-shadow: 0 0 0 0 var(--live-glow); animation: knx-pulse 1.8s ease-out infinite; }
+@keyframes knx-pulse { 0%{box-shadow:0 0 0 0 var(--live-glow);} 70%{box-shadow:0 0 0 7px rgba(24,168,154,0);} 100%{box-shadow:0 0 0 0 rgba(24,168,154,0);} }
+@media (prefers-reduced-motion: reduce){ .knx-status--live .led{ animation:none; } }
+
+/* toggle switch */
+.knx-switch { display:inline-flex; align-items:center; gap: var(--sp-2); cursor:pointer; user-select:none; font-size: var(--fs-md); color: var(--ink-2); }
+.knx-switch input { position:absolute; opacity:0; pointer-events:none; }
+.knx-switch .track { width: 38px; height: 22px; border-radius: var(--r-full); background: var(--line-strong);
+  position: relative; transition: background var(--t-fast); flex:none; }
+.knx-switch .track::after { content:""; position:absolute; top:2px; left:2px; width:18px; height:18px;
+  border-radius:50%; background:#fff; box-shadow: var(--sh-1); transition: transform var(--t-fast); }
+.knx-switch input:checked + .track { background: var(--brand); }
+.knx-switch input:checked + .track::after { transform: translateX(16px); }
+
+/* segmented control */
+.knx-seg { display:inline-flex; background: var(--surface-3); border:1px solid var(--line-2);
+  border-radius: var(--r-sm); padding: 2px; gap: 2px; }
+.knx-seg button { border:none; background:transparent; font-family:var(--font-ui); font-size: var(--fs-sm);
+  font-weight: var(--fw-medium); color: var(--ink-2); padding: 5px 12px; border-radius: 4px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px; transition: all var(--t-fast); }
+.knx-seg button svg { width:15px; height:15px; }
+.knx-seg button.is-active { background: var(--surface); color: var(--ink); box-shadow: var(--sh-1); }
+
+/* card */
+.knx-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-1); }
+
+/* --------------------------------------------------------------- The Grid */
+.knx-grid { width: 100%; background: var(--surface); border-collapse: collapse; font-size: var(--fs-md); }
+.knx-grid th, .knx-grid td { text-align: left; padding: 0 var(--sp-4); vertical-align: middle; }
+.knx-grid thead th {
+  position: sticky; top: 0; z-index: 2; height: 40px; background: var(--paper-sunk);
+  color: var(--ink-2); font-weight: var(--fw-semi); font-size: var(--fs-xs);
+  letter-spacing: .04em; text-transform: uppercase; border-bottom: 1px solid var(--line-2);
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+.knx-grid thead th .th-inner { display:inline-flex; align-items:center; gap:5px; }
+.knx-grid thead th .sort-ind { color: var(--brand); width:13px; height:13px; }
+.knx-grid tbody tr { height: var(--row-h-compact); border-bottom: 1px solid var(--line); transition: background var(--t-fast); }
+.knx-grid.is-cozy tbody tr { height: var(--row-h-cozy); }
+.knx-grid tbody tr:nth-child(even) { background: var(--surface-2); }
+.knx-grid tbody tr:hover { background: var(--brand-tint); }
+.knx-grid tbody tr.is-new { animation: knx-rowin .5s ease; }
+@keyframes knx-rowin { from { background: var(--row-flash); } to {} }
+.knx-grid td.col-time   { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--ink-2); white-space: nowrap; }
+.knx-grid td.col-addr   { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--ink); white-space: nowrap; }
+.knx-grid td.col-name   { color: var(--ink); }
+.knx-grid td.col-dpt    { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--ink-2); white-space: nowrap; }
+.knx-grid td.col-raw    { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--ink-3); white-space: nowrap; letter-spacing: .03em; }
+.knx-grid td.col-val    { font-family: var(--font-mono); font-weight: var(--fw-semi); white-space: nowrap; }
+.val-on  { color: var(--val-on); }
+.val-off { color: var(--val-off); }
+.val-num { color: var(--val-num); }
+.val-text{ color: var(--val-text); }
+.col-val .unit { color: var(--ink-3); font-weight: var(--fw-normal); margin-left: 3px; font-size: var(--fs-xs); }
+
+/* room/group lead tag inside name */
+.name-room { display:inline-block; font-size: var(--fs-2xs); font-weight: var(--fw-semi); color: var(--teal-700);
+  background: var(--brand-tint); border-radius: var(--r-xs); padding: 1px 6px; margin-right: 8px; letter-spacing:.02em; }
+
+/* --------------------------------------------------------- mobile message card */
+.knx-mcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-2); box-shadow: var(--sh-1); cursor: pointer; }
+.knx-mcard .mc-top { display:flex; align-items:center; justify-content:space-between; gap: var(--sp-3); }
+.knx-mcard .mc-name { font-weight: var(--fw-medium); color: var(--ink); }
+.knx-mcard .mc-val  { font-family: var(--font-mono); font-weight: var(--fw-semi); font-size: var(--fs-lg); white-space:nowrap; }
+.knx-mcard .mc-meta { display:flex; align-items:center; gap: var(--sp-3); margin-top: 5px;
+  font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--ink-3); }
+.knx-mcard .mc-meta .sep { width:3px;height:3px;border-radius:50%;background:var(--line-strong); }
