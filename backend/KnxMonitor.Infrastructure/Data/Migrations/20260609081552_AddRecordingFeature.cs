@@ -1,21 +1,28 @@
-using System;
-using KnxMonitor.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace KnxMonitor.Infrastructure.Data.Migrations
 {
-    /// <summary>Adds the single-row RecordingSettings configuration table.</summary>
-    [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260608120100_AddRecordingSettings")]
-    public partial class AddRecordingSettings : Migration
+    /// <inheritdoc />
+    public partial class AddRecordingFeature : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropIndex(
+                name: "IX_KnxTelegrams_DestinationAddress",
+                table: "KnxTelegrams");
+
+            migrationBuilder.DropIndex(
+                name: "IX_KnxTelegrams_MessageType",
+                table: "KnxTelegrams");
+
+            migrationBuilder.DropIndex(
+                name: "IX_KnxTelegrams_Timestamp",
+                table: "KnxTelegrams");
+
             migrationBuilder.CreateTable(
                 name: "RecordingSettings",
                 columns: table => new
@@ -38,6 +45,21 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "RecordingSettings");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_KnxTelegrams_DestinationAddress",
+                table: "KnxTelegrams",
+                column: "DestinationAddress");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_KnxTelegrams_MessageType",
+                table: "KnxTelegrams",
+                column: "MessageType");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_KnxTelegrams_Timestamp",
+                table: "KnxTelegrams",
+                column: "Timestamp");
         }
     }
 }
