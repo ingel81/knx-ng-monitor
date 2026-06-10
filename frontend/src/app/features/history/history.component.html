@@ -1,99 +1,120 @@
 <div class="history-container">
-  <div class="page-header">
-    <div class="page-header-left">
-      <h2>History</h2>
+  <div class="toolbar">
+    <div class="tb-left">
+      <h2 class="page-title">History</h2>
       @if (totalCount !== null) {
-        <span class="total-count" matTooltip="Telegrams matching the current filter">
-          <mat-icon>filter_list</mat-icon>
-          {{ totalCount | number }}
-        </span>
+        <span class="knx-badge knx-badge--count" matTooltip="Telegramme (aktueller Filter)">{{ totalCount | number }}</span>
       }
     </div>
-    <div class="page-header-right">
-      <button mat-stroked-button (click)="exportCsv()" [disabled]="isExporting"
-              matTooltip="Export the full filtered range as CSV">
-        <mat-icon>{{ isExporting ? 'sync' : 'download' }}</mat-icon>
-        {{ isExporting ? 'Exporting...' : 'Export CSV' }}
+    <div class="tb-right">
+      <app-column-manager [columns]="columnOptions" storageKey="knx.cols.history" [locked]="lockedCols"
+                          [defaultHidden]="defaultHiddenCols" (hiddenChange)="onHiddenChange($event)"></app-column-manager>
+      <button class="knx-btn knx-btn--outline" (click)="exportCsv()" [disabled]="isExporting"
+              matTooltip="Gefilterten Bereich als CSV exportieren">
+        <mat-icon svgIcon="knx:download"></mat-icon>
+        {{ isExporting ? 'Exportiere…' : 'Export CSV' }}
       </button>
     </div>
   </div>
 
-  <div class="filter-bar">
-    <mat-form-field appearance="outline">
-      <mat-label>From</mat-label>
-      <input matInput type="datetime-local" [(ngModel)]="fromValue">
-    </mat-form-field>
+  <div class="filterbar">
+    <div class="filterbar-main">
+      <div class="knx-field" style="width: 300px;">
+        <mat-icon class="field-icon" svgIcon="knx:search"></mat-icon>
+        <input class="knx-input knx-input--search" type="text" [(ngModel)]="search"
+               (ngModelChange)="onSearchChanged()" placeholder="Suchen… (Quelle, Ziel, Name, DPT, Wert)"
+               aria-label="History durchsuchen">
+        @if (search) {
+          <button class="field-clear" (click)="search=''; applyFilters()" aria-label="Suche leeren">
+            <mat-icon svgIcon="knx:close"></mat-icon>
+          </button>
+        }
+      </div>
 
-    <mat-form-field appearance="outline">
-      <mat-label>To</mat-label>
-      <input matInput type="datetime-local" [(ngModel)]="toValue">
-    </mat-form-field>
+      <span class="fb-sep"></span>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Destination</mat-label>
-      <input matInput [(ngModel)]="address" placeholder="1/2/3">
-    </mat-form-field>
+      <div class="fb-quick" role="group" aria-label="Zeitbereich">
+        <span class="fb-label">Zeit</span>
+        <button class="knx-chip" [class.is-active]="timeRange === 'all'" (click)="setTimeRange('all')">Alle</button>
+        <button class="knx-chip" [class.is-active]="timeRange === 'hour'" (click)="setTimeRange('hour')">Letzte Stunde</button>
+        <button class="knx-chip" [class.is-active]="timeRange === 'today'" (click)="setTimeRange('today')">Heute</button>
+        <button class="knx-chip" [class.is-active]="timeRange === '7d'" (click)="setTimeRange('7d')">7 Tage</button>
+      </div>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Source</mat-label>
-      <input matInput [(ngModel)]="source" placeholder="1.1.5">
-    </mat-form-field>
+      <span class="fb-sep"></span>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Type</mat-label>
-      <mat-select [(ngModel)]="type">
-        <mat-option value="">All</mat-option>
-        <mat-option value="Write">Write</mat-option>
-        <mat-option value="Read">Read</mat-option>
-        <mat-option value="Response">Response</mat-option>
-      </mat-select>
-    </mat-form-field>
+      <div class="fb-quick" role="group" aria-label="Nachrichtentyp">
+        <span class="fb-label">Typ</span>
+        <button class="knx-chip" [class.is-active]="types.has('Write')" (click)="setType('Write')">
+          <span class="chip-dot" style="background: var(--write);"></span>Write
+        </button>
+        <button class="knx-chip" [class.is-active]="types.has('Read')" (click)="setType('Read')">
+          <span class="chip-dot" style="background: var(--read);"></span>Read
+        </button>
+        <button class="knx-chip" [class.is-active]="types.has('Response')" (click)="setType('Response')">
+          <span class="chip-dot" style="background: var(--response);"></span>Response
+        </button>
+      </div>
 
-    <div class="filter-actions">
-      <button mat-raised-button color="primary" (click)="applyFilters()">
-        <mat-icon>search</mat-icon>
-        Apply
+      <span class="fb-sep"></span>
+
+      <div class="fb-quick" role="group" aria-label="Themen">
+        <span class="fb-label">Thema</span>
+        @for (t of topics; track t.term) {
+          <button class="knx-chip" [class.is-active]="search === t.term" (click)="setTopic(t.term)">{{ t.label }}</button>
+        }
+      </div>
+    </div>
+
+    <div class="filterbar-main" style="margin-top: 8px;">
+      <input class="knx-input" style="width: 150px;" [(ngModel)]="address" placeholder="Ziel-GA (1/2/3)" (keyup.enter)="applyFilters()">
+      <input class="knx-input" style="width: 150px;" [(ngModel)]="source" placeholder="Quelle (1.1.5)" (keyup.enter)="applyFilters()">
+      <input class="knx-input" style="width: 190px;" type="datetime-local" [(ngModel)]="fromValue" aria-label="Von">
+      <input class="knx-input" style="width: 190px;" type="datetime-local" [(ngModel)]="toValue" aria-label="Bis">
+
+      <span class="fb-sep"></span>
+
+      <button class="knx-btn knx-btn--primary" (click)="applyFilters()">
+        <mat-icon svgIcon="knx:search"></mat-icon>
+        Anwenden
       </button>
-      <button mat-stroked-button (click)="resetFilters()">
-        <mat-icon>clear</mat-icon>
-        Reset
-      </button>
+      @if (hasActiveFilters) {
+        <button class="knx-btn knx-btn--ghost" (click)="resetFilters()">
+          <mat-icon svgIcon="knx:close"></mat-icon>
+          Zurücksetzen
+        </button>
+      }
     </div>
   </div>
 
   <div class="grid-container">
-    <ag-grid-angular
-      class="ag-theme-material"
-      style="flex: 1 1 auto; width: 100%; height: 100%; min-height: 400px;"
-      [gridOptions]="gridOptions"
-      [columnDefs]="columnDefs"
-      [defaultColDef]="defaultColDef">
-    </ag-grid-angular>
+    @if (isMobile) {
+      <div class="mobile-wrap">
+        <app-telegram-cards [rows]="rows" (select)="showDetail($event)"></app-telegram-cards>
+        @if (hasMore) {
+          <button class="knx-btn knx-btn--outline load-more" (click)="loadMore()" [disabled]="loading">
+            <mat-icon svgIcon="knx:chevronDown"></mat-icon>
+            {{ loading ? 'Lädt…' : 'Mehr laden' }}
+          </button>
+        }
+      </div>
+    } @else {
+      <knx-table [rows]="rows" [columns]="visibleColumns" [rowHeight]="rowHeight"
+                 [sortKey]="sortKey" [sortDir]="sortDir" [loading]="loading"
+                 emptyText="Keine Telegramme für diese Filter."
+                 (rowClick)="showDetail($event)" (sortChange)="onSort($event)" (nearEnd)="onNearEnd()"></knx-table>
+    }
   </div>
 
   @if (archiveDays.length > 0) {
-    <mat-card class="archive-card">
-      <mat-card-header>
-        <mat-card-title>
-          <mat-icon>inventory_2</mat-icon>
-          Archive
-        </mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="archive-list">
-          @for (day of archiveDays; track day.fileName) {
-            <div class="archive-row">
-              <span class="archive-date">{{ day.date }}</span>
-              <span class="archive-size">{{ formatBytes(day.sizeBytes) }}</span>
-              <span class="archive-flag">{{ day.compressed ? 'gz' : 'live' }}</span>
-              <button mat-icon-button (click)="downloadArchiveDay(day)"
-                      matTooltip="Download archive day">
-                <mat-icon>download</mat-icon>
-              </button>
-            </div>
-          }
-        </div>
-      </mat-card-content>
-    </mat-card>
+    <div class="archive-bar">
+      <span class="archive-title"><mat-icon svgIcon="knx:database"></mat-icon> Archiv</span>
+      @for (day of archiveDays; track day.fileName) {
+        <button class="knx-chip" (click)="downloadArchiveDay(day)" matTooltip="Archiv-Tag herunterladen">
+          {{ day.date }} · {{ formatBytes(day.sizeBytes) }} · {{ day.compressed ? 'gz' : 'live' }}
+          <mat-icon svgIcon="knx:download"></mat-icon>
+        </button>
+      }
+    </div>
   }
 </div>

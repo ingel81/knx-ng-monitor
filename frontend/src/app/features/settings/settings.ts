@@ -2,16 +2,12 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { environment } from '../../../environments/environment.development';
 import { RecordingSettingsService } from '../../core/services/recording-settings.service';
 import { RecordingSettings } from '../../core/models/recording-settings.models';
+import { ThemeService, ThemeMode, Density } from '../../core/services/theme.service';
 
 interface KnxConfiguration {
   id: number;
@@ -28,17 +24,7 @@ interface KnxSettings {
 
 @Component({
   selector: 'app-settings',
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatSlideToggleModule,
-    MatSnackBarModule
-  ],
+  imports: [CommonModule, FormsModule, MatIconModule, MatSnackBarModule],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
@@ -46,6 +32,13 @@ export class Settings implements OnInit {
   private http = inject(HttpClient);
   private snackBar = inject(MatSnackBar);
   private recordingService = inject(RecordingSettingsService);
+  private themeService = inject(ThemeService);
+
+  // Erscheinungsbild (Theme + Dichte), aus ThemeService gespiegelt
+  readonly theme = this.themeService.theme;
+  readonly density = this.themeService.density;
+  setTheme(mode: ThemeMode): void { this.themeService.setTheme(mode); }
+  setDensity(d: Density): void { this.themeService.setDensity(d); }
 
   knxConfig: KnxSettings = {
     ipAddress: '192.168.10.60',

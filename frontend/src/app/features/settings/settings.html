@@ -1,159 +1,138 @@
 <div class="settings-container">
-  <div class="page-header">
-    <div class="page-header-left">
-      <h2>Settings</h2>
-    </div>
+  <div class="toolbar">
+    <h2 class="page-title">Settings</h2>
   </div>
 
-  <div class="settings-content">
+  <div class="page-scroll">
+    <div class="settings-col">
 
-    <mat-card class="settings-card">
-      <mat-card-header>
-        <mat-card-title>
-          <mat-icon>router</mat-icon>
-          KNX Gateway Configuration
-        </mat-card-title>
-      </mat-card-header>
-
-      <mat-card-content>
-        <div class="config-grid">
-          <mat-form-field appearance="outline">
-            <mat-label>IP Address</mat-label>
-            <input
-              matInput
-              [(ngModel)]="knxConfig.ipAddress"
-              placeholder="192.168.1.100"
-              required
-              pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
-            >
-            <mat-icon matPrefix>language</mat-icon>
-            <mat-hint>IP address of your KNX interface</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Port</mat-label>
-            <input
-              matInput
-              type="number"
-              [(ngModel)]="knxConfig.port"
-              placeholder="3671"
-              required
-              min="1"
-              max="65535"
-            >
-            <mat-icon matPrefix>settings_ethernet</mat-icon>
-            <mat-hint>Default: 3671 (KNXnet/IP)</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Physical Address</mat-label>
-            <input
-              matInput
-              [(ngModel)]="knxConfig.physicalAddress"
-              placeholder="1.0.58"
-              required
-              pattern="^\d{1,2}\.\d{1,2}\.\d{1,3}$"
-            >
-            <mat-icon matPrefix>badge</mat-icon>
-            <mat-hint>Format: Area.Line.Device (e.g. 1.0.58)</mat-hint>
-          </mat-form-field>
+      <!-- Darstellung -->
+      <div class="set-card">
+        <div class="set-head">
+          <span class="set-ic"><mat-icon svgIcon="knx:sun"></mat-icon></span>
+          <div><h3>Darstellung</h3><p>Theme und Grid-Dichte</p></div>
         </div>
-
-        <div class="info-box">
-          <mat-icon>info</mat-icon>
-          <div class="info-content">
-            <span><strong>Connection:</strong> IP Tunneling (UDP) • <strong>Protocol:</strong> KNXnet/IP</span>
+        <div class="set-body">
+          <div class="set-row">
+            <div>
+              <div class="set-row-label">Farbschema</div>
+              <div class="set-row-sub">Light für tagsüber, Console für dunkle Leitwarten</div>
+            </div>
+            <div class="knx-seg">
+              <button [class.is-active]="theme() === 'light'" (click)="setTheme('light')"><mat-icon svgIcon="knx:sun"></mat-icon>Light</button>
+              <button [class.is-active]="theme() === 'dark'" (click)="setTheme('dark')"><mat-icon svgIcon="knx:moon"></mat-icon>Console</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div>
+              <div class="set-row-label">Grid-Dichte</div>
+              <div class="set-row-sub">Zeilenhöhe für Live View und History</div>
+            </div>
+            <div class="knx-seg">
+              <button [class.is-active]="density() === 'compact'" (click)="setDensity('compact')">Dicht</button>
+              <button [class.is-active]="density() === 'cozy'" (click)="setDensity('cozy')">Komfort</button>
+            </div>
           </div>
         </div>
-      </mat-card-content>
+      </div>
 
-      <mat-card-actions>
-        <div class="button-group primary-actions">
-          <button mat-raised-button color="primary" (click)="saveSettings()" [disabled]="isSaving || !isFormValid()">
-            <mat-icon>save</mat-icon>
-            {{ isSaving ? 'Saving...' : 'Save' }}
-          </button>
-
-          <button mat-raised-button color="accent" (click)="testConnection()" [disabled]="isTesting || isSaving || !isFormValid()" [class.testing]="isTesting">
-            <mat-icon [class.spinning]="isTesting">{{ isTesting ? 'sync' : 'cable' }}</mat-icon>
-            {{ isTesting ? 'Testing...' : 'Test Connection' }}
-          </button>
+      <!-- KNX Gateway -->
+      <div class="set-card">
+        <div class="set-head">
+          <span class="set-ic"><mat-icon svgIcon="knx:wifi"></mat-icon></span>
+          <div><h3>KNX Gateway</h3><p>Verbindung zur KNX-Schnittstelle</p></div>
         </div>
-
-        <button mat-stroked-button (click)="resetToDefaults()" class="secondary-action">
-          <mat-icon>restore</mat-icon>
-          Reset
-        </button>
-      </mat-card-actions>
-    </mat-card>
-
-    <mat-card class="settings-card">
-      <mat-card-header>
-        <mat-card-title>
-          <mat-icon>save</mat-icon>
-          Datenaufzeichnung
-        </mat-card-title>
-      </mat-card-header>
-
-      <mat-card-content>
-        <div class="config-grid">
-          <mat-form-field appearance="outline">
-            <mat-label>Ring buffer size</mat-label>
-            <input
-              matInput
-              type="number"
-              [(ngModel)]="recording.hotBufferMaxCount"
-              min="1"
-              step="1000"
-            >
-            <mat-icon matPrefix>memory</mat-icon>
-            <mat-hint>Max. telegrams kept in the live SQLite buffer</mat-hint>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Archive retention (days)</mat-label>
-            <input
-              matInput
-              type="number"
-              [(ngModel)]="recording.archiveRetentionDays"
-              [disabled]="!recording.archiveEnabled"
-              min="1"
-              placeholder="unlimited"
-            >
-            <mat-icon matPrefix>event_busy</mat-icon>
-            <mat-hint>Empty = keep forever</mat-hint>
-          </mat-form-field>
-        </div>
-
-        <div class="archive-toggle">
-          <mat-slide-toggle [(ngModel)]="recording.archiveEnabled">
-            Long-term archive (NDJSON + gzip)
-          </mat-slide-toggle>
-        </div>
-
-        <div class="info-box">
-          <mat-icon>info</mat-icon>
-          <div class="info-content">
-            <span>The archive captures <strong>every</strong> telegram to daily files under
-              <code>data/archive/</code>, independent of the live buffer.</span>
+        <div class="set-body">
+          <div class="set-grid">
+            <div class="set-field">
+              <label class="knx-label">IP-Adresse</label>
+              <div class="field-prefix">
+                <mat-icon class="pfx" svgIcon="knx:globe"></mat-icon>
+                <input class="knx-input" [(ngModel)]="knxConfig.ipAddress" placeholder="192.168.1.100">
+              </div>
+              <span class="set-hint">IP-Adresse deiner KNX-Schnittstelle</span>
+            </div>
+            <div class="set-field">
+              <label class="knx-label">Port</label>
+              <div class="field-prefix">
+                <mat-icon class="pfx" svgIcon="knx:swap"></mat-icon>
+                <input class="knx-input" type="number" [(ngModel)]="knxConfig.port" placeholder="3671">
+              </div>
+              <span class="set-hint">Standard: 3671 (KNXnet/IP)</span>
+            </div>
+            <div class="set-field span2">
+              <label class="knx-label">Physikalische Adresse</label>
+              <div class="field-prefix">
+                <mat-icon class="pfx" svgIcon="knx:plug"></mat-icon>
+                <input class="knx-input" [(ngModel)]="knxConfig.physicalAddress" placeholder="1.0.58">
+              </div>
+              <span class="set-hint">Format: Bereich.Linie.Gerät (z. B. 1.0.58)</span>
+            </div>
+          </div>
+          <div class="info-line">
+            <mat-icon svgIcon="knx:wifi"></mat-icon>
+            <div><b>Verbindung:</b> IP Tunneling (UDP) · <b>Protokoll:</b> KNXnet/IP</div>
           </div>
         </div>
-      </mat-card-content>
+        <div class="set-actions">
+          <button class="knx-btn knx-btn--primary" (click)="saveSettings()" [disabled]="isSaving || !isFormValid()">
+            <mat-icon svgIcon="knx:save"></mat-icon>{{ isSaving ? 'Speichert…' : 'Speichern' }}
+          </button>
+          <button class="knx-btn knx-btn--outline" (click)="testConnection()" [disabled]="isTesting || isSaving || !isFormValid()">
+            <mat-icon svgIcon="knx:link"></mat-icon>{{ isTesting ? 'Teste…' : 'Verbindung testen' }}
+          </button>
+          <span class="spacer"></span>
+          <button class="knx-btn knx-btn--ghost" (click)="resetToDefaults()">
+            <mat-icon svgIcon="knx:refresh"></mat-icon>Zurücksetzen
+          </button>
+        </div>
+      </div>
 
-      <mat-card-actions>
-        <div class="button-group primary-actions">
-          <button mat-raised-button color="primary" (click)="saveRecordingSettings()"
+      <!-- Datenaufzeichnung -->
+      <div class="set-card">
+        <div class="set-head">
+          <span class="set-ic"><mat-icon svgIcon="knx:database"></mat-icon></span>
+          <div><h3>Datenaufzeichnung</h3><p>Ringpuffer und Langzeit-Archiv</p></div>
+        </div>
+        <div class="set-body">
+          <div class="set-grid">
+            <div class="set-field">
+              <label class="knx-label">Ringpuffer-Größe</label>
+              <div class="field-prefix">
+                <mat-icon class="pfx" svgIcon="knx:cpu"></mat-icon>
+                <input class="knx-input" type="number" [(ngModel)]="recording.hotBufferMaxCount" min="1" step="1000">
+              </div>
+              <span class="set-hint">Max. Telegramme im Live-SQLite-Puffer</span>
+            </div>
+            <div class="set-field">
+              <label class="knx-label">Archiv-Aufbewahrung (Tage)</label>
+              <div class="field-prefix">
+                <mat-icon class="pfx" svgIcon="knx:calendar"></mat-icon>
+                <input class="knx-input" type="number" [(ngModel)]="recording.archiveRetentionDays"
+                       [disabled]="!recording.archiveEnabled" min="1" placeholder="unbegrenzt">
+              </div>
+              <span class="set-hint">Leer = unbegrenzt aufbewahren</span>
+            </div>
+          </div>
+          <div class="set-row">
+            <div>
+              <div class="set-row-label">Langzeit-Archiv (NDJSON + gzip)</div>
+              <div class="set-row-sub">Erfasst <b>jedes</b> Telegramm in Tagesdateien unter <code>data/archive/</code></div>
+            </div>
+            <label class="knx-switch">
+              <input type="checkbox" [(ngModel)]="recording.archiveEnabled">
+              <span class="track"></span>
+            </label>
+          </div>
+        </div>
+        <div class="set-actions">
+          <button class="knx-btn knx-btn--primary" (click)="saveRecordingSettings()"
                   [disabled]="isSavingRecording || !isRecordingFormValid()">
-            <mat-icon>save</mat-icon>
-            {{ isSavingRecording ? 'Saving...' : 'Save' }}
+            <mat-icon svgIcon="knx:save"></mat-icon>{{ isSavingRecording ? 'Speichert…' : 'Speichern' }}
           </button>
         </div>
-      </mat-card-actions>
-    </mat-card>
+      </div>
 
-    <div class="storage-note">
-      <mat-icon>storage</mat-icon>
-      <span>Settings are stored in SQLite database and persist across restarts</span>
     </div>
   </div>
 </div>

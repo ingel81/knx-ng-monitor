@@ -1,0 +1,87 @@
+.knx-mcards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--paper);
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.knx-mcard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: var(--sp-3) var(--sp-4);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  box-shadow: var(--sh-1);
+  transition: background-color var(--t-fast);
+
+  &:hover { background: var(--brand-tint); }
+  &.msg-write { border-left-color: var(--write); }
+  &.msg-read { border-left-color: var(--read); }
+  &.msg-response { border-left-color: var(--response); }
+
+  .mc-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-3);
+
+    .mc-name {
+      font-size: var(--fs-md);
+      font-weight: var(--fw-semi);
+      color: var(--ink);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      &.empty { color: var(--ink-3); font-weight: var(--fw-normal); }
+    }
+
+    .mc-val {
+      font-size: var(--fs-lg);
+      font-weight: var(--fw-semi);
+      color: var(--val-num);
+      flex: none;
+      max-width: 45%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      .mc-unit { color: var(--ink-3); font-size: var(--fs-sm); margin-left: 2px; }
+    }
+  }
+
+  .mc-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--fs-sm);
+    color: var(--ink-2);
+
+    .sep { color: var(--ink-3); }
+
+    .mc-type {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: var(--fw-medium);
+      .knx-type-dot { width: 7px; height: 7px; border-radius: 2px; }
+      &.knx-type--write { color: var(--write); .knx-type-dot { background: var(--write); } }
+      &.knx-type--read { color: var(--read); .knx-type-dot { background: var(--read); } }
+      &.knx-type--response { color: var(--response); .knx-type-dot { background: var(--response); } }
+    }
+  }
+}
+
+.mono { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }

@@ -4,7 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -21,7 +21,7 @@ import { ImportJob, ImportStatus } from '../../shared/models/import-job.model';
     MatButtonModule,
     MatIconModule,
     MatTableModule,
-    MatSlideToggleModule,
+    MatTooltipModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
     MatExpansionModule,

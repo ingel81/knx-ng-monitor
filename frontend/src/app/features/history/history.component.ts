@@ -1,44 +1,23 @@
-import { Component, OnInit, inject, ViewChild } from '@angular/core';
+import { Component, OnInit, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { AgGridAngular } from 'ag-grid-angular';
-import {
-  ColDef,
-  GridApi,
-  GridOptions,
-  GridReadyEvent,
-  IDatasource,
-  IGetRowsParams,
-  ModuleRegistry,
-  AllCommunityModule
-} from 'ag-grid-community';
 import { TelegramHistoryService } from '../../core/services/telegram-history.service';
 import { ArchiveDay, TelegramQueryParams } from '../../core/models/telegram-history.models';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { KnxTelegram } from '../../core/services/signalr.service';
+import { TelegramDetailService } from '../../shared/grid/telegram-detail.service';
+import { ThemeService } from '../../core/services/theme.service';
+import { TelegramCardsComponent } from '../../shared/grid/telegram-cards.component';
+import { KnxTableComponent, KnxColumn, SortDir } from '../../shared/grid/knx-table.component';
+import { ColumnManagerComponent } from '../../shared/grid/column-manager.component';
 
 @Component({
   selector: 'app-history',
   imports: [
-    CommonModule,
-    FormsModule,
-    MatIconModule,
-    MatButtonModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatCardModule,
-    MatTooltipModule,
-    MatSelectModule,
-    MatSnackBarModule,
-    AgGridAngular
+    CommonModule, FormsModule, MatIconModule, MatTooltipModule, MatSnackBarModule,
+    KnxTableComponent, TelegramCardsComponent, ColumnManagerComponent
   ],
   templateUrl: './history.component.html',
   styleUrl: './history.component.scss'
@@ -46,132 +25,113 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 export class HistoryComponent implements OnInit {
   private historyService = inject(TelegramHistoryService);
   private snackBar = inject(MatSnackBar);
-
-  @ViewChild(AgGridAngular) agGrid!: AgGridAngular;
+  private detail = inject(TelegramDetailService);
+  private density = inject(ThemeService).density;
 
   private readonly pageSize = 100;
-  private gridApi?: GridApi;
 
-  // Forward-only keyset cursors, kept for the whole session so scroll-up re-fetches work.
-  private blockCursors = new Map<number, string>();
+  // Akkumulierte Seiten (Desktop-Tabelle + Mobile-Karten teilen dasselbe Array)
+  rows: KnxTelegram[] = [];
+  private cursor?: string;
+  hasMore = false;
+  loading = false;
 
-  // Filter state
-  fromValue = '';   // datetime-local (local time)
-  toValue = '';     // datetime-local (local time)
+  // Sort (nur Zeitspalte, beidseitig via Keyset)
+  sortKey = 'timestamp';
+  sortDir: SortDir = 'desc';
+
+  // Filter
+  fromValue = '';
+  toValue = '';
   address = '';
   source = '';
-  type = '';        // '', 'Write', 'Read', 'Response'
+  types = new Set<string>();
+  search = '';
+  timeRange: 'all' | 'hour' | 'today' | '7d' = 'all';
+  readonly topics: ReadonlyArray<{ label: string; term: string }> = [
+    { label: 'Temperatur', term: 'temp' },
+    { label: 'Licht', term: 'licht' },
+    { label: 'Beschattung', term: 'jalousie' },
+    { label: 'Leistung', term: 'leistung' }
+  ];
 
   totalCount: number | null = null;
   isExporting = false;
   archiveDays: ArchiveDay[] = [];
+  isMobile = window.innerWidth < 768;
 
-  gridOptions: GridOptions;
-  columnDefs: ColDef[];
-  defaultColDef: ColDef;
+  readonly allColumns: KnxColumn[] = [
+    { key: 'timestamp', header: 'Zeitpunkt', kind: 'datetime', width: 175, sortable: true },
+    { key: 'sourceAddress', header: 'Quelle', kind: 'mono', width: 90 },
+    { key: 'destinationAddress', header: 'Ziel', kind: 'mono', width: 90 },
+    { key: 'groupAddressName', header: 'Name', kind: 'name', grow: 2, minWidth: 180 },
+    { key: 'datapointType', header: 'DPT', kind: 'muted-mono', width: 110 },
+    { key: 'messageType', header: 'Typ', kind: 'type', width: 110 },
+    { key: 'value', header: 'Rohwert', kind: 'muted-mono', width: 120 },
+    { key: 'valueDecoded', header: 'Wert', kind: 'value', grow: 1, minWidth: 130 },
+    { key: 'priority', header: 'Priorität', kind: 'muted-mono', width: 90 },
+    { key: 'flags', header: 'Flags', kind: 'muted-mono', width: 90 }
+  ];
+  readonly defaultHiddenCols = ['priority', 'flags'];
+  columnOptions = this.allColumns.map((c) => ({ key: c.key as string, header: c.header }));
+  hiddenCols = new Set<string>();
+  readonly lockedCols = ['groupAddressName', 'valueDecoded'];
 
-  constructor() {
-    this.defaultColDef = {
-      sortable: false,
-      filter: false,
-      resizable: true,
-      cellStyle: {
-        display: 'flex',
-        alignItems: 'center',
-        height: '35px',
-        lineHeight: 'normal',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap'
-      }
-    };
-
-    this.columnDefs = [
-      {
-        headerName: 'Time',
-        field: 'timestamp',
-        width: 180,
-        minWidth: 150,
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const date = new Date(params.value);
-          return date.toLocaleString('de-DE', {
-            year: '2-digit', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit', second: '2-digit',
-            fractionalSecondDigits: 3
-          });
-        }
-      },
-      { headerName: 'Source', field: 'sourceAddress', width: 110, minWidth: 90 },
-      { headerName: 'Destination', field: 'destinationAddress', width: 120, minWidth: 100 },
-      {
-        headerName: 'Name',
-        field: 'groupAddressName',
-        minWidth: 150,
-        flex: 2,
-        cellClass: (params) => params.value ? 'group-name-cell' : 'group-name-cell empty',
-        valueFormatter: (params) => params.value || '(unknown)'
-      },
-      {
-        headerName: 'DPT',
-        field: 'datapointType',
-        width: 100,
-        minWidth: 80,
-        cellClass: (params) => params.value ? 'dpt-cell' : 'dpt-cell empty',
-        valueFormatter: (params) => params.value || '-'
-      },
-      {
-        headerName: 'Type',
-        field: 'messageType',
-        width: 90,
-        minWidth: 70,
-        cellClass: (params) => this.getMessageTypeClass(params.data?.messageType),
-        valueGetter: (params) => this.getMessageTypeName(params.data?.messageType)
-      },
-      {
-        headerName: 'Raw Value',
-        field: 'value',
-        width: 120,
-        minWidth: 100,
-        cellStyle: { fontFamily: 'monospace', fontSize: '0.9em' }
-      },
-      {
-        headerName: 'Decoded Value',
-        field: 'valueDecoded',
-        minWidth: 120,
-        flex: 1,
-        cellStyle: { fontWeight: '600', color: '#2e7d32' }
-      }
-    ];
-
-    this.gridOptions = {
-      rowModelType: 'infinite',
-      cacheBlockSize: this.pageSize,
-      maxBlocksInCache: 20,
-      infiniteInitialRowCount: 1,
-      rowHeight: 35,
-      headerHeight: 45,
-      animateRows: false,
-      enableCellTextSelection: true,
-      getRowClass: (params) => this.getMessageTypeClass(params.data?.messageType),
-      onGridReady: this.onGridReady.bind(this)
-    };
+  get visibleColumns(): KnxColumn[] {
+    return this.allColumns.filter((c) => !this.hiddenCols.has(c.key as string));
   }
+  get rowHeight(): number { return this.density() === 'cozy' ? 48 : 36; }
+  onHiddenChange(hidden: Set<string>): void { this.hiddenCols = hidden; }
 
   ngOnInit(): void {
     this.loadArchiveDays();
+    this.loadCount();
+    this.reset();
   }
 
-  onGridReady(event: GridReadyEvent): void {
-    this.gridApi = event.api;
-    this.loadCount();
-    this.gridApi.setGridOption('datasource', this.buildDatasource());
+  @HostListener('window:resize')
+  onResize(): void { this.isMobile = window.innerWidth < 768; }
+
+  showDetail(row: KnxTelegram): void { this.detail.open(row); }
+
+  onSort(e: { key: string; dir: SortDir }): void {
+    this.sortKey = e.key;
+    this.sortDir = e.dir;
+    this.reset();
+  }
+
+  onNearEnd(): void { this.loadMore(); }
+
+  loadMore(): void {
+    if (!this.loading && this.hasMore) this.queryPage();
+  }
+
+  private reset(): void {
+    this.rows = [];
+    this.cursor = undefined;
+    this.hasMore = false;
+    this.queryPage();
+  }
+
+  private queryPage(): void {
+    this.loading = true;
+    const query: TelegramQueryParams = {
+      ...this.currentFilter(), order: this.sortDir, cursor: this.cursor, pageSize: this.pageSize
+    };
+    this.historyService.query(query).subscribe({
+      next: (page) => {
+        this.rows = [...this.rows, ...page.items];
+        this.cursor = page.nextCursor ?? undefined;
+        this.hasMore = page.hasMore;
+        this.loading = false;
+      },
+      error: () => { this.loading = false; }
+    });
   }
 
   applyFilters(): void {
-    this.blockCursors.clear();
     this.loadCount();
-    this.gridApi?.setGridOption('datasource', this.buildDatasource());
+    this.reset();
   }
 
   resetFilters(): void {
@@ -179,45 +139,52 @@ export class HistoryComponent implements OnInit {
     this.toValue = '';
     this.address = '';
     this.source = '';
-    this.type = '';
+    this.types.clear();
+    this.search = '';
+    this.timeRange = 'all';
     this.applyFilters();
   }
 
-  private buildDatasource(): IDatasource {
-    return {
-      getRows: (params: IGetRowsParams) => {
-        const blockIndex = Math.floor(params.startRow / this.pageSize);
-        const cursor = blockIndex === 0 ? undefined : this.blockCursors.get(blockIndex);
-
-        if (blockIndex !== 0 && cursor === undefined) {
-          // No cursor for this block (cannot random-access keyset pages) — fail gracefully.
-          params.failCallback();
-          return;
-        }
-
-        const query: TelegramQueryParams = { ...this.currentFilter(), cursor, pageSize: this.pageSize };
-        this.historyService.query(query).subscribe({
-          next: (page) => {
-            if (page.nextCursor) {
-              this.blockCursors.set(blockIndex + 1, page.nextCursor);
-            }
-            // lastRow unknown (-1) until the end is reached; never seed from /count.
-            const lastRow = page.hasMore ? -1 : params.startRow + page.items.length;
-            params.successCallback(page.items, lastRow);
-          },
-          error: () => params.failCallback()
-        });
-      }
-    };
+  setType(t: 'Write' | 'Read' | 'Response'): void {
+    if (this.types.has(t)) this.types.delete(t); else this.types.add(t);
+    this.applyFilters();
   }
 
-  private currentFilter(): Omit<TelegramQueryParams, 'pageSize' | 'cursor'> {
+  setTopic(term: string): void {
+    this.search = this.search === term ? '' : term;
+    this.applyFilters();
+  }
+
+  setTimeRange(range: 'all' | 'hour' | 'today' | '7d'): void {
+    this.timeRange = range;
+    const now = new Date();
+    let from: Date | null = null;
+    if (range === 'hour') from = new Date(now.getTime() - 3600_000);
+    else if (range === 'today') { from = new Date(now); from.setHours(0, 0, 0, 0); }
+    else if (range === '7d') from = new Date(now.getTime() - 7 * 86_400_000);
+    this.fromValue = from ? this.toLocalInput(from) : '';
+    this.toValue = range === 'all' ? '' : this.toLocalInput(now);
+    this.applyFilters();
+  }
+
+  onSearchChanged(): void {
+    clearTimeout(this.searchDebounce);
+    this.searchDebounce = setTimeout(() => this.applyFilters(), 250);
+  }
+  private searchDebounce?: ReturnType<typeof setTimeout>;
+
+  get hasActiveFilters(): boolean {
+    return !!(this.fromValue || this.toValue || this.address || this.source || this.types.size || this.search || this.timeRange !== 'all');
+  }
+
+  private currentFilter(): Omit<TelegramQueryParams, 'pageSize' | 'cursor' | 'order'> {
     return {
       from: this.toIso(this.fromValue),
       to: this.toIso(this.toValue),
       address: this.address.trim() || undefined,
       source: this.source.trim() || undefined,
-      type: this.type || undefined
+      types: this.types.size ? Array.from(this.types).join(',') : undefined,
+      q: this.search.trim() || undefined
     };
   }
 
@@ -268,6 +235,11 @@ export class HistoryComponent implements OnInit {
     return isNaN(date.getTime()) ? undefined : date.toISOString();
   }
 
+  private toLocalInput(d: Date): string {
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  }
+
   private downloadBlob(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -278,30 +250,6 @@ export class HistoryComponent implements OnInit {
   }
 
   private toast(message: string): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 3000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top'
-    });
-  }
-
-  getMessageTypeClass(type: string | number | undefined): string {
-    const typeStr = String(type).toLowerCase();
-    switch (typeStr) {
-      case 'write': case '0': return 'msg-write';
-      case 'read': case '1': return 'msg-read';
-      case 'response': case '2': return 'msg-response';
-      default: return '';
-    }
-  }
-
-  getMessageTypeName(type: string | number | undefined): string {
-    const typeStr = String(type).toLowerCase();
-    switch (typeStr) {
-      case 'write': case '0': return 'Write';
-      case 'read': case '1': return 'Read';
-      case 'response': case '2': return 'Response';
-      default: return type === undefined ? '' : String(type);
-    }
+    this.snackBar.open(message, 'Close', { duration: 3000, horizontalPosition: 'end', verticalPosition: 'top' });
   }
 }

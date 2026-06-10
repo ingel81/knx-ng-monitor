@@ -1,28 +1,48 @@
 @use '@angular/material' as mat;
-// Import design system (mixins forwards variables, so we get both)
+// Design-Tokens (CSS-Custom-Properties: Light :root + .theme-dark)
+@use 'styles/tokens';
+// Zentrale „Instrument"-Komponentenklassen (.knx-btn/.toolbar/.knx-status/…)
+@use 'styles/design';
+// Mixins (forwarded variables -> SCSS-Bridge-Werte)
 @use 'styles/mixins' as *;
 
 @include mat.core();
 
-// Import local fonts
-@import '@fontsource/roboto/300.css';
-@import '@fontsource/roboto/400.css';
-@import '@fontsource/roboto/500.css';
-@import '@fontsource/roboto/700.css';
+// IBM Plex (UI + Daten/Mono) — ersetzt Roboto
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
 @import '@fontsource/material-icons/index.css';
 
-$theme: mat.define-theme((
+// Cyan ~ naechstgelegene M3-Palette zur Teal-Marke; kritische Brand-Flaechen
+// werden in Komponenten exakt ueber var(--brand) gesetzt.
+$light-theme: mat.define-theme((
   color: (
-    theme-type: dark,
-    primary: mat.$blue-palette,
+    theme-type: light,
+    primary: mat.$cyan-palette,
+    tertiary: mat.$green-palette,
   ),
   typography: (
-    brand-family: 'Roboto, sans-serif',
-    plain-family: 'Roboto, sans-serif',
-  )
+    brand-family: 'IBM Plex Sans, system-ui, sans-serif',
+    plain-family: 'IBM Plex Sans, system-ui, sans-serif',
+  ),
 ));
 
-@include mat.all-component-themes($theme);
+$dark-theme: mat.define-theme((
+  color: (
+    theme-type: dark,
+    primary: mat.$cyan-palette,
+    tertiary: mat.$green-palette,
+  ),
+));
+
+// Light als Default auf <html>, Dark nur als Farb-Override unter .theme-dark
+html { @include mat.all-component-themes($light-theme); }
+html.theme-dark { @include mat.all-component-colors($dark-theme); }
 
 * {
   margin: 0;
@@ -36,9 +56,18 @@ html, body {
 }
 
 body {
-  font-family: Roboto, sans-serif;
+  font-family: var(--font-ui);
+  background: var(--paper);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+// Daten/technische Werte: Mono-Helper
+.mono,
+.knx-mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' 1;
 }
 
 // Ensure Material Icons font is loaded
@@ -73,51 +102,59 @@ body {
   z-index: $z-index-tooltip !important;
 }
 
+// Telegram-Detail-Sheet (Dialog als angedocktes Panel)
+.knx-sheet-panel-right,
+.knx-sheet-panel-bottom {
+  .mat-mdc-dialog-surface {
+    padding: 0;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: var(--sh-pop);
+  }
+}
+.knx-sheet-panel-right .mat-mdc-dialog-surface {
+  border-radius: 0;
+  border-left: 1px solid var(--line);
+  animation: knx-sheet-slide-right 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.knx-sheet-panel-bottom .mat-mdc-dialog-surface {
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  animation: knx-sheet-slide-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes knx-sheet-slide-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes knx-sheet-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .knx-sheet-panel-right .mat-mdc-dialog-surface,
+  .knx-sheet-panel-bottom .mat-mdc-dialog-surface { animation: none; }
+}
+
 // Toast notification styles
 .toast-success {
-  .mdc-snackbar__surface {
-    background-color: #4caf50 !important;
-  }
-  .mat-mdc-snack-bar-label {
-    color: white !important;
-  }
-  .mat-mdc-button {
-    color: white !important;
-  }
+  .mdc-snackbar__surface { background-color: var(--ok) !important; }
+  .mat-mdc-snack-bar-label { color: #fff !important; }
+  .mat-mdc-button { color: #fff !important; }
 }
 
 .toast-error {
-  .mdc-snackbar__surface {
-    background-color: #f44336 !important;
-  }
-  .mat-mdc-snack-bar-label {
-    color: white !important;
-  }
-  .mat-mdc-button {
-    color: white !important;
-  }
+  .mdc-snackbar__surface { background-color: var(--err) !important; }
+  .mat-mdc-snack-bar-label { color: #fff !important; }
+  .mat-mdc-button { color: #fff !important; }
 }
 
 .toast-info {
-  .mdc-snackbar__surface {
-    background-color: #2196f3 !important;
-  }
-  .mat-mdc-snack-bar-label {
-    color: white !important;
-  }
-  .mat-mdc-button {
-    color: white !important;
-  }
+  .mdc-snackbar__surface { background-color: var(--brand) !important; }
+  .mat-mdc-snack-bar-label { color: #fff !important; }
+  .mat-mdc-button { color: #fff !important; }
 }
 
 .toast-warning {
-  .mdc-snackbar__surface {
-    background-color: #ff9800 !important;
-  }
-  .mat-mdc-snack-bar-label {
-    color: white !important;
-  }
-  .mat-mdc-button {
-    color: white !important;
-  }
+  .mdc-snackbar__surface { background-color: var(--warn) !important; }
+  .mat-mdc-snack-bar-label { color: #fff !important; }
+  .mat-mdc-button { color: #fff !important; }
 }

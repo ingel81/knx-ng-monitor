@@ -1,71 +1,78 @@
 <div class="live-view-container">
-  <!-- Page Header -->
-  <div class="page-header">
-    <!-- LEFT: KNX Monitoring Controls -->
-    <div class="page-header-left">
-      <!-- KNX Connection -->
+  <div class="toolbar">
+    <div class="tb-left">
       @if (!isConnected) {
-        <button mat-raised-button color="primary" (click)="connectToKnx()" [disabled]="isConnecting">
-          <mat-icon>power_settings_new</mat-icon>
-          {{ isConnecting ? 'Connecting...' : 'Connect KNX' }}
+        <button class="knx-btn knx-btn--primary" (click)="connectToKnx()" [disabled]="isConnecting">
+          <mat-icon svgIcon="knx:link"></mat-icon>
+          {{ isConnecting ? 'Verbinde…' : 'Verbinden' }}
         </button>
       } @else {
-        <button mat-raised-button color="warn" (click)="disconnectFromKnx()">
-          <mat-icon>power_off</mat-icon>
-          Disconnect
+        <button class="knx-btn knx-btn--danger" (click)="disconnectFromKnx()">
+          <mat-icon svgIcon="knx:disconnect"></mat-icon>
+          Trennen
         </button>
       }
 
-      <div class="divider"></div>
-
-      <!-- Pause/Resume with Auto-scroll -->
-      <button mat-raised-button (click)="togglePause()" [color]="isPaused ? 'accent' : ''">
-        <mat-icon>{{ isPaused ? 'play_arrow' : 'pause' }}</mat-icon>
-        {{ isPaused ? 'Resume' : 'Pause' }}
+      <button class="knx-btn knx-btn--outline" (click)="togglePause()" [disabled]="!isConnected"
+              matTooltip="Pause/Fortsetzen — auch mit Leertaste (Space)">
+        <mat-icon svgIcon="{{ isPaused ? 'knx:play' : 'knx:pause' }}"></mat-icon>
+        {{ isPaused ? 'Fortsetzen' : 'Pause' }}
       </button>
 
-      <mat-checkbox [(ngModel)]="autoScroll" class="auto-scroll-toggle" color="primary">
+      <label class="knx-switch">
+        <input type="checkbox" [(ngModel)]="autoScroll">
+        <span class="track"></span>
         Auto-scroll
-      </mat-checkbox>
+      </label>
     </div>
 
-    <!-- RIGHT: Data Management & Export -->
-    <div class="page-header-right">
-      <!-- Clear Data -->
-      <button mat-raised-button (click)="clearTelegrams()">
-        <mat-icon>clear_all</mat-icon>
+    <div class="tb-right">
+      <span class="knx-status"
+            [class.knx-status--live]="isConnected && !isPaused"
+            [class.knx-status--warn]="isConnected && isPaused"
+            [class.knx-status--err]="!isConnected">
+        <span class="led"></span>
+        {{ !isConnected ? 'Getrennt' : (isPaused ? 'Pausiert' : 'Live') }}
+      </span>
+
+      <span class="knx-badge knx-badge--count" matTooltip="Telegramme (gefiltert)">{{ filtered.length | number }}</span>
+
+      <span class="tb-divider"></span>
+
+      <div class="knx-field" style="width: 230px;">
+        <mat-icon class="field-icon" svgIcon="knx:search"></mat-icon>
+        <input class="knx-input knx-input--search" type="text" [(ngModel)]="quickFilterText"
+               (ngModelChange)="onQuickFilterChanged()" placeholder="Suchen…" aria-label="Telegramme durchsuchen">
+        @if (quickFilterText) {
+          <button class="field-clear" (click)="quickFilterText=''; onQuickFilterChanged()" aria-label="Suche leeren">
+            <mat-icon svgIcon="knx:close"></mat-icon>
+          </button>
+        }
+      </div>
+
+      <app-column-manager [columns]="columnOptions" storageKey="knx.cols.live" [locked]="lockedCols"
+                          [defaultHidden]="defaultHiddenCols" (hiddenChange)="onHiddenChange($event)"></app-column-manager>
+
+      <button class="knx-btn knx-btn--ghost" (click)="clearTelegrams()">
+        <mat-icon svgIcon="knx:clear"></mat-icon>
         Clear
       </button>
 
-      <div class="divider"></div>
-
-      <!-- Export -->
-      <button mat-raised-button (click)="exportToCsv()" [disabled]="telegrams.length === 0">
-        <mat-icon>download</mat-icon>
+      <button class="knx-btn knx-btn--outline" (click)="exportCsv()" [disabled]="filtered.length === 0">
+        <mat-icon svgIcon="knx:download"></mat-icon>
         Export
       </button>
-
-      <div class="divider"></div>
-
-      <!-- Telegram Count -->
-      <div class="telegram-counter">
-        <mat-icon>list_alt</mat-icon>
-        <span class="counter-value">{{ telegrams.length }}</span>
-      </div>
     </div>
   </div>
 
-  <!-- AG-Grid Table -->
   <div class="grid-container">
-    <ag-grid-angular
-      class="ag-theme-material"
-      [rowData]="telegrams"
-      [columnDefs]="columnDefs"
-      [defaultColDef]="defaultColDef"
-      [gridOptions]="gridOptions"
-      [class.grid-empty]="telegrams.length === 0"
-    >
-    </ag-grid-angular>
+    @if (isMobile) {
+      <app-telegram-cards [rows]="filtered" (select)="showDetail($event)"></app-telegram-cards>
+    } @else {
+      <knx-table [rows]="filtered" [columns]="visibleColumns" [rowHeight]="rowHeight"
+                 emptyText="Verbunden – warte auf KNX-Telegramme…"
+                 (rowClick)="showDetail($event)"></knx-table>
+    }
 
     @if (telegrams.length === 0) {
       <div class="no-telegrams-overlay">
@@ -82,13 +89,8 @@
                 <span class="checklist-title">Configure KNX Gateway</span>
                 <span class="checklist-hint">Go to Settings → Add your KNX IP interface</span>
               </div>
-              <button
-                mat-icon-button
-                class="checklist-action"
-                (click)="navigateToSettings()"
-                matTooltip="Go to Settings"
-                matTooltipPosition="left"
-              >
+              <button mat-icon-button class="checklist-action" (click)="navigateToSettings()"
+                      matTooltip="Go to Settings" matTooltipPosition="left">
                 <mat-icon>arrow_forward</mat-icon>
               </button>
             </div>
@@ -99,30 +101,20 @@
                 <span class="checklist-title">Import a .knxproj file</span>
                 <span class="checklist-hint">Go to Projects → Import your ETS project</span>
               </div>
-              <button
-                mat-icon-button
-                class="checklist-action"
-                (click)="navigateToProjects()"
-                matTooltip="Go to Projects"
-                matTooltipPosition="left"
-              >
+              <button mat-icon-button class="checklist-action" (click)="navigateToProjects()"
+                      matTooltip="Go to Projects" matTooltipPosition="left">
                 <mat-icon>arrow_forward</mat-icon>
               </button>
             </div>
 
-            <div class="checklist-item" [class.completed]="false">
+            <div class="checklist-item">
               <mat-icon class="checklist-icon">radio_button_unchecked</mat-icon>
               <div class="checklist-content">
                 <span class="checklist-title">Connect to KNX</span>
-                <span class="checklist-hint">Click "Connect KNX" button above</span>
+                <span class="checklist-hint">Click "Verbinden" button above</span>
               </div>
-              <button
-                mat-icon-button
-                class="checklist-action checklist-action-disabled"
-                disabled
-                matTooltip="Use button in header"
-                matTooltipPosition="left"
-              >
+              <button mat-icon-button class="checklist-action checklist-action-disabled" disabled
+                      matTooltip="Use button in header" matTooltipPosition="left">
                 <mat-icon>arrow_upward</mat-icon>
               </button>
             </div>
@@ -135,28 +127,5 @@
         }
       </div>
     }
-  </div>
-
-  <!-- Footer with status -->
-  <div class="footer">
-    <div class="footer-left">
-      <span class="status-indicator" [class.connected]="isConnected">
-        <mat-icon>{{ isConnected ? 'check_circle' : 'cancel' }}</mat-icon>
-        {{ isConnected ? 'Connected' : 'Disconnected' }}
-      </span>
-      @if (isPaused) {
-        <span class="paused-indicator">
-          <mat-icon>pause_circle</mat-icon>
-          Paused
-        </span>
-      }
-    </div>
-
-    <div class="footer-right">
-      <span class="info-text">
-        <strong>Shortcut:</strong>
-        Space = Pause/Resume
-      </span>
-    </div>
   </div>
 </div>

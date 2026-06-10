@@ -1,0 +1,71 @@
+// ============================================================================
+// KNX-NG-Monitor — Design Tokens (CSS Custom Properties)
+// Light = :root  ·  Console-Dark = .theme-dark (Klasse auf <html>)
+// Komponenten referenzieren var(--token) -> Theme-Wechsel ohne Recompile.
+// Quelle: docs/ai/design_handoff_knx_monitor/_tokens.scss
+// ============================================================================
+
+:root {
+  --paper:#F0F1ED; --paper-sunk:#E8EAE4; --surface:#FFFFFF; --surface-2:#FAFAF7; --surface-3:#F4F5F1;
+  --ink:#16201D; --ink-2:#51605B; --ink-3:#8A958F; --ink-on-dark:#EAF0EC;
+  --line:#E2E5DE; --line-2:#D2D6CD; --line-strong:#B9BFB5;
+
+  --teal-50:#ECF5F3; --teal-100:#D2EAE5; --teal-200:#A9D6CE; --teal-500:#15897E;
+  --teal-600:#117A70; --teal-700:#0F766E; --teal-800:#0B574F; --teal-900:#093F39;
+  --brand:var(--teal-700); --brand-hover:var(--teal-800); --brand-tint:var(--teal-50); --brand-tint-2:var(--teal-100);
+
+  --header-bg:#0C2B28; --header-bg-2:#0F3A35; --header-ink:#DCE7E3; --header-ink-2:#8FAAA3;
+  --live:#18A89A; --live-glow:rgba(24,168,154,.30);
+
+  --write:#2F7A43;   --write-tint:#EAF3EC;
+  --read:#2563A6;    --read-tint:#E9F0F8;
+  --response:#B26B07;--response-tint:#FBF1E2;
+  --groupread:#6B5BB0;--groupread-tint:#EFEDF8;
+  --ok:#2F7A43; --ok-tint:#EAF3EC; --warn:#B26B07; --warn-tint:#FBF1E2; --err:#BC3B2C; --err-tint:#FBECE9;
+  --val-on:#2F7A43; --val-off:#97A09B; --val-num:#16201D; --val-text:#0F766E;
+
+  --font-ui:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+
+  --fs-2xs:0.6875rem; --fs-xs:0.75rem; --fs-sm:0.8125rem; --fs-md:0.875rem;
+  --fs-base:0.9375rem; --fs-lg:1.0625rem; --fs-xl:1.3125rem; --fs-2xl:1.75rem; --fs-3xl:2.5rem;
+  --fw-normal:400; --fw-medium:500; --fw-semi:600; --fw-bold:700;
+
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-10:40px; --sp-12:48px;
+  --r-xs:3px; --r-sm:5px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-full:999px;
+
+  --sh-1:0 1px 2px rgba(16,32,29,.06),0 1px 1px rgba(16,32,29,.04);
+  --sh-2:0 2px 6px rgba(16,32,29,.08),0 1px 2px rgba(16,32,29,.05);
+  --sh-3:0 8px 24px rgba(16,32,29,.12),0 2px 6px rgba(16,32,29,.06);
+  --sh-pop:0 12px 40px rgba(9,40,36,.22);
+
+  --t-fast:0.12s ease; --t-base:0.2s ease;
+  --row-h-compact:36px; --row-h-cozy:48px; --row-flash:#D2EAE5;
+}
+
+// Console-Dark — überschreibt dieselben Properties
+.theme-dark {
+  --paper:#0E1A18; --paper-sunk:#0A1413; --surface:#14201E; --surface-2:#182523; --surface-3:#1E2C29;
+  --ink:#E6EFEC; --ink-2:#9FB3AD; --ink-3:#6E837D;
+  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.11); --line-strong:rgba(255,255,255,.20);
+
+  --brand:#19A395; --brand-hover:#21B7A8; --brand-tint:rgba(25,163,149,.15); --brand-tint-2:rgba(25,163,149,.26);
+  --teal-200:rgba(25,163,149,.45); --teal-700:#3FD0C0; --teal-800:#8AE6DB;
+  --live:#24C2B2; --live-glow:rgba(36,194,178,.34);
+
+  --write:#5FCF8A;   --write-tint:rgba(95,207,138,.14);
+  --read:#5AA9E6;    --read-tint:rgba(90,169,230,.14);
+  --response:#E0A94A;--response-tint:rgba(224,169,74,.14);
+  --groupread:#A99BE0;--groupread-tint:rgba(169,155,224,.14);
+  --ok:#5FCF8A; --ok-tint:rgba(95,207,138,.14); --warn:#E0A94A; --warn-tint:rgba(224,169,74,.14);
+  --err:#F0726A; --err-tint:rgba(240,114,106,.14);
+  --val-on:#5FCF8A; --val-off:#6A7D77; --val-num:#E6EFEC; --val-text:#3FD0C0;
+
+  --header-bg:#0A1413; --header-bg-2:#11201D; --header-ink:#DCE7E3; --header-ink-2:#8FAAA3;
+
+  --sh-1:0 1px 2px rgba(0,0,0,.4);
+  --sh-2:0 2px 8px rgba(0,0,0,.45);
+  --sh-3:0 10px 30px rgba(0,0,0,.55);
+  --sh-pop:0 16px 50px rgba(0,0,0,.6);
+  --row-flash:rgba(36,194,178,.20);
+}

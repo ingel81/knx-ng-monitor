@@ -9,6 +9,9 @@ export interface TelegramQueryParams {
   address?: string;    // destination group address
   source?: string;     // source individual address
   type?: string;       // MessageType name (Write/Read/Response)
+  types?: string;      // CSV of MessageType names (multi-select)
+  q?: string;          // free-text search across fields
+  order?: 'asc' | 'desc'; // timestamp sort direction (default desc)
   cursor?: string;     // keyset cursor; omit for first page
   pageSize: number;
 }

@@ -14,13 +14,13 @@
     margin: 0 0 8px 0;
     font-size: 1.3rem;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.95);
+    color: var(--ink);
   }
 
   p {
     margin: 0;
     font-size: 0.95rem;
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--ink-2);
   }
 }
 
@@ -32,7 +32,7 @@
 
   .file-name {
     font-size: 1rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--ink-2);
     font-weight: 500;
   }
 }
@@ -41,7 +41,7 @@
   margin-left: 8px;
   font-size: 0.85rem;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--ink-3);
 }
 
 .button-row {
@@ -56,26 +56,26 @@
 
 .requirement-section {
   padding: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-3);
+  border: 1px solid var(--line);
   border-radius: 8px;
   margin-bottom: 16px;
 
   h4 {
     margin: 0 0 12px 0;
     font-size: 1.1rem;
-    color: rgba(255, 255, 255, 0.95);
+    color: var(--ink);
   }
 
   .requirement-message {
     font-size: 1rem;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--ink-2);
     margin-bottom: 16px;
     line-height: 1.5;
   }
 
   .error-message {
-    color: #ff6b6b;
+    color: var(--err);
     font-size: 0.95rem;
     margin: 8px 0;
     font-weight: 500;
@@ -86,7 +86,7 @@
   text-align: center;
   margin-top: 16px;
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--ink-2);
 }
 
 .progress-text {
@@ -94,7 +94,7 @@
   font-size: 1.5rem;
   font-weight: 500;
   margin: 16px 0;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
 }
 
 .steps-list {
@@ -116,7 +116,7 @@
         color: #66bb6a;
       }
       .step-name, .step-progress {
-        color: rgba(255, 255, 255, 0.9);
+        color: var(--ink);
       }
     }
 
@@ -126,7 +126,7 @@
         color: #42a5f5;
       }
       .step-name, .step-progress {
-        color: rgba(255, 255, 255, 0.9);
+        color: var(--ink);
       }
     }
 
@@ -136,17 +136,17 @@
         color: #ef5350;
       }
       .step-name, .step-progress {
-        color: rgba(255, 255, 255, 0.9);
+        color: var(--ink);
       }
     }
 
     &.step-pending {
-      background: rgba(255, 255, 255, 0.03);
+      background: var(--surface-2);
       .step-icon {
         color: #9e9e9e;
       }
       .step-name, .step-progress {
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--ink-3);
       }
     }
 
@@ -182,7 +182,7 @@
   h3 {
     margin: 16px 0;
     font-size: 1.5rem;
-    color: rgba(255, 255, 255, 0.95);
+    color: var(--ink);
   }
 
   .success-icon {
@@ -207,8 +207,8 @@
   text-align: left;
   width: 100%;
   max-width: 450px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-3);
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 20px;
 
@@ -218,12 +218,12 @@
     align-items: center;
     gap: 12px;
     font-size: 1rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--ink-2);
     line-height: 1.6;
 
     strong {
       min-width: 160px;
-      color: rgba(255, 255, 255, 0.95);
+      color: var(--ink);
       font-weight: 500;
     }
   }
@@ -245,7 +245,7 @@
 }
 
 .error-message {
-  color: #ff6b6b;
+  color: var(--err);
   margin-top: 12px;
   font-size: 1rem;
   line-height: 1.5;

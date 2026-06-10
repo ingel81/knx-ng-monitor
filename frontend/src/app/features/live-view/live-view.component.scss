@@ -1,14 +1,12 @@
 // Import mixins (forwards variables, so we get both)
 @use '../../../styles/mixins' as *;
-@import 'ag-grid-community/styles/ag-grid.css';
-@import 'ag-grid-community/styles/ag-theme-material.css';
 
 .live-view-container {
   display: flex;
   flex-direction: column;
   height: 100%;
   width: 100%;
-  background-color: #fafafa;
+  background-color: var(--paper);
   overflow: hidden;
   position: absolute;
   top: 0;
@@ -16,114 +14,16 @@
   right: 0;
   bottom: 0;
 
-  // Page Header (using centralized mixin - DO NOT override!)
-  .page-header {
-    @include page-header;
-
-    // Telegram counter styling
-    .telegram-counter {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      background: transparent;
-      border-radius: $border-radius-sm;
-      transition: background-color $transition-fast;
-
-      mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
-        color: $text-secondary;
-        opacity: 0.7;
-      }
-
-      .counter-value {
-        font-size: $font-size-lg;
-        font-weight: $font-weight-medium;
-        color: $text-primary;
-        font-variant-numeric: tabular-nums;
-        min-width: 30px;
-        text-align: right;
-      }
-
-      &:hover {
-        background: rgba(0, 0, 0, 0.03);
-      }
-    }
-
-    .auto-scroll-toggle {
-      color: $text-primary;
-      display: inline-flex;
-      align-items: center;
-      margin: 0;
-
-      ::ng-deep {
-        .mdc-form-field {
-          display: inline-flex;
-          align-items: center;
-          vertical-align: middle;
-          gap: $spacing-lg;
-        }
-
-        .mdc-checkbox {
-          padding: 0;
-          margin: 0;
-          display: inline-flex;
-          align-items: center;
-          vertical-align: middle;
-          flex-shrink: 0;
-        }
-
-        .mdc-checkbox__background {
-          top: 0;
-        }
-
-        .mdc-label {
-          color: $text-primary;
-          font-size: $font-size-sm;
-          padding: 0;
-          margin: 0;
-          line-height: 1.5;
-          display: inline-flex;
-          align-items: center;
-        }
-      }
-    }
-
-    // Filter indicator styling
-    .filter-indicator {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 4px;
-      flex-shrink: 0;
-
-      &.msg-write {
-        background-color: $msg-write-text;
-      }
-
-      &.msg-read {
-        background-color: $msg-read-text;
-      }
-
-      &.msg-response {
-        background-color: $msg-response-text;
-      }
-    }
-  }
-
   // Grid Container - takes all remaining space
   .grid-container {
-    flex: 1; // Grow to fill space
+    flex: 1;
     position: relative;
-    overflow: hidden; // Container doesn't scroll
+    overflow: hidden;
     padding: 0;
-    background-color: white;
-    min-height: 0; // Critical for flex children with overflow
-    max-width: 100%; // Prevent horizontal overflow
-    display: flex; // Make it flex to size AG-Grid properly
+    background-color: var(--surface);
+    min-height: 0;
+    max-width: 100%;
+    display: flex;
     flex-direction: column;
 
     .no-telegrams-overlay {
@@ -136,8 +36,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #666;
-      background-color: white;
+      color: $text-secondary;
+      background-color: var(--surface);
       z-index: $z-index-base;
       pointer-events: none;
       padding: $spacing-xl;
@@ -148,26 +48,26 @@
         height: 72px;
         margin-bottom: $spacing-lg;
         opacity: 0.4;
-        color: #999;
+        color: $text-disabled;
       }
 
       h3 {
         margin: 0 0 $spacing-xl 0;
         font-weight: $font-weight-medium;
         font-size: $font-size-xl;
-        color: #333;
+        color: $text-primary;
       }
 
       .setup-checklist {
         max-width: 500px;
         width: 100%;
-        pointer-events: auto; // Enable pointer events for checklist
+        pointer-events: auto;
 
         .checklist-intro {
           text-align: center;
           margin-bottom: $spacing-lg;
           font-size: $font-size-base;
-          color: #666;
+          color: $text-secondary;
         }
 
         .checklist-item {
@@ -177,18 +77,16 @@
           padding: $spacing-md;
           margin-bottom: $spacing-sm;
           border-radius: $border-radius-md;
-          background: #f5f5f5;
+          background: var(--surface-3);
           transition: all $transition-base;
 
           &.completed {
-            background: #e8f5e9;
+            background: var(--ok-tint);
 
-            .checklist-icon {
-              color: #4caf50;
-            }
+            .checklist-icon { color: $success-color; }
 
             .checklist-title {
-              color: #2e7d32;
+              color: $success-color;
               text-decoration: line-through;
             }
           }
@@ -198,7 +96,7 @@
             width: 24px;
             height: 24px;
             flex-shrink: 0;
-            color: #bbb;
+            color: $text-disabled;
             margin-top: 2px;
           }
 
@@ -211,12 +109,12 @@
             .checklist-title {
               font-weight: $font-weight-medium;
               font-size: $font-size-base;
-              color: #333;
+              color: $text-primary;
             }
 
             .checklist-hint {
               font-size: $font-size-sm;
-              color: #666;
+              color: $text-secondary;
             }
           }
 
@@ -235,13 +133,13 @@
 
             &:hover:not(:disabled) {
               opacity: 1;
-              background-color: rgba(25, 118, 210, 0.15);
+              background-color: var(--brand-tint);
               transform: translateX(2px);
             }
 
             &.checklist-action-disabled {
               opacity: 0.3;
-              color: #999;
+              color: $text-disabled;
             }
           }
         }
@@ -257,7 +155,7 @@
           display: flex;
           align-items: center;
           gap: $spacing-sm;
-          color: #4caf50;
+          color: $success-color;
           font-weight: $font-weight-medium;
 
           mat-icon {
@@ -271,293 +169,34 @@
       }
     }
 
-    ag-grid-angular {
+    knx-table,
+    app-telegram-cards {
       flex: 1;
-      width: 100%;
-      max-width: 100%; // Prevent horizontal overflow
-      min-height: 300px; // Minimum height to ensure visibility
+      min-height: 0;
       display: block;
-      overflow: hidden; // Prevent any overflow from ag-grid-angular element
-
-      &.grid-empty {
-        opacity: 0;
-      }
-    }
-
-    // AG-Grid Theme Customization
-    ::ng-deep {
-      .ag-theme-material {
-        width: 100%;
-        max-width: 100%; // Prevent horizontal overflow
-        height: 100%; // Ensure AG-Grid fills container
-        display: block; // Use block instead of flex for AG-Grid root
-        position: relative;
-        overflow: hidden; // Prevent overflow at theme level
-
-        // Prevent horizontal scrollbar
-        .ag-body-horizontal-scroll-viewport {
-          overflow-x: hidden !important;
-        }
-
-        .ag-body-horizontal-scroll-container {
-          overflow-x: hidden !important;
-        }
-
-        // Row colors for message types
-        .ag-row {
-          transition: background-color $transition-fast;
-
-          &.msg-write {
-            background-color: $msg-write-bg !important;
-
-            &:hover {
-              background-color: $msg-write-bg-hover !important;
-            }
-
-            &.ag-row-selected {
-              background-color: rgba(76, 175, 80, 0.25) !important;
-            }
-          }
-
-          &.msg-read {
-            background-color: $msg-read-bg !important;
-
-            &:hover {
-              background-color: $msg-read-bg-hover !important;
-            }
-
-            &.ag-row-selected {
-              background-color: rgba(33, 150, 243, 0.25) !important;
-            }
-          }
-
-          &.msg-response {
-            background-color: $msg-response-bg !important;
-
-            &:hover {
-              background-color: $msg-response-bg-hover !important;
-            }
-
-            &.ag-row-selected {
-              background-color: rgba(255, 193, 7, 0.25) !important;
-            }
-          }
-        }
-
-        // Message type badges
-        .msg-write .ag-cell[col-id="messageType"] {
-          color: $msg-write-text;
-          font-weight: $font-weight-bold;
-        }
-
-        .msg-read .ag-cell[col-id="messageType"] {
-          color: $msg-read-text;
-          font-weight: $font-weight-bold;
-        }
-
-        .msg-response .ag-cell[col-id="messageType"] {
-          color: $msg-response-text;
-          font-weight: $font-weight-bold;
-        }
-
-        // Header styling
-        .ag-header {
-          background: linear-gradient(to bottom, #f5f5f5, #eeeeee);
-          border-bottom: 2px solid $primary-color;
-          font-weight: $font-weight-bold;
-          color: #333;
-        }
-
-        .ag-header-cell {
-          padding: $spacing-sm $spacing-md;
-        }
-
-        .ag-header-cell-text {
-          font-weight: $font-weight-bold;
-          color: $primary-color;
-        }
-
-        // Floating filter styling
-        .ag-floating-filter {
-          background-color: #fafafa;
-          border-bottom: 1px solid #e0e0e0;
-        }
-
-        .ag-floating-filter-input {
-          font-size: $font-size-sm;
-        }
-
-        // Cell styling (vertical centering is in global styles.scss)
-        .ag-cell {
-          padding-left: $spacing-md !important;
-          padding-right: $spacing-md !important;
-          border-right: 1px solid #f0f0f0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          box-sizing: border-box;
-
-          &:focus {
-            outline: 2px solid $primary-color;
-            outline-offset: -2px;
-          }
-        }
-
-        // Scrollbar styling
-        .ag-body-horizontal-scroll,
-        .ag-body-vertical-scroll {
-          @include custom-scrollbar;
-        }
-
-        // Custom cell classes
-        .group-name-cell {
-          font-weight: 500;
-          color: #1976d2;
-
-          &.empty {
-            font-weight: normal;
-            color: #999;
-          }
-        }
-
-        .dpt-cell {
-          font-weight: 500;
-
-          &.empty {
-            font-weight: normal;
-            color: #999;
-          }
-        }
-      }
-    }
-  }
-
-  // Footer - fixed height
-  .footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: $spacing-md $spacing-xl;
-    background-color: #f5f5f5;
-    border-top: 1px solid #e0e0e0;
-    font-size: $font-size-sm;
-    flex-shrink: 0; // Never shrink
-    flex-grow: 0; // Never grow
-    height: auto; // Auto height based on content
-
-    .footer-left {
-      display: flex;
-      align-items: center;
-      gap: $spacing-lg;
-
-      .status-indicator {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: $spacing-xs $spacing-md;
-        border-radius: $border-radius-xl;
-        background-color: #ffebee;
-        color: #c62828;
-        font-weight: $font-weight-medium;
-
-        mat-icon {
-          font-size: 18px;
-          width: 18px;
-          height: 18px;
-        }
-
-        &.connected {
-          background-color: #e8f5e9;
-          color: #2e7d32;
-        }
-      }
-
-      .paused-indicator {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: $spacing-xs $spacing-md;
-        border-radius: $border-radius-xl;
-        background-color: #fff3e0;
-        color: #e65100;
-        font-weight: $font-weight-medium;
-
-        mat-icon {
-          font-size: 18px;
-          width: 18px;
-          height: 18px;
-        }
-      }
-    }
-
-    .footer-right {
-      .info-text {
-        color: #666;
-        font-size: $font-size-xs;
-
-        strong {
-          color: #333;
-        }
-      }
+      width: 100%;
     }
   }
 }
 
 // Responsive adjustments
-@media (max-width: $breakpoint-lg) {
-  .live-view-container {
-    .page-header {
-      .page-header-right {
-        .quick-filter {
-          width: 200px;
-        }
-      }
-    }
-
-    .footer {
-      .footer-right {
-        .info-text {
-          display: none;
-        }
-      }
-    }
-  }
-}
-
 @media (max-width: $breakpoint-sm) {
   .live-view-container {
     .page-header {
       padding: $spacing-md $spacing-lg;
 
-      .page-header-left {
-        h2 {
-          font-size: $font-size-xl;
-        }
+      .page-header-left h2 {
+        font-size: $font-size-xl;
       }
 
       .page-header-right {
         gap: $spacing-sm;
 
-        .quick-filter {
-          width: 100%;
-          min-width: 150px;
-        }
-
         button {
-          mat-icon {
-            margin-right: 0;
-          }
-
-          span {
-            display: none;
-          }
+          mat-icon { margin-right: 0; }
+          span { display: none; }
         }
       }
-    }
-
-    .footer {
-      padding: $spacing-sm $spacing-lg;
-      font-size: $font-size-xs;
     }
   }
 }

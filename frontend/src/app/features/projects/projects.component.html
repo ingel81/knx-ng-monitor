@@ -1,98 +1,72 @@
 <div class="projects-container">
-  <div class="page-header">
-    <div class="page-header-left">
-      <h2>Projects</h2>
+  <div class="toolbar">
+    <div class="tb-left">
+      <h2 class="page-title">Projects</h2>
       @if (projects.length > 0) {
-        <span class="badge">{{ projects.length }} projects</span>
+        <span class="knx-badge knx-badge--count">{{ projects.length }}</span>
       }
     </div>
-    <div class="page-header-right">
-      <button mat-raised-button color="primary" (click)="openImportWizard()">
-        <mat-icon>upload_file</mat-icon>
+    <div class="tb-right">
+      <button class="knx-btn knx-btn--primary" (click)="openImportWizard()">
+        <mat-icon svgIcon="knx:upload"></mat-icon>
         Projekt importieren
       </button>
     </div>
   </div>
 
-  <div class="content">
+  <div class="page-scroll">
+  <div class="projects-body">
 
   @if (isLoading) {
-    <div class="loading">
-      <mat-spinner></mat-spinner>
-      <p>Loading projects...</p>
-    </div>
+    <div class="placeholder"><mat-spinner></mat-spinner><p>Lade Projekte…</p></div>
   } @else if (projects.length === 0) {
-    <div class="empty-state">
-      <div class="empty-state-content">
-        <div class="icon-wrapper">
-          <mat-icon>folder_open</mat-icon>
-        </div>
-        <h2>No Projects Yet</h2>
-        <p class="description">Get started by importing your first ETS project</p>
-        <p class="hint">Upload a .knxproj file to begin monitoring KNX telegrams</p>
-        <button mat-raised-button color="primary" (click)="openImportWizard()" class="upload-button">
-          <mat-icon>upload_file</mat-icon>
-          Projekt importieren
-        </button>
-      </div>
+    <div class="placeholder">
+      <mat-icon svgIcon="knx:folder"></mat-icon>
+      <h2>Noch keine Projekte</h2>
+      <p>Importiere dein erstes ETS-Projekt (.knxproj), um KNX-Telegramme mit Klartext-Namen zu versehen.</p>
+      <button class="knx-btn knx-btn--primary" (click)="openImportWizard()">
+        <mat-icon svgIcon="knx:upload"></mat-icon>
+        Projekt importieren
+      </button>
     </div>
   } @else {
-    <table mat-table [dataSource]="projects" class="projects-table">
-      <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef>Name</th>
-        <td mat-cell *matCellDef="let project">
-          <strong>{{ project.name }}</strong>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="fileName">
-        <th mat-header-cell *matHeaderCellDef>File Name</th>
-        <td mat-cell *matCellDef="let project">{{ project.fileName }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="importDate">
-        <th mat-header-cell *matHeaderCellDef>Import Date</th>
-        <td mat-cell *matCellDef="let project">{{ project.importDate | date:'short' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="stats">
-        <th mat-header-cell *matHeaderCellDef>Statistics</th>
-        <td mat-cell *matCellDef="let project">
-          <span class="stats">
-            <mat-icon>device_hub</mat-icon>
-            {{ project.groupAddressCount }} GAs
-            <mat-icon>devices</mat-icon>
-            {{ project.deviceCount }} Devices
-          </span>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="isActive">
-        <th mat-header-cell *matHeaderCellDef>Active</th>
-        <td mat-cell *matCellDef="let project">
-          <mat-slide-toggle
-            [checked]="project.isActive"
-            (change)="toggleActivation(project)"
-            [disabled]="project.isActive"
-            color="primary">
-          </mat-slide-toggle>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
-        <td mat-cell *matCellDef="let project">
-          <button mat-icon-button (click)="viewDetails(project)" matTooltip="View Details">
-            <mat-icon>visibility</mat-icon>
-          </button>
-          <button mat-icon-button color="warn" (click)="deleteProject(project)" matTooltip="Delete">
-            <mat-icon>delete</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" [class.active-row]="row.isActive"></tr>
+    <table class="proj-table">
+      <thead>
+        <tr>
+          <th>Name</th><th>Datei</th><th>Import-Datum</th><th>Statistik</th><th>Aktiv</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (project of projects; track project.id) {
+          <tr [class.is-active-row]="project.isActive">
+            <td><span class="proj-name">{{ project.name }}</span></td>
+            <td><span class="proj-file">{{ project.fileName }}</span></td>
+            <td><span class="proj-date">{{ project.importDate | date:'short' }}</span></td>
+            <td>
+              <div class="proj-stats">
+                <span class="proj-stat"><mat-icon svgIcon="knx:sitemap"></mat-icon><b>{{ project.groupAddressCount }}</b> GAs</span>
+                <span class="proj-stat"><mat-icon svgIcon="knx:monitor"></mat-icon><b>{{ project.deviceCount }}</b> Geräte</span>
+              </div>
+            </td>
+            <td>
+              <label class="knx-switch">
+                <input type="checkbox" [checked]="project.isActive" [disabled]="project.isActive" (change)="toggleActivation(project)">
+                <span class="track"></span>
+              </label>
+            </td>
+            <td>
+              <div class="proj-actions">
+                <button class="knx-btn knx-btn--ghost knx-btn--icon knx-btn--sm" (click)="viewDetails(project)" matTooltip="Details ansehen">
+                  <mat-icon svgIcon="knx:eye"></mat-icon>
+                </button>
+                <button class="knx-btn knx-btn--danger knx-btn--icon knx-btn--sm" (click)="deleteProject(project)" matTooltip="Löschen">
+                  <mat-icon svgIcon="knx:trash"></mat-icon>
+                </button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
     </table>
   }
 
@@ -159,5 +133,6 @@
       </mat-card>
     </div>
   }
+  </div>
   </div>
 </div>

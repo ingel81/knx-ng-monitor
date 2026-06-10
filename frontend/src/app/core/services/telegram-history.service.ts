@@ -38,6 +38,9 @@ export class TelegramHistoryService {
     if (params.address) httpParams = httpParams.set('address', params.address);
     if (params.source) httpParams = httpParams.set('source', params.source);
     if (params.type) httpParams = httpParams.set('type', params.type);
+    if (params.types) httpParams = httpParams.set('types', params.types);
+    if (params.q) httpParams = httpParams.set('q', params.q);
+    if (params.order) httpParams = httpParams.set('order', params.order);
     if (params.cursor) httpParams = httpParams.set('cursor', params.cursor);
     return httpParams;
   }

@@ -2,35 +2,35 @@
   <header class="app-header">
     <div class="header-content">
       <div class="brand">
-        <img src="KNX_logo.svg" alt="KNX" class="knx-logo">
-        <span class="app-name">-NG-Monitor</span>
+        <span class="brand-knx">KNX</span><span class="brand-ng">·NG</span>
+        <span class="brand-sub">Monitor</span>
       </div>
 
-      <nav class="main-nav">
+      <nav class="main-nav" role="navigation" aria-label="Hauptnavigation">
         <a routerLink="/live-view" routerLinkActive="active" class="nav-link">
-          <mat-icon>visibility</mat-icon>
+          <mat-icon svgIcon="knx:live"></mat-icon>
           <span>Live View</span>
         </a>
         <a routerLink="/history" routerLinkActive="active" class="nav-link">
-          <mat-icon>history</mat-icon>
+          <mat-icon svgIcon="knx:history"></mat-icon>
           <span>History</span>
         </a>
         <a routerLink="/projects" routerLinkActive="active" class="nav-link">
-          <mat-icon>folder_open</mat-icon>
+          <mat-icon svgIcon="knx:folder"></mat-icon>
           <span>Projects</span>
         </a>
         <a routerLink="/settings" routerLinkActive="active" class="nav-link">
-          <mat-icon>settings</mat-icon>
+          <mat-icon svgIcon="knx:settings"></mat-icon>
           <span>Settings</span>
         </a>
       </nav>
 
       <div class="user-info">
         @if (currentUser$ | async; as username) {
-          <mat-icon>account_circle</mat-icon>
+          <mat-icon svgIcon="knx:user"></mat-icon>
           <span class="username">{{ username }}</span>
-          <button mat-icon-button (click)="logout()" title="Logout">
-            <mat-icon>logout</mat-icon>
+          <button mat-icon-button (click)="logout()" matTooltip="Logout" aria-label="Logout">
+            <mat-icon svgIcon="knx:logout"></mat-icon>
           </button>
         }
       </div>
@@ -42,4 +42,23 @@
       <router-outlet></router-outlet>
     </div>
   </main>
+
+  <nav class="bottom-nav" role="navigation" aria-label="Hauptnavigation (mobil)">
+    <a routerLink="/live-view" routerLinkActive="active" class="bottom-link" aria-label="Live View">
+      <mat-icon svgIcon="knx:live"></mat-icon>
+      <span>Live</span>
+    </a>
+    <a routerLink="/history" routerLinkActive="active" class="bottom-link" aria-label="History">
+      <mat-icon svgIcon="knx:history"></mat-icon>
+      <span>History</span>
+    </a>
+    <a routerLink="/projects" routerLinkActive="active" class="bottom-link" aria-label="Projects">
+      <mat-icon svgIcon="knx:folder"></mat-icon>
+      <span>Projects</span>
+    </a>
+    <a routerLink="/settings" routerLinkActive="active" class="bottom-link" aria-label="Settings">
+      <mat-icon svgIcon="knx:settings"></mat-icon>
+      <span>Settings</span>
+    </a>
+  </nav>
 </div>

@@ -1,0 +1,102 @@
+.knx-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-ui);
+}
+
+.knx-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-5) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+
+  .knx-sheet-title {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+
+    .name {
+      font-size: var(--fs-lg);
+      font-weight: var(--fw-semi);
+      &.empty { color: var(--ink-3); font-weight: var(--fw-normal); }
+    }
+  }
+
+  button { color: var(--ink-2); }
+}
+
+.knx-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  .knx-type-dot { width: 7px; height: 7px; border-radius: 2px; }
+  &.knx-type--write { color: var(--write); .knx-type-dot { background: var(--write); } }
+  &.knx-type--read { color: var(--read); .knx-type-dot { background: var(--read); } }
+  &.knx-type--response { color: var(--response); .knx-type-dot { background: var(--response); } }
+  &.knx-type--groupread { color: var(--groupread); .knx-type-dot { background: var(--groupread); } }
+}
+
+.knx-sheet-value {
+  padding: var(--sp-6) var(--sp-5);
+  border-bottom: 1px solid var(--line);
+
+  .big {
+    font-size: var(--fs-3xl);
+    font-weight: var(--fw-semi);
+    color: var(--val-num);
+    line-height: 1.1;
+    word-break: break-word;
+  }
+
+  .big-unit {
+    margin-left: 8px;
+    font-size: var(--fs-xl);
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+  }
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' 1;
+}
+
+.knx-sheet-grid {
+  margin: 0;
+  padding: var(--sp-4) var(--sp-5);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4) var(--sp-5);
+  overflow-y: auto;
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+
+    dt {
+      font-size: var(--fs-2xs);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink-3);
+    }
+    dd {
+      margin: 0;
+      font-size: var(--fs-md);
+      color: var(--ink);
+      word-break: break-word;
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .knx-sheet-grid { grid-template-columns: 1fr; }
+}

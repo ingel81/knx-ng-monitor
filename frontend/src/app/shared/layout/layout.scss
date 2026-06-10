@@ -6,102 +6,119 @@
   overflow: hidden; // No scrolling at layout level
 }
 
+// ---------------------------------------------------------------------------
+// Header — Petrol "Instrument"
+// ---------------------------------------------------------------------------
 .app-header {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(180deg, var(--header-bg-2), var(--header-bg));
+  color: var(--header-ink);
+  box-shadow: var(--sh-2);
   z-index: 1000;
-  flex-shrink: 0; // Never shrink header
-  flex-grow: 0; // Never grow header
+  flex-shrink: 0;
+  flex-grow: 0;
 }
 
 .header-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  height: 64px;
+  padding: 0 var(--sp-6);
+  height: 56px;
   width: 100%;
 }
 
 .brand {
   flex-shrink: 0;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0;
 
-  .knx-logo {
-    height: 1.2rem;
-    width: auto;
+  .brand-knx {
+    font-size: 1.3rem;
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.3px;
+    color: var(--live);
   }
 
-  .app-name {
-    font-size: 1.5rem;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    margin: 0;
+  .brand-ng {
+    font-size: 1.3rem;
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.3px;
+    color: #fff;
+  }
+
+  .brand-sub {
+    margin-left: 10px;
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-semi);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--header-ink-2);
+    align-self: center;
   }
 }
 
 .main-nav {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   flex: 1;
   justify-content: flex-start;
-  margin-left: 48px;
+  margin-left: var(--sp-10);
 }
 
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  color: rgba(255, 255, 255, 0.8);
+  align-self: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3);
+  height: 36px;
+  color: var(--header-ink-2);
   text-decoration: none;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  font-size: 0.95rem;
+  border-radius: var(--r-sm);
+  // WICHTIG: nur color/background transitionen — sonst "klebt" der aktive Hintergrund.
+  transition: color var(--t-fast);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
 
   mat-icon {
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
   }
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-  }
+  &:hover { color: var(--header-ink); }
 
   &.active {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-    font-weight: 500;
+    background: rgba(24, 168, 154, 0.16);
+    color: #fff;
+    box-shadow: inset 0 -2px 0 var(--live);
   }
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
   flex-shrink: 0;
+  color: var(--header-ink);
 
   mat-icon {
-    font-size: 24px;
-    width: 24px;
-    height: 24px;
-    opacity: 0.9;
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+    opacity: 0.85;
   }
 
   .username {
-    font-size: 0.95rem;
-    font-weight: 500;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
     opacity: 0.9;
     white-space: nowrap;
   }
 
   button {
-    color: white;
+    color: var(--header-ink);
 
     &:hover {
       background: rgba(255, 255, 255, 0.1);
@@ -109,13 +126,16 @@
   }
 }
 
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
 .app-main {
-  flex: 1; // Grow to fill available space
-  overflow: hidden; // Prevent page scrolling - only child content scrolls
-  background: #0a0e27;
-  min-height: 0; // Important for flex children with overflow
-  display: flex; // Make it a flex container
-  flex-direction: column; // Stack children vertically
+  flex: 1;
+  overflow: hidden;
+  background: var(--paper);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   position: relative;
 
   .router-content {
@@ -129,26 +149,55 @@
   }
 }
 
-// Responsive
-@media (max-width: 768px) {
-  .header-content {
-    padding: 0 16px;
-  }
+// ---------------------------------------------------------------------------
+// Bottom-Nav (nur Mobil)
+// ---------------------------------------------------------------------------
+.bottom-nav {
+  display: none;
+}
 
-  .nav-link span {
-    display: none;
-  }
+@media (max-width: 767px) {
+  // Top-Nav + User-Text auf Mobil ausblenden
+  .main-nav { display: none; }
+  .user-info .username { display: none; }
 
-  .main-nav {
-    gap: 4px;
-  }
+  .header-content { padding: 0 var(--sp-4); }
 
-  .nav-link {
-    padding: 8px 12px;
-  }
+  .bottom-nav {
+    display: flex;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    box-shadow: var(--sh-2);
+    z-index: 1000;
 
-  .user-info mat-icon,
-  .username {
-    display: none;
+    .bottom-link {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      min-height: 56px;
+      padding: 6px 0;
+      text-decoration: none;
+      color: var(--ink-3);
+      transition: color var(--t-fast);
+
+      mat-icon {
+        font-size: 21px;
+        width: 21px;
+        height: 21px;
+      }
+
+      span {
+        font-size: var(--fs-2xs);
+        font-weight: var(--fw-medium);
+      }
+
+      &.active {
+        color: var(--brand);
+      }
+    }
   }
 }

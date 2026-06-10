@@ -15,4 +15,13 @@ public class TelegramFilter
     public string? Source { get; set; }
 
     public MessageType? Type { get; set; }
+
+    /// <summary>Multi-select message types (OR). Takes precedence over <see cref="Type"/> when non-empty.</summary>
+    public List<MessageType>? Types { get; set; }
+
+    /// <summary>Free-text search across source/destination, GA name, DPT and decoded value.</summary>
+    public string? Q { get; set; }
+
+    /// <summary>Sort direction by timestamp. False = newest first (default).</summary>
+    public bool Ascending { get; set; }
 }

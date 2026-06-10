@@ -93,16 +93,18 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
         {
             var ts = cursorTimestamp.Value;
             var id = cursorId.Value;
-            // Keyset on (Timestamp DESC, Id DESC): strictly "older" than the cursor row.
-            query = query.Where(t =>
-                t.Timestamp < ts || (t.Timestamp == ts && t.Id < id));
+            // Keyset over (Timestamp, Id): rows strictly "after" the cursor in sort order.
+            query = filter.Ascending
+                ? query.Where(t => t.Timestamp > ts || (t.Timestamp == ts && t.Id > id))
+                : query.Where(t => t.Timestamp < ts || (t.Timestamp == ts && t.Id < id));
         }
 
+        var ordered = filter.Ascending
+            ? query.Include(t => t.GroupAddress).OrderBy(t => t.Timestamp).ThenBy(t => t.Id)
+            : query.Include(t => t.GroupAddress).OrderByDescending(t => t.Timestamp).ThenByDescending(t => t.Id);
+
         // Fetch one extra row as a sentinel to determine HasMore without a separate count.
-        var rows = await query
-            .Include(t => t.GroupAddress)
-            .OrderByDescending(t => t.Timestamp)
-            .ThenByDescending(t => t.Id)
+        var rows = await ordered
             .Take(pageSize + 1)
             .ToListAsync();
 
@@ -152,10 +154,27 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
         {
             query = query.Where(t => t.SourceAddress == filter.Source);
         }
-        if (filter.Type.HasValue)
+        if (filter.Types is { Count: > 0 })
+        {
+            var types = filter.Types;
+            query = query.Where(t => types.Contains(t.MessageType));
+        }
+        else if (filter.Type.HasValue)
         {
             var type = filter.Type.Value;
             query = query.Where(t => t.MessageType == type);
+        }
+        if (!string.IsNullOrWhiteSpace(filter.Q))
+        {
+            // Free-text OR across text fields (incl. GA name/DPT via navigation).
+            var like = $"%{filter.Q.Trim()}%";
+            query = query.Where(t =>
+                EF.Functions.Like(t.SourceAddress, like) ||
+                EF.Functions.Like(t.DestinationAddress, like) ||
+                (t.ValueDecoded != null && EF.Functions.Like(t.ValueDecoded, like)) ||
+                (t.GroupAddress != null && EF.Functions.Like(t.GroupAddress.Name, like)) ||
+                (t.GroupAddress != null && t.GroupAddress.DatapointType != null &&
+                    EF.Functions.Like(t.GroupAddress.DatapointType, like)));
         }
 
         return query;

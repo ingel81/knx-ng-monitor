@@ -4,28 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { Subscription } from 'rxjs';
 import { SignalrService, KnxTelegram } from '../../core/services/signalr.service';
 import { HttpClient } from '@angular/common/http';
-import { AgGridAngular } from 'ag-grid-angular';
 import { environment } from '../../../environments/environment.development';
-import {
-  ColDef,
-  GridOptions,
-  GridReadyEvent,
-  GetRowIdParams,
-  RowClassParams,
-  ModuleRegistry,
-  AllCommunityModule
-} from 'ag-grid-community';
-
-// Register AG-Grid modules
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { ThemeService } from '../../core/services/theme.service';
+import { TelegramDetailService } from '../../shared/grid/telegram-detail.service';
+import { TelegramCardsComponent } from '../../shared/grid/telegram-cards.component';
+import { KnxTableComponent, KnxColumn } from '../../shared/grid/knx-table.component';
+import { ColumnManagerComponent } from '../../shared/grid/column-manager.component';
+import { messageTypeName } from '../../shared/grid/knx-grid.util';
 
 interface KnxConfiguration {
   id: number;
@@ -37,16 +26,8 @@ interface KnxConfiguration {
 @Component({
   selector: 'app-live-view',
   imports: [
-    CommonModule,
-    FormsModule,
-    MatIconModule,
-    MatButtonModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatCardModule,
-    MatTooltipModule,
-    MatCheckboxModule,
-    AgGridAngular
+    CommonModule, FormsModule, MatIconModule, MatButtonModule, MatTooltipModule,
+    TelegramCardsComponent, KnxTableComponent, ColumnManagerComponent
   ],
   templateUrl: './live-view.component.html',
   styleUrl: './live-view.component.scss'
@@ -55,320 +36,139 @@ export class LiveViewComponent implements OnInit, OnDestroy {
   private signalrService = inject(SignalrService);
   private http = inject(HttpClient);
   private router = inject(Router);
+  private detail = inject(TelegramDetailService);
+  private density = inject(ThemeService).density;
   private subscription?: Subscription;
 
-  @ViewChild(AgGridAngular) agGrid!: AgGridAngular;
+  @ViewChild(KnxTableComponent) table?: KnxTableComponent;
 
   telegrams: KnxTelegram[] = [];
+  filtered: KnxTelegram[] = [];
   isConnected = false;
   isPaused = false;
   isConnecting = false;
   autoScroll = true;
   quickFilterText = '';
+  isMobile = window.innerWidth < 768;
 
-  // Setup status
   hasProject = false;
   hasKnxConfig = false;
 
-  // AG-Grid Configuration
-  gridOptions: GridOptions;
-  columnDefs: ColDef[];
-  defaultColDef: ColDef;
+  // Live-Telegramme kommen vor dem Persistieren -> id=0. Eindeutige Client-Sequenz
+  // vergeben (stabil pro Zeile) -> Zebra + trackBy funktionieren wie in History.
+  private clientSeq = 0;
 
-  constructor() {
-    // Default column configuration
-    this.defaultColDef = {
-      sortable: true,
-      filter: true,
-      resizable: true,
-      floatingFilter: true,
-      tooltipValueGetter: undefined, // Tooltips deaktiviert
-      cellStyle: {
-        display: 'flex',
-        alignItems: 'center',
-        height: '35px',
-        lineHeight: 'normal',
-        paddingTop: '0',
-        paddingBottom: '0',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap'
-      }
-    };
+  readonly allColumns: KnxColumn[] = [
+    { key: 'timestamp', header: 'Zeit', kind: 'time', width: 120 },
+    { key: 'sourceAddress', header: 'Quelle', kind: 'mono', width: 90 },
+    { key: 'destinationAddress', header: 'Ziel', kind: 'mono', width: 90 },
+    { key: 'groupAddressName', header: 'Name', kind: 'name', grow: 2, minWidth: 180 },
+    { key: 'datapointType', header: 'DPT', kind: 'muted-mono', width: 110 },
+    { key: 'messageType', header: 'Typ', kind: 'type', width: 110 },
+    { key: 'value', header: 'Rohwert', kind: 'muted-mono', width: 120 },
+    { key: 'valueDecoded', header: 'Wert', kind: 'value', grow: 1, minWidth: 130 },
+    { key: 'priority', header: 'Priorität', kind: 'muted-mono', width: 90 },
+    { key: 'flags', header: 'Flags', kind: 'muted-mono', width: 90 }
+  ];
+  readonly defaultHiddenCols = ['priority', 'flags'];
+  columnOptions = this.allColumns.map((c) => ({ key: c.key as string, header: c.header }));
+  hiddenCols = new Set<string>();
+  readonly lockedCols = ['groupAddressName', 'valueDecoded'];
 
-    // Column definitions with custom configurations
-    this.columnDefs = [
-      {
-        headerName: 'Time',
-        field: 'timestamp',
-        width: 130,
-        minWidth: 100,
-        maxWidth: 180,
-        filter: 'agDateColumnFilter',
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const date = new Date(params.value);
-          return date.toLocaleTimeString('de-DE', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            fractionalSecondDigits: 3
-          });
-        }
-      },
-      {
-        headerName: 'Source',
-        field: 'sourceAddress',
-        width: 110,
-        minWidth: 90,
-        maxWidth: 150,
-        filter: 'agTextColumnFilter'
-      },
-      {
-        headerName: 'Destination',
-        field: 'destinationAddress',
-        width: 120,
-        minWidth: 100,
-        maxWidth: 160,
-        filter: 'agTextColumnFilter'
-      },
-      {
-        headerName: 'Name',
-        field: 'groupAddressName',
-        minWidth: 150,
-        flex: 2,
-        filter: 'agTextColumnFilter',
-        cellClass: (params) => params.value ? 'group-name-cell' : 'group-name-cell empty',
-        valueFormatter: (params) => params.value || '(unknown)'
-      },
-      {
-        headerName: 'DPT',
-        field: 'datapointType',
-        width: 100,
-        minWidth: 80,
-        filter: 'agTextColumnFilter',
-        cellClass: (params) => params.value ? 'dpt-cell' : 'dpt-cell empty',
-        valueFormatter: (params) => params.value || '-'
-      },
-      {
-        headerName: 'Type',
-        field: 'messageType',
-        width: 80,
-        minWidth: 70,
-        filter: 'agTextColumnFilter',
-        cellClass: (params) => {
-          return this.getMessageTypeClass(params.data.messageType);
-        },
-        valueGetter: (params) => this.getMessageTypeName(params.data.messageType)
-      },
-      {
-        headerName: 'Raw Value',
-        field: 'value',
-        width: 120,
-        minWidth: 100,
-        filter: 'agTextColumnFilter',
-        cellStyle: { fontFamily: 'monospace', fontSize: '0.9em' }
-      },
-      {
-        headerName: 'Decoded Value',
-        field: 'valueDecoded',
-        minWidth: 120,
-        flex: 1,
-        filter: 'agTextColumnFilter',
-        cellStyle: { fontWeight: '600', color: '#2e7d32' }
-      },
-      {
-        headerName: 'Priority',
-        field: 'priority',
-        width: 90,
-        minWidth: 70,
-        maxWidth: 120,
-        filter: 'agNumberColumnFilter',
-        hide: true // Hidden by default, can be shown by user
-      },
-      {
-        headerName: 'Flags',
-        field: 'flags',
-        width: 80,
-        minWidth: 60,
-        maxWidth: 100,
-        filter: 'agTextColumnFilter',
-        cellStyle: { fontFamily: 'monospace', fontSize: '0.9em' },
-        hide: true // Hidden by default, can be shown by user
-      }
-    ];
-
-    // Grid options
-    this.gridOptions = {
-      rowModelType: 'clientSide',
-      animateRows: false, // Disable animations to prevent height issues
-      enableCellTextSelection: true,
-      ensureDomOrder: false, // Let AG-Grid manage DOM order
-      suppressCellFocus: false,
-      suppressColumnVirtualisation: true, // Render all columns to avoid scroll issues
-      suppressHorizontalScroll: false, // Allow horizontal scroll if needed, but we'll manage column widths
-      getRowId: (params: GetRowIdParams) => {
-        // Generate unique ID if not present
-        return params.data.id ? params.data.id.toString() : `telegram-${Date.now()}-${Math.random()}`;
-      },
-      getRowClass: (params: RowClassParams) => {
-        return this.getMessageTypeClass(params.data.messageType);
-      },
-      getRowStyle: () => {
-        return {
-          height: '35px',
-          maxHeight: '35px',
-          minHeight: '35px',
-          lineHeight: 'normal'
-        };
-      },
-      rowHeight: 35,
-      headerHeight: 45,
-      floatingFiltersHeight: 35,
-      pagination: false,
-      suppressPaginationPanel: true,
-      suppressScrollOnNewData: false,
-      suppressRowTransform: false, // Allow row transforms
-      suppressRowVirtualisation: false, // Enable virtualization
-      onGridReady: this.onGridReady.bind(this),
-      onFirstDataRendered: this.onFirstDataRendered.bind(this),
-      onBodyScroll: this.onBodyScroll.bind(this)
-    };
+  get visibleColumns(): KnxColumn[] {
+    return this.allColumns.filter((c) => !this.hiddenCols.has(c.key as string));
   }
+  get rowHeight(): number { return this.density() === 'cozy' ? 48 : 36; }
 
-  async ngOnInit() {
+  onHiddenChange(hidden: Set<string>): void { this.hiddenCols = hidden; }
+
+  async ngOnInit(): Promise<void> {
     await this.signalrService.startConnection();
-
-    this.subscription = this.signalrService.telegram$.subscribe(telegram => {
-      if (!this.isPaused) {
-        // Add to internal array
-        this.telegrams.unshift(telegram);
-
-        // Limit to 1000 telegrams for performance
-        if (this.telegrams.length > 1000) {
-          this.telegrams.pop();
-        }
-
-        // Update grid using transaction API for better performance
-        if (this.agGrid?.api) {
-          this.agGrid.api.applyTransaction({
-            add: [telegram],
-            addIndex: 0
-          });
-
-          // Auto-scroll to top if enabled
-          if (this.autoScroll) {
-            setTimeout(() => {
-              this.agGrid.api.ensureIndexVisible(0, 'top');
-            }, 10);
-          }
-        }
-      }
-    });
-
+    this.subscription = this.signalrService.telegram$.subscribe((t) => this.addTelegram(t));
     this.checkConnectionStatus();
     this.checkSetupStatus();
   }
 
-  async checkSetupStatus() {
-    try {
-      // Check if projects exist
-      const projects = await this.http.get<any[]>(`${environment.apiUrl}/projects`).toPromise();
-      this.hasProject = (projects && projects.length > 0) || false;
-
-      // Check if KNX configuration exists
-      const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
-      this.hasKnxConfig = (configs && configs.length > 0) || false;
-    } catch (error) {
-      console.error('Failed to check setup status:', error);
-    }
-  }
-
-  ngOnDestroy() {
+  ngOnDestroy(): void {
     this.subscription?.unsubscribe();
     this.signalrService.stopConnection();
   }
 
   @HostListener('window:resize')
-  onWindowResize() {
-    // Resize grid when window size changes
-    setTimeout(() => {
-      this.resizeColumnsToFit();
-    }, 100);
-  }
+  onResize(): void { this.isMobile = window.innerWidth < 768; }
 
   @HostListener('document:keydown', ['$event'])
-  handleKeyboardEvent(event: KeyboardEvent) {
-    // Space = Pause/Resume (only if not typing in an input field)
+  handleKeyboardEvent(event: KeyboardEvent): void {
     if (event.code === 'Space' && event.target instanceof HTMLElement) {
-      const tagName = event.target.tagName.toLowerCase();
-      // Ignore if user is typing in input/textarea or if any modifier key is pressed
-      if (tagName !== 'input' && tagName !== 'textarea' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+      const tag = event.target.tagName.toLowerCase();
+      if (tag !== 'input' && tag !== 'textarea' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
         event.preventDefault();
         this.togglePause();
       }
     }
   }
 
-  onGridReady(params: GridReadyEvent) {
-    // Grid is ready, auto-size columns initially
-    this.resizeColumnsToFit();
+  private addTelegram(t: KnxTelegram): void {
+    if (this.isPaused) return;
+    if (!t.id) t.id = ++this.clientSeq; // eindeutige, stabile id für Zebra/trackBy
+    this.telegrams.unshift(t);
+    if (this.telegrams.length > 1000) this.telegrams.pop();
+    this.applyClientFilter();
+    if (this.autoScroll) setTimeout(() => this.table?.scrollToTop(), 0);
   }
 
-  onFirstDataRendered() {
-    // Resize columns when first data is rendered
-    this.resizeColumnsToFit();
+  applyClientFilter(): void {
+    const q = this.quickFilterText.trim().toLowerCase();
+    this.filtered = q
+      ? this.telegrams.filter((t) =>
+          [t.sourceAddress, t.destinationAddress, t.groupAddressName, t.datapointType, t.value, t.valueDecoded]
+            .join(' ').toLowerCase().includes(q))
+      : this.telegrams.slice();
   }
 
-  onBodyScroll() {
-    // When vertical scrollbar appears, resize columns to prevent horizontal scroll
-    if (this.agGrid?.api) {
-      const gridBody = document.querySelector('.ag-body-viewport');
-      if (gridBody) {
-        const hasVerticalScroll = gridBody.scrollHeight > gridBody.clientHeight;
-        if (hasVerticalScroll) {
-          // Debounce resize to prevent excessive calls
-          setTimeout(() => {
-            this.resizeColumnsToFit();
-          }, 100);
-        }
-      }
+  onQuickFilterChanged(): void { this.applyClientFilter(); }
+
+  showDetail(row: KnxTelegram): void { this.detail.open(row); }
+
+  togglePause(): void { this.isPaused = !this.isPaused; }
+
+  clearTelegrams(): void {
+    this.telegrams = [];
+    this.applyClientFilter();
+  }
+
+  exportCsv(): void {
+    const header = ['Zeit', 'Quelle', 'Ziel', 'Name', 'DPT', 'Typ', 'Rohwert', 'Wert'];
+    const lines = [header.join(',')];
+    for (const t of this.filtered) {
+      lines.push([
+        new Date(t.timestamp).toLocaleString('de-DE'),
+        t.sourceAddress, t.destinationAddress, t.groupAddressName ?? '', t.datapointType ?? '',
+        messageTypeName(t.messageType), t.value, t.valueDecoded ?? ''
+      ].map((v) => this.csv(String(v ?? ''))).join(','));
     }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `knx-live-${new Date().toISOString()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
-  private resizeColumnsToFit() {
-    if (this.agGrid?.api) {
-      // Get available width
-      const gridElement = document.querySelector('.ag-theme-material');
-      if (gridElement) {
-        const availableWidth = gridElement.clientWidth;
-
-        // Account for scrollbar width (typically 15-17px)
-        const scrollbarWidth = 17;
-        const effectiveWidth = availableWidth - scrollbarWidth;
-
-        // Size columns to fit the effective width
-        this.agGrid.api.sizeColumnsToFit({
-          defaultMinWidth: 70
-        });
-      }
-    }
+  private csv(v: string): string {
+    return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   }
 
-  async connectToKnx() {
+  async connectToKnx(): Promise<void> {
     try {
       this.isConnecting = true;
-
       const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
-
       if (!configs || configs.length === 0) {
         alert('No KNX configuration found. Please configure your KNX Gateway in Settings first.');
         return;
       }
-
-      const configId = configs[0].id;
-
-      await this.http.post(`${environment.apiUrl}/knx/connect`, configId).toPromise();
+      await this.http.post(`${environment.apiUrl}/knx/connect`, configs[0].id).toPromise();
       this.isConnected = true;
     } catch (error) {
       console.error('Failed to connect to KNX:', error);
@@ -378,7 +178,7 @@ export class LiveViewComponent implements OnInit, OnDestroy {
     }
   }
 
-  async disconnectFromKnx() {
+  async disconnectFromKnx(): Promise<void> {
     try {
       await this.http.post(`${environment.apiUrl}/knx/disconnect`, {}).toPromise();
       this.isConnected = false;
@@ -387,7 +187,7 @@ export class LiveViewComponent implements OnInit, OnDestroy {
     }
   }
 
-  async checkConnectionStatus() {
+  async checkConnectionStatus(): Promise<void> {
     try {
       const status = await this.http.get<{ isConnected: boolean }>(`${environment.apiUrl}/knx/status`).toPromise();
       this.isConnected = status?.isConnected || false;
@@ -396,162 +196,17 @@ export class LiveViewComponent implements OnInit, OnDestroy {
     }
   }
 
-  togglePause() {
-    this.isPaused = !this.isPaused;
-  }
-
-  clearTelegrams() {
-    this.telegrams = [];
-    if (this.agGrid?.api) {
-      this.agGrid.api.setGridOption('rowData', []);
+  async checkSetupStatus(): Promise<void> {
+    try {
+      const projects = await this.http.get<unknown[]>(`${environment.apiUrl}/projects`).toPromise();
+      this.hasProject = (projects && projects.length > 0) || false;
+      const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
+      this.hasKnxConfig = (configs && configs.length > 0) || false;
+    } catch (error) {
+      console.error('Failed to check setup status:', error);
     }
   }
 
-  exportToCsv() {
-    if (this.agGrid?.api) {
-      this.agGrid.api.exportDataAsCsv({
-        fileName: `knx-telegrams-${new Date().toISOString()}.csv`,
-        columnKeys: ['timestamp', 'sourceAddress', 'destinationAddress', 'groupAddressName', 'datapointType', 'messageType', 'value', 'valueDecoded']
-      });
-    }
-  }
-
-  autoSizeAll() {
-    if (this.agGrid?.api) {
-      this.agGrid.api.autoSizeAllColumns(false);
-    }
-  }
-
-  resetColumns() {
-    if (this.agGrid?.api) {
-      this.agGrid.api.resetColumnState();
-      this.agGrid.api.sizeColumnsToFit();
-    }
-  }
-
-  onQuickFilterChanged() {
-    if (this.agGrid?.api) {
-      this.agGrid.api.setGridOption('quickFilterText', this.quickFilterText);
-    }
-  }
-
-  getMessageTypeClass(type: string | number): string {
-    const typeStr = String(type).toLowerCase();
-    switch (typeStr) {
-      case 'write':
-      case '0':
-        return 'msg-write';
-      case 'read':
-      case '1':
-        return 'msg-read';
-      case 'response':
-      case '2':
-        return 'msg-response';
-      default:
-        return '';
-    }
-  }
-
-  getMessageTypeName(type: string | number): string {
-    const typeStr = String(type).toLowerCase();
-    switch (typeStr) {
-      case 'write':
-      case '0':
-        return 'Write';
-      case 'read':
-      case '1':
-        return 'Read';
-      case 'response':
-      case '2':
-        return 'Response';
-      default:
-        return String(type);
-    }
-  }
-
-  // Action Methods
-  async filterByAddress(address: string) {
-    if (this.agGrid?.api) {
-      const filterInstance = await this.agGrid.api.getColumnFilterInstance<any>('destinationAddress');
-      if (filterInstance) {
-        filterInstance.setModel({
-          type: 'equals',
-          filter: address
-        });
-        this.agGrid.api.onFilterChanged();
-      }
-    }
-  }
-
-  copyValue(value: string) {
-    navigator.clipboard.writeText(value || '').then(() => {
-      // TODO: Show toast notification
-    }).catch(err => {
-      console.error('Failed to copy:', err);
-    });
-  }
-
-  showTelegramDetails(telegram: KnxTelegram) {
-    const details = `
-KNX Telegram Details
-────────────────────────────────
-Time:        ${new Date(telegram.timestamp).toLocaleString('de-DE')}
-Source:      ${telegram.sourceAddress}
-Destination: ${telegram.destinationAddress}
-Name:        ${telegram.groupAddressName || '(unknown)'}
-DPT:         ${telegram.datapointType || '-'}
-Type:        ${this.getMessageTypeName(telegram.messageType)}
-Raw Value:   ${telegram.value}
-Decoded:     ${telegram.valueDecoded || '-'}
-Priority:    ${telegram.priority}
-Flags:       ${telegram.flags || '-'}
-────────────────────────────────`;
-
-    alert(details);
-    // TODO: Replace with Material Dialog
-  }
-
-  // Quick actions für häufige Operationen
-  showOnlyWrites() {
-    this.applyMessageTypeFilter('0');
-  }
-
-  showOnlyReads() {
-    this.applyMessageTypeFilter('1');
-  }
-
-  showOnlyResponses() {
-    this.applyMessageTypeFilter('2');
-  }
-
-  async applyMessageTypeFilter(type: string) {
-    if (this.agGrid?.api) {
-      const filterInstance = await this.agGrid.api.getColumnFilterInstance<any>('messageType');
-      if (filterInstance) {
-        // Try filtering with both the numeric value and text value
-        filterInstance.setModel({
-          filterType: 'text',
-          type: 'contains',
-          filter: type
-        });
-        this.agGrid.api.onFilterChanged();
-      }
-    }
-  }
-
-  clearAllFilters() {
-    if (this.agGrid?.api) {
-      this.agGrid.api.setFilterModel(null);
-      this.quickFilterText = '';
-    }
-  }
-
-  // Navigation methods for setup checklist
-  navigateToSettings() {
-    this.router.navigate(['/settings']);
-  }
-
-  navigateToProjects() {
-    this.router.navigate(['/projects']);
-  }
+  navigateToSettings(): void { this.router.navigate(['/settings']); }
+  navigateToProjects(): void { this.router.navigate(['/projects']); }
 }

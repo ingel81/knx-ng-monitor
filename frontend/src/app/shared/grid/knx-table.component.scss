@@ -1,0 +1,151 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.knx-table {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--surface);
+  font-family: var(--font-ui);
+}
+
+// --- Header -----------------------------------------------------------------
+.knx-thead {
+  display: grid;
+  flex: none;
+  align-items: center;
+  height: 38px;
+  padding-right: 12px; // entspricht scrollbar-gutter der Viewport -> Spaltenflucht
+  background: var(--paper-sunk);
+  border-bottom: 1px solid var(--line-2);
+
+  .knx-th {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 var(--sp-4);
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: var(--fw-semi);
+    color: var(--ink-2);
+    user-select: none;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    &.sortable { cursor: pointer; }
+    &.sortable:hover { color: var(--ink); }
+    &.active { color: var(--brand); }
+
+    .sort-arrow { font-size: 9px; }
+  }
+}
+
+// --- Viewport / Rows --------------------------------------------------------
+.knx-vp {
+  flex: 1;
+  min-height: 0;
+  scrollbar-gutter: stable;
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  &::-webkit-scrollbar { width: 12px; height: 12px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: var(--r-full);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+.knx-tr {
+  display: grid;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color var(--t-fast);
+
+  &.knx-even { background: var(--surface-2); }
+  &:hover { background: var(--brand-tint); }
+
+  .knx-td {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 var(--sp-4);
+    font-size: var(--fs-sm);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    > span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+.mono { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
+.muted { color: var(--ink-2); }
+
+// Name + Raum-Tag
+.knx-td.name {
+  .name-text { color: var(--ink); font-weight: var(--fw-medium); }
+  .name-text.empty { color: var(--ink-3); font-weight: var(--fw-normal); }
+}
+.room-tag {
+  flex: none;
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--r-xs);
+  background: var(--brand-tint);
+  color: var(--teal-800);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semi);
+  letter-spacing: 0.02em;
+}
+
+// Typ-Pill
+.knx-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--fw-medium);
+  .knx-type-dot { width: 7px; height: 7px; border-radius: 2px; flex: none; }
+  &.knx-type--write { color: var(--write); .knx-type-dot { background: var(--write); } }
+  &.knx-type--read { color: var(--read); .knx-type-dot { background: var(--read); } }
+  &.knx-type--response { color: var(--response); .knx-type-dot { background: var(--response); } }
+  &.knx-type--groupread { color: var(--groupread); .knx-type-dot { background: var(--groupread); } }
+}
+
+// Werte-Semantik
+.val-on   { color: var(--val-on); font-weight: var(--fw-semi); }
+.val-off  { color: var(--val-off); }
+.val-num  { color: var(--val-num); font-family: var(--font-mono); font-feature-settings: 'tnum' 1; font-weight: var(--fw-medium); }
+.val-text { color: var(--val-text); font-family: var(--font-mono); }
+.val-unit { color: var(--ink-3); font-size: var(--fs-xs); flex: none; }
+
+.knx-empty {
+  padding: var(--sp-8);
+  text-align: center;
+  color: var(--ink-3);
+  font-size: var(--fs-md);
+}
+.knx-loading {
+  flex: none;
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  border-top: 1px solid var(--line);
+}
+

@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth.service';
 import { SignalrService } from '../../core/services/signalr.service';
 import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-layout',
-  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule],
+  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatTooltipModule],
   templateUrl: './layout.html',
   styleUrl: './layout.scss',
 })

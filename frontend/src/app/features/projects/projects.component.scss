@@ -1,221 +1,66 @@
-// Import mixins (forwards variables, so we get both)
 @use '../../../styles/mixins' as *;
 
 .projects-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  background: $bg-primary;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+}
 
-  // Page Header (using centralized mixin - DO NOT override!)
-  .page-header {
-    @include page-header;
-  }
+// Details-Overlay (Modal)
+.details-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 30, 27, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: $z-index-modal;
+  padding: $spacing-lg;
+}
 
-  // Content area
-  .content {
-    flex: 1;
-    padding: $spacing-xl;
-    max-width: 1400px;
-    margin: 0 auto;
-    width: 100%;
-  }
+.details-card {
+  width: 90%;
+  max-width: 1100px;
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-pop);
 
-  .loading {
+  mat-card-header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    padding: $spacing-3xl;
-    gap: $spacing-lg;
-    color: $text-secondary;
+    margin-bottom: $spacing-lg;
+
+    mat-card-title { color: var(--ink); }
+    button { color: var(--ink-2); }
   }
 
-  .empty-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 500px;
-    padding: $spacing-3xl;
+  mat-expansion-panel {
+    margin-bottom: $spacing-lg;
+    background: var(--surface-2);
+    color: var(--ink);
 
-    .empty-state-content {
-      text-align: center;
-      max-width: 500px;
-
-      .icon-wrapper {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, rgba(121, 134, 203, 0.1), rgba(100, 181, 246, 0.1));
-        margin: 0 auto $spacing-2xl;
-        position: relative;
-
-        &::before {
-          content: '';
-          position: absolute;
-          inset: -2px;
-          border-radius: 50%;
-          padding: 2px;
-          background: linear-gradient(135deg, rgba(121, 134, 203, 0.3), rgba(100, 181, 246, 0.3));
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-        }
-
-        mat-icon {
-          font-size: 64px;
-          width: 64px;
-          height: 64px;
-          color: $accent-color;
-        }
-      }
-
-      h2 {
-        font-size: $font-size-3xl;
-        font-weight: $font-weight-medium;
-        color: $text-primary;
-        margin: 0 0 $spacing-lg;
-      }
-
-      .description {
-        font-size: $font-size-lg;
-        color: $text-secondary;
-        margin: 0 0 $spacing-md;
-        line-height: 1.6;
-      }
-
-      .hint {
-        font-size: $font-size-sm;
-        color: $text-hint;
-        margin: 0 0 $spacing-2xl;
-        line-height: 1.5;
-      }
-
-      .upload-button {
-        padding: $spacing-md $spacing-2xl;
-        font-size: $font-size-base;
-        font-weight: $font-weight-medium;
-        height: 48px;
-        box-shadow: $shadow-md;
-        transition: all $transition-base;
-
-        &:hover:not([disabled]) {
-          transform: translateY(-2px);
-          box-shadow: $shadow-lg;
-        }
-      }
-    }
-  }
-
-  .projects-table {
-    @include table-dark;
-
-    .stats {
+    mat-expansion-panel-header { background: var(--surface-3); }
+    mat-panel-title {
+      color: var(--ink);
       display: flex;
       align-items: center;
       gap: $spacing-sm;
-      font-size: $font-size-sm;
-
-      mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-        opacity: 0.7;
-      }
+      mat-icon { color: var(--brand); }
     }
-
-    .active-row {
-      background: rgba(63, 81, 181, 0.1);
-
-      &:hover {
-        background: rgba(63, 81, 181, 0.15) !important;
-      }
-    }
-
-    td strong {
-      font-weight: $font-weight-medium;
-    }
-  }
-
-  .details-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: $z-index-modal;
-  }
-
-  .details-card {
-    width: 90%;
-    max-width: 1200px;
-    max-height: 90vh;
-    overflow: auto;
-    background: $bg-secondary;
-    color: $text-primary;
-    @include custom-scrollbar;
-
-    mat-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: $spacing-lg;
-
-      mat-card-title {
-        color: $text-primary;
-      }
-
-      button {
-        color: $text-secondary;
-      }
-    }
-
-    mat-expansion-panel {
-      margin-bottom: $spacing-lg;
-      background: $bg-elevated;
-      color: $text-primary;
-
-      mat-expansion-panel-header {
-        background: rgba(255, 255, 255, 0.03);
-
-        mat-panel-title {
-          color: $text-primary;
-          display: flex;
-          align-items: center;
-          gap: $spacing-sm;
-
-          mat-icon {
-            color: $accent-color;
-          }
-        }
-      }
-    }
-  }
-
-  .details-table {
-    @include table-dark;
-    margin-top: $spacing-lg;
   }
 }
 
-// Responsive
-@media (max-width: $breakpoint-sm) {
-  .projects-container {
-    .content {
-      padding: $spacing-lg;
-    }
+.details-table {
+  width: 100%;
+  background: var(--surface);
 
-    .details-card {
-      width: 95%;
-      max-height: 95vh;
-    }
-  }
+  th { color: var(--ink-2); background: var(--paper-sunk); font-weight: $font-weight-medium; }
+  td { color: var(--ink); border-color: var(--line); }
 }
