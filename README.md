@@ -239,7 +239,18 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.2.0 (latest)
+### v0.3.0 (latest)
+
+- **UI redesign ("Instrument")** — coherent **Light + Console (dark)** theme switchable at runtime via CSS design tokens, **IBM Plex** typography, petrol shell with custom SVG icon set; single source of truth in `styles/_design.scss` (mapped 1:1 from the design handoff)
+- **Custom virtualized grid** — **AG-Grid replaced** by a lightweight CDK-Virtual-Scroll table (`knx-table`) shared by Live View and History: type pills, value semantics, **DPST units** (°C/W/lx/…), room tags, stable zebra, click-to-detail sheet, column manager, mobile cards (<768px). Bundle ~1 MB smaller
+- **History query** — server-side **full-text search** (`q`), **sort direction** (`order`) and **multi-select message types** (`types`) added to `/api/telegrams`
+- **Settings** — appearance card with Light/Console + grid-density toggles (persisted, applied live)
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.3.0
+```
+
+### v0.2.0
 
 - **Data recording (two-tier)** — telegrams now persist into a count-based SQLite **hot-tier ring buffer** (default 1,000,000) trimmed in-worker (single SQLite writer) with **WAL** enabled; bounded, constant DB size instead of unbounded growth
 - **Long-term archive** — opt-in **NDJSON + gzip** daily files under `data/archive/` (`YYYY-MM-DD.ndjson`, gzipped at day rollover, startup self-heal, optional retention); captures every telegram independently of the ring buffer
@@ -317,7 +328,7 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.2.0, two-tier data recording (SQLite hot-tier ring buffer + opt-in NDJSON/gzip long-term archive), history view with keyset-paginated query API + server-streamed CSV export, recording settings with live-apply.
+**Current** — v0.3.0, "Instrument" UI redesign: runtime Light/Console theming via design tokens, custom CDK-virtual-scroll grid (AG-Grid removed) with DPST units, history full-text/sort/multi-type query, two-tier data recording (SQLite hot-tier ring buffer + opt-in NDJSON/gzip long-term archive) with live-apply settings.
 **Next** — Querying across archive files; telegram-time decryption using stored tool keys; communication objects, topology, locations.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.
