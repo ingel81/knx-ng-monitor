@@ -240,7 +240,15 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.4.1 (latest)
+### v0.5.0 (latest)
+
+- **Clear history** — the History view gained a "more actions" kebab menu (next to *Export CSV*) with a **Clear history** action that wipes the entire telegram database after a confirmation dialog. The delete is set-based (`ExecuteDelete` + WAL checkpoint), so it is fast even on a full 1 M-row hot-tier; archived NDJSON day-files are left untouched
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.5.0
+```
+
+### v0.4.1
 
 - **Fix: DPT decoding returned raw hex in Docker / single-file builds** — Falcon's master-data loader derives its search directories from `Assembly.Location`, which is **empty for assemblies in a single-file bundle**, so `DptFactory` threw and every value fell back to hex (`0x…`). The published binary now self-extracts all content to disk (`IncludeAllContentForSelfExtract`), restoring a valid assembly path. Affects v0.4.0 only; framework-dependent/dev runs were never impacted
 - **Decode failures are now logged** instead of silently falling back to hex
@@ -353,7 +361,7 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.4.1 (hotfix: DPT decoding in single-file/Docker builds): Falcon-based DPT decoding (full catalog, sub-types, units, enum names, English labels), always-on recording via auto-connect/reconnect worker with a status-only toolbar, singleton live buffer (History↔Live keeps state, Pause without telegram loss), fully English UI, grid polish (column widths, right-aligned numbers, truncation tooltips), non-destructive connection test, and `THIRD-PARTY-NOTICES` for the proprietary Falcon SDK.
+**Current** — v0.5.0 (clear-history action; hotfix v0.4.1: DPT decoding in single-file/Docker builds): Falcon-based DPT decoding (full catalog, sub-types, units, enum names, English labels), always-on recording via auto-connect/reconnect worker with a status-only toolbar, singleton live buffer (History↔Live keeps state, Pause without telegram loss), fully English UI, grid polish (column widths, right-aligned numbers, truncation tooltips), non-destructive connection test, and `THIRD-PARTY-NOTICES` for the proprietary Falcon SDK.
 **Next** — Language switcher (i18n) and merging Live + History into one view; telegram-time decryption using stored tool keys; live-values dashboard, time-series charts and bus-load statistics.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.
