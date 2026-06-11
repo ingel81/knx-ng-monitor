@@ -8,11 +8,12 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 
 ## Features
 
-- **Real-time KNX monitoring** — live view of bus telegrams via SignalR
+- **Real-time KNX monitoring** — live view of bus telegrams via SignalR, **always-on**: auto-connects on startup and reconnects after gateway/network/container interruptions
+- **DPT decoding** — via the Falcon datapoint catalog: full DPT range, sub-type aware, with units and enumeration names (English labels, locale-invariant numbers)
 - **ETS project import** — ETS 4 / 5 / 6 `.knxproj` files, three- / two-level / free addressing
 - **KNX Secure** — password-protected projects (incl. ETS6 PBKDF2/AES wrapping) and `.knxkeys` keyring decryption (PBKDF2-HMAC-SHA256 + AES-128-CBC)
 - **Two-stage import wizard** — re-detects KNX Secure after the project password is provided and asks for the optional keyring
-- **Live view UI** — AG-Grid with virtual scrolling, color-coding (Read / Write / Response), pause, auto-scroll, free-text filter
+- **Live view UI** — custom CDK-virtual-scroll grid with color-coding (Read / Write / Response), value semantics + DPST units, status indicator, pause (no telegram loss), auto-scroll, free-text filter
 - **JWT auth** — access tokens (15 min) + refresh tokens (7 days), JWT secret auto-generated on first start
 - **Data recording** — two-tier, fully self-contained: count-based SQLite hot-tier ring buffer (bounded size) plus an opt-in NDJSON+gzip long-term archive; `/history` view with keyset-paginated query API and server-streamed CSV export
 - **Single-port deployment** — backend serves the Angular frontend in production
@@ -20,7 +21,7 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 ## Tech Stack
 
 **Backend** — .NET 9 (ASP.NET Core), EF Core 9 + SQLite, SignalR, [Knx.Falcon.Sdk](https://www.nuget.org/packages/Knx.Falcon.Sdk), JWT.
-**Frontend** — Angular 20, Angular Material, AG-Grid Community, RxJS, SignalR client.
+**Frontend** — Angular 20, Angular Material, custom CDK-virtual-scroll grid, RxJS, SignalR client.
 **Distribution** — Multi-stage Dockerfile (debian:12-slim, ~120 MB) and self-contained single-file binaries via GitHub Actions.
 
 ## Repository layout
@@ -239,7 +240,21 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.3.0 (latest)
+### v0.4.0 (latest)
+
+- **DPT decoding via Falcon SDK** — the hand-rolled converter is replaced by Falcon's built-in datapoint catalog: the full DPT range, **sub-type aware** (e.g. 5.001 % vs 5.010 counter pulses), with **units** and **enumeration names** (DPT 20 → `Comfort`, DPT 232 → `#FF8000`). Boolean states now render their spec-correct labels (Switch → On/Off, OpenClose → Open/Close, State → Active/Inactive); labels are pinned to **English** regardless of host locale, numbers stay invariant
+- **Always-on recording** — the bus link is now managed by a backend **auto-connect worker**: it connects on startup and **reconnects automatically** after a gateway reboot, network blip or container restart (`KnxConfiguration.AutoConnect`, default on). The manual Connect/Disconnect buttons are gone — the toolbar shows a live **status indicator** (Live / Paused / Connecting / Reconnecting)
+- **Live View robustness** — telegram buffer + connection live in a singleton service, so switching **History ↔ Live no longer empties the view**; **Pause** now buffers incoming telegrams instead of dropping them and flushes them on resume
+- **English UI** — the entire interface is now English (Live, History, Settings, Projects, import wizard, navigation, grid, detail sheet, cards); time formatting follows the active Angular locale
+- **Grid polish** — retuned column widths, **right-aligned** DPT / raw / value columns, and a **tooltip on truncated cells** (only when actually clipped)
+- **Non-destructive connection test** — *Test connection* in Settings now probes a throwaway bus and never interrupts the live recording; changing the gateway IP/port **reconnects the live link** to the new settings
+- **Licensing** — added [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md): the bundled **KNX Falcon SDK is proprietary** (KNX Tools Software License Agreement, free of fees, redistribution to end-users permitted); the project's MIT license does not cover it
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.4.0
+```
+
+### v0.3.0
 
 - **UI redesign ("Instrument")** — coherent **Light + Console (dark)** theme switchable at runtime via CSS design tokens, **IBM Plex** typography, petrol shell with custom SVG icon set; single source of truth in `styles/_design.scss` (mapped 1:1 from the design handoff)
 - **Custom virtualized grid** — **AG-Grid replaced** by a lightweight CDK-Virtual-Scroll table (`knx-table`) shared by Live View and History: type pills, value semantics, **DPST units** (°C/W/lx/…), room tags, stable zebra, click-to-detail sheet, column manager, mobile cards (<768px). Bundle ~1 MB smaller
@@ -328,8 +343,8 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.3.0, "Instrument" UI redesign: runtime Light/Console theming via design tokens, custom CDK-virtual-scroll grid (AG-Grid removed) with DPST units, history full-text/sort/multi-type query, two-tier data recording (SQLite hot-tier ring buffer + opt-in NDJSON/gzip long-term archive) with live-apply settings.
-**Next** — Querying across archive files; telegram-time decryption using stored tool keys; communication objects, topology, locations.
+**Current** — v0.4.0: Falcon-based DPT decoding (full catalog, sub-types, units, enum names, English labels), always-on recording via auto-connect/reconnect worker with a status-only toolbar, singleton live buffer (History↔Live keeps state, Pause without telegram loss), fully English UI, grid polish (column widths, right-aligned numbers, truncation tooltips), non-destructive connection test, and `THIRD-PARTY-NOTICES` for the proprietary Falcon SDK.
+**Next** — Language switcher (i18n) and merging Live + History into one view; telegram-time decryption using stored tool keys; live-values dashboard, time-series charts and bus-load statistics.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.
 
