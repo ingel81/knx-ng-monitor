@@ -6,17 +6,17 @@
   <div class="page-scroll">
     <div class="settings-col">
 
-      <!-- Darstellung -->
+      <!-- Appearance -->
       <div class="set-card">
         <div class="set-head">
           <span class="set-ic"><mat-icon svgIcon="knx:sun"></mat-icon></span>
-          <div><h3>Darstellung</h3><p>Theme und Grid-Dichte</p></div>
+          <div><h3>Appearance</h3><p>Theme and grid density</p></div>
         </div>
         <div class="set-body">
           <div class="set-row">
             <div>
-              <div class="set-row-label">Farbschema</div>
-              <div class="set-row-sub">Light für tagsüber, Console für dunkle Leitwarten</div>
+              <div class="set-row-label">Color scheme</div>
+              <div class="set-row-sub">Light for daytime, Console for dark control rooms</div>
             </div>
             <div class="knx-seg">
               <button [class.is-active]="theme() === 'light'" (click)="setTheme('light')"><mat-icon svgIcon="knx:sun"></mat-icon>Light</button>
@@ -25,12 +25,12 @@
           </div>
           <div class="set-row">
             <div>
-              <div class="set-row-label">Grid-Dichte</div>
-              <div class="set-row-sub">Zeilenhöhe für Live View und History</div>
+              <div class="set-row-label">Grid density</div>
+              <div class="set-row-sub">Row height for Live View and History</div>
             </div>
             <div class="knx-seg">
-              <button [class.is-active]="density() === 'compact'" (click)="setDensity('compact')">Dicht</button>
-              <button [class.is-active]="density() === 'cozy'" (click)="setDensity('cozy')">Komfort</button>
+              <button [class.is-active]="density() === 'compact'" (click)="setDensity('compact')">Compact</button>
+              <button [class.is-active]="density() === 'cozy'" (click)="setDensity('cozy')">Cozy</button>
             </div>
           </div>
         </div>
@@ -40,17 +40,17 @@
       <div class="set-card">
         <div class="set-head">
           <span class="set-ic"><mat-icon svgIcon="knx:wifi"></mat-icon></span>
-          <div><h3>KNX Gateway</h3><p>Verbindung zur KNX-Schnittstelle</p></div>
+          <div><h3>KNX Gateway</h3><p>Connection to the KNX interface</p></div>
         </div>
         <div class="set-body">
           <div class="set-grid">
             <div class="set-field">
-              <label class="knx-label">IP-Adresse</label>
+              <label class="knx-label">IP address</label>
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:globe"></mat-icon>
                 <input class="knx-input" [(ngModel)]="knxConfig.ipAddress" placeholder="192.168.1.100">
               </div>
-              <span class="set-hint">IP-Adresse deiner KNX-Schnittstelle</span>
+              <span class="set-hint">IP address of your KNX interface</span>
             </div>
             <div class="set-field">
               <label class="knx-label">Port</label>
@@ -58,32 +58,32 @@
                 <mat-icon class="pfx" svgIcon="knx:swap"></mat-icon>
                 <input class="knx-input" type="number" [(ngModel)]="knxConfig.port" placeholder="3671">
               </div>
-              <span class="set-hint">Standard: 3671 (KNXnet/IP)</span>
+              <span class="set-hint">Default: 3671 (KNXnet/IP)</span>
             </div>
             <div class="set-field span2">
-              <label class="knx-label">Physikalische Adresse</label>
+              <label class="knx-label">Physical address</label>
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:plug"></mat-icon>
                 <input class="knx-input" [(ngModel)]="knxConfig.physicalAddress" placeholder="1.0.58">
               </div>
-              <span class="set-hint">Format: Bereich.Linie.Gerät (z. B. 1.0.58)</span>
+              <span class="set-hint">Format: area.line.device (e.g. 1.0.58)</span>
             </div>
           </div>
           <div class="info-line">
             <mat-icon svgIcon="knx:wifi"></mat-icon>
-            <div><b>Verbindung:</b> IP Tunneling (UDP) · <b>Protokoll:</b> KNXnet/IP</div>
+            <div><b>Connection:</b> IP Tunneling (UDP) · <b>Protocol:</b> KNXnet/IP</div>
           </div>
         </div>
         <div class="set-actions">
           <button class="knx-btn knx-btn--primary" (click)="saveSettings()" [disabled]="isSaving || !isFormValid()">
-            <mat-icon svgIcon="knx:save"></mat-icon>{{ isSaving ? 'Speichert…' : 'Speichern' }}
+            <mat-icon svgIcon="knx:save"></mat-icon>{{ isSaving ? 'Saving…' : 'Save' }}
           </button>
           <button class="knx-btn knx-btn--outline" (click)="testConnection()" [disabled]="isTesting || isSaving || !isFormValid()">
-            <mat-icon svgIcon="knx:link"></mat-icon>{{ isTesting ? 'Teste…' : 'Verbindung testen' }}
+            <mat-icon svgIcon="knx:link"></mat-icon>{{ isTesting ? 'Testing…' : 'Test connection' }}
           </button>
           <span class="spacer"></span>
           <button class="knx-btn knx-btn--ghost" (click)="resetToDefaults()">
-            <mat-icon svgIcon="knx:refresh"></mat-icon>Zurücksetzen
+            <mat-icon svgIcon="knx:refresh"></mat-icon>Reset
           </button>
         </div>
       </div>
@@ -92,32 +92,32 @@
       <div class="set-card">
         <div class="set-head">
           <span class="set-ic"><mat-icon svgIcon="knx:database"></mat-icon></span>
-          <div><h3>Datenaufzeichnung</h3><p>Ringpuffer und Langzeit-Archiv</p></div>
+          <div><h3>Data recording</h3><p>Ring buffer and long-term archive</p></div>
         </div>
         <div class="set-body">
           <div class="set-grid">
             <div class="set-field">
-              <label class="knx-label">Ringpuffer-Größe</label>
+              <label class="knx-label">Ring buffer size</label>
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:cpu"></mat-icon>
                 <input class="knx-input" type="number" [(ngModel)]="recording.hotBufferMaxCount" min="1" step="1000">
               </div>
-              <span class="set-hint">Max. Telegramme im Live-SQLite-Puffer</span>
+              <span class="set-hint">Max telegrams in the live SQLite buffer</span>
             </div>
             <div class="set-field">
-              <label class="knx-label">Archiv-Aufbewahrung (Tage)</label>
+              <label class="knx-label">Archive retention (days)</label>
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:calendar"></mat-icon>
                 <input class="knx-input" type="number" [(ngModel)]="recording.archiveRetentionDays"
-                       [disabled]="!recording.archiveEnabled" min="1" placeholder="unbegrenzt">
+                       [disabled]="!recording.archiveEnabled" min="1" placeholder="unlimited">
               </div>
-              <span class="set-hint">Leer = unbegrenzt aufbewahren</span>
+              <span class="set-hint">Empty = keep forever</span>
             </div>
           </div>
           <div class="set-row">
             <div>
-              <div class="set-row-label">Langzeit-Archiv (NDJSON + gzip)</div>
-              <div class="set-row-sub">Erfasst <b>jedes</b> Telegramm in Tagesdateien unter <code>data/archive/</code></div>
+              <div class="set-row-label">Long-term archive (NDJSON + gzip)</div>
+              <div class="set-row-sub">Records <b>every</b> telegram in daily files under <code>data/archive/</code></div>
             </div>
             <label class="knx-switch">
               <input type="checkbox" [(ngModel)]="recording.archiveEnabled">
@@ -128,7 +128,7 @@
         <div class="set-actions">
           <button class="knx-btn knx-btn--primary" (click)="saveRecordingSettings()"
                   [disabled]="isSavingRecording || !isRecordingFormValid()">
-            <mat-icon svgIcon="knx:save"></mat-icon>{{ isSavingRecording ? 'Speichert…' : 'Speichern' }}
+            <mat-icon svgIcon="knx:save"></mat-icon>{{ isSavingRecording ? 'Saving…' : 'Save' }}
           </button>
         </div>
       </div>

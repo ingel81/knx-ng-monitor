@@ -3,16 +3,16 @@
     <div class="tb-left">
       <h2 class="page-title">History</h2>
       @if (totalCount !== null) {
-        <span class="knx-badge knx-badge--count" matTooltip="Telegramme (aktueller Filter)">{{ totalCount | number }}</span>
+        <span class="knx-badge knx-badge--count" matTooltip="Telegrams (current filter)">{{ totalCount | number }}</span>
       }
     </div>
     <div class="tb-right">
       <app-column-manager [columns]="columnOptions" storageKey="knx.cols.history" [locked]="lockedCols"
                           [defaultHidden]="defaultHiddenCols" (hiddenChange)="onHiddenChange($event)"></app-column-manager>
       <button class="knx-btn knx-btn--outline" (click)="exportCsv()" [disabled]="isExporting"
-              matTooltip="Gefilterten Bereich als CSV exportieren">
+              matTooltip="Export the filtered range as CSV">
         <mat-icon svgIcon="knx:download"></mat-icon>
-        {{ isExporting ? 'Exportiere…' : 'Export CSV' }}
+        {{ isExporting ? 'Exporting…' : 'Export CSV' }}
       </button>
     </div>
   </div>
@@ -22,10 +22,10 @@
       <div class="knx-field" style="width: 300px;">
         <mat-icon class="field-icon" svgIcon="knx:search"></mat-icon>
         <input class="knx-input knx-input--search" type="text" [(ngModel)]="search"
-               (ngModelChange)="onSearchChanged()" placeholder="Suchen… (Quelle, Ziel, Name, DPT, Wert)"
-               aria-label="History durchsuchen">
+               (ngModelChange)="onSearchChanged()" placeholder="Search… (source, dest, name, DPT, value)"
+               aria-label="Search history">
         @if (search) {
-          <button class="field-clear" (click)="search=''; applyFilters()" aria-label="Suche leeren">
+          <button class="field-clear" (click)="search=''; applyFilters()" aria-label="Clear search">
             <mat-icon svgIcon="knx:close"></mat-icon>
           </button>
         }
@@ -33,18 +33,18 @@
 
       <span class="fb-sep"></span>
 
-      <div class="fb-quick" role="group" aria-label="Zeitbereich">
-        <span class="fb-label">Zeit</span>
-        <button class="knx-chip" [class.is-active]="timeRange === 'all'" (click)="setTimeRange('all')">Alle</button>
-        <button class="knx-chip" [class.is-active]="timeRange === 'hour'" (click)="setTimeRange('hour')">Letzte Stunde</button>
-        <button class="knx-chip" [class.is-active]="timeRange === 'today'" (click)="setTimeRange('today')">Heute</button>
-        <button class="knx-chip" [class.is-active]="timeRange === '7d'" (click)="setTimeRange('7d')">7 Tage</button>
+      <div class="fb-quick" role="group" aria-label="Time range">
+        <span class="fb-label">Time</span>
+        <button class="knx-chip" [class.is-active]="timeRange === 'all'" (click)="setTimeRange('all')">All</button>
+        <button class="knx-chip" [class.is-active]="timeRange === 'hour'" (click)="setTimeRange('hour')">Last hour</button>
+        <button class="knx-chip" [class.is-active]="timeRange === 'today'" (click)="setTimeRange('today')">Today</button>
+        <button class="knx-chip" [class.is-active]="timeRange === '7d'" (click)="setTimeRange('7d')">7 days</button>
       </div>
 
       <span class="fb-sep"></span>
 
-      <div class="fb-quick" role="group" aria-label="Nachrichtentyp">
-        <span class="fb-label">Typ</span>
+      <div class="fb-quick" role="group" aria-label="Message type">
+        <span class="fb-label">Type</span>
         <button class="knx-chip" [class.is-active]="types.has('Write')" (click)="setType('Write')">
           <span class="chip-dot" style="background: var(--write);"></span>Write
         </button>
@@ -58,8 +58,8 @@
 
       <span class="fb-sep"></span>
 
-      <div class="fb-quick" role="group" aria-label="Themen">
-        <span class="fb-label">Thema</span>
+      <div class="fb-quick" role="group" aria-label="Topics">
+        <span class="fb-label">Topic</span>
         @for (t of topics; track t.term) {
           <button class="knx-chip" [class.is-active]="search === t.term" (click)="setTopic(t.term)">{{ t.label }}</button>
         }
@@ -67,21 +67,21 @@
     </div>
 
     <div class="filterbar-main" style="margin-top: 8px;">
-      <input class="knx-input" style="width: 150px;" [(ngModel)]="address" placeholder="Ziel-GA (1/2/3)" (keyup.enter)="applyFilters()">
-      <input class="knx-input" style="width: 150px;" [(ngModel)]="source" placeholder="Quelle (1.1.5)" (keyup.enter)="applyFilters()">
-      <input class="knx-input" style="width: 190px;" type="datetime-local" [(ngModel)]="fromValue" aria-label="Von">
-      <input class="knx-input" style="width: 190px;" type="datetime-local" [(ngModel)]="toValue" aria-label="Bis">
+      <input class="knx-input" style="width: 150px;" [(ngModel)]="address" placeholder="Dest GA (1/2/3)" (keyup.enter)="applyFilters()">
+      <input class="knx-input" style="width: 150px;" [(ngModel)]="source" placeholder="Source (1.1.5)" (keyup.enter)="applyFilters()">
+      <input class="knx-input" style="width: 190px;" type="datetime-local" [(ngModel)]="fromValue" aria-label="From">
+      <input class="knx-input" style="width: 190px;" type="datetime-local" [(ngModel)]="toValue" aria-label="To">
 
       <span class="fb-sep"></span>
 
       <button class="knx-btn knx-btn--primary" (click)="applyFilters()">
         <mat-icon svgIcon="knx:search"></mat-icon>
-        Anwenden
+        Apply
       </button>
       @if (hasActiveFilters) {
         <button class="knx-btn knx-btn--ghost" (click)="resetFilters()">
           <mat-icon svgIcon="knx:close"></mat-icon>
-          Zurücksetzen
+          Reset
         </button>
       }
     </div>
@@ -94,23 +94,23 @@
         @if (hasMore) {
           <button class="knx-btn knx-btn--outline load-more" (click)="loadMore()" [disabled]="loading">
             <mat-icon svgIcon="knx:chevronDown"></mat-icon>
-            {{ loading ? 'Lädt…' : 'Mehr laden' }}
+            {{ loading ? 'Loading…' : 'Load more' }}
           </button>
         }
       </div>
     } @else {
       <knx-table [rows]="rows" [columns]="visibleColumns" [rowHeight]="rowHeight"
                  [sortKey]="sortKey" [sortDir]="sortDir" [loading]="loading"
-                 emptyText="Keine Telegramme für diese Filter."
+                 emptyText="No telegrams for these filters."
                  (rowClick)="showDetail($event)" (sortChange)="onSort($event)" (nearEnd)="onNearEnd()"></knx-table>
     }
   </div>
 
   @if (archiveDays.length > 0) {
     <div class="archive-bar">
-      <span class="archive-title"><mat-icon svgIcon="knx:database"></mat-icon> Archiv</span>
+      <span class="archive-title"><mat-icon svgIcon="knx:database"></mat-icon> Archive</span>
       @for (day of archiveDays; track day.fileName) {
-        <button class="knx-chip" (click)="downloadArchiveDay(day)" matTooltip="Archiv-Tag herunterladen">
+        <button class="knx-chip" (click)="downloadArchiveDay(day)" matTooltip="Download archive day">
           {{ day.date }} · {{ formatBytes(day.sizeBytes) }} · {{ day.compressed ? 'gz' : 'live' }}
           <mat-icon svgIcon="knx:download"></mat-icon>
         </button>

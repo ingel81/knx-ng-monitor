@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, LOCALE_ID } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { KnxTelegram } from '../../core/services/signalr.service';
 import { messageTypeKind, messageTypeName, unitForDpt } from './knx-grid.util';
@@ -14,7 +14,7 @@ import { messageTypeKind, messageTypeName, unitForDpt } from './knx-grid.util';
         <button class="knx-mcard" [class]="rowClass(row)" (click)="select.emit(row)">
           <div class="mc-top">
             <span class="mc-name" [class.empty]="!row.groupAddressName">
-              {{ row.groupAddressName || '(unbekannt)' }}
+              {{ row.groupAddressName || '(unknown)' }}
             </span>
             <span class="mc-val mono">
               {{ row.valueDecoded || decodedFallback(row) }}<span class="mc-unit">{{ unit(row) }}</span>
@@ -39,6 +39,8 @@ export class TelegramCardsComponent {
   @Input() rows: KnxTelegram[] = [];
   @Output() select = new EventEmitter<KnxTelegram>();
 
+  private locale = inject(LOCALE_ID);
+
   kind(row: KnxTelegram): string { return messageTypeKind(row.messageType) || 'write'; }
   typeName(row: KnxTelegram): string { return messageTypeName(row.messageType); }
   rowClass(row: KnxTelegram): string {
@@ -55,7 +57,7 @@ export class TelegramCardsComponent {
   formatTime(ts: string | number | Date): string {
     const d = new Date(ts);
     if (isNaN(d.getTime())) return '–';
-    return d.toLocaleString('de-DE', {
+    return d.toLocaleString(this.locale, {
       day: '2-digit', month: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     });

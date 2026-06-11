@@ -2,7 +2,7 @@
   <div class="knx-thead" [style.grid-template-columns]="gridCols">
     @for (col of columns; track col.key) {
       <div class="knx-th" [class.sortable]="col.sortable" [class.active]="sortKey === col.key"
-           (click)="toggleSort(col)">
+           [class.align-right]="col.align === 'right'" (click)="toggleSort(col)">
         <span>{{ col.header }}</span>
         @if (col.sortable && sortKey === col.key) {
           <span class="sort-arrow">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
@@ -18,15 +18,15 @@
          [style.grid-template-columns]="gridCols" [style.height.px]="rowHeight"
          (click)="rowClick.emit(row)">
       @for (col of columns; track col.key) {
-        <div class="knx-td" [ngClass]="col.kind">
+        <div class="knx-td" [ngClass]="col.kind" [class.align-right]="col.align === 'right'">
           @switch (col.kind) {
-            @case ('time') { <span class="mono muted">{{ formatTime(val(row, col.key)) }}</span> }
-            @case ('datetime') { <span class="mono muted">{{ formatDateTime(val(row, col.key)) }}</span> }
-            @case ('mono') { <span class="mono">{{ val(row, col.key) }}</span> }
-            @case ('muted-mono') { <span class="mono muted">{{ val(row, col.key) || '–' }}</span> }
+            @case ('time') { <span class="mono muted" knxOverflowTitle>{{ formatTime(val(row, col.key)) }}</span> }
+            @case ('datetime') { <span class="mono muted" knxOverflowTitle>{{ formatDateTime(val(row, col.key)) }}</span> }
+            @case ('mono') { <span class="mono" knxOverflowTitle>{{ val(row, col.key) }}</span> }
+            @case ('muted-mono') { <span class="mono muted" knxOverflowTitle>{{ val(row, col.key) || '–' }}</span> }
             @case ('name') {
               @if (room(row)) { <span class="room-tag">{{ room(row) }}</span> }
-              <span class="name-text" [class.empty]="!val(row, 'groupAddressName')">{{ val(row, 'groupAddressName') ? nameText(row) : '(unbekannt)' }}</span>
+              <span class="name-text" [class.empty]="!val(row, 'groupAddressName')" knxOverflowTitle>{{ val(row, 'groupAddressName') ? nameText(row) : '(unknown)' }}</span>
             }
             @case ('type') {
               @if (typeName(row)) {
@@ -36,7 +36,7 @@
               }
             }
             @case ('value') {
-              <span [ngClass]="valueClass(row)">{{ valueText(row) || '–' }}</span>
+              <span [ngClass]="valueClass(row)" knxOverflowTitle>{{ valueText(row) || '–' }}</span>
               @if (valueUnit(row)) { <span class="val-unit">&nbsp;{{ valueUnit(row) }}</span> }
             }
           }
@@ -49,5 +49,5 @@
     }
   </cdk-virtual-scroll-viewport>
 
-  @if (loading) { <div class="knx-loading">Lädt…</div> }
+  @if (loading) { <div class="knx-loading">Loading…</div> }
 </div>

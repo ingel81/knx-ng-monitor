@@ -18,9 +18,9 @@ export interface ColumnOption { key: string; header: string; }
   standalone: true,
   imports: [CommonModule, MatButtonModule, MatIconModule, MatMenuModule, MatCheckboxModule, MatTooltipModule],
   template: `
-    <button class="knx-btn knx-btn--ghost" [matMenuTriggerFor]="menu" matTooltip="Spalten ein-/ausblenden">
+    <button class="knx-btn knx-btn--ghost" [matMenuTriggerFor]="menu" matTooltip="Show/hide columns">
       <mat-icon svgIcon="knx:columns"></mat-icon>
-      Spalten
+      Columns
     </button>
     <mat-menu #menu="matMenu">
       @for (c of columns; track c.key) {

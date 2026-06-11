@@ -339,7 +339,16 @@ This is a personal project. Bug reports and ideas via [issues](https://github.co
 
 ## License
 
-MIT.
+This project's own source code is licensed under the **MIT** license.
+
+It bundles third-party components that remain under their own licenses — most
+notably the **KNX Falcon SDK**, which is **proprietary** (KNX Tools Software
+License Agreement, free of fees, redistribution to end-users permitted). The MIT
+license does **not** cover the Falcon SDK. See
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for the full list and terms.
+
+> "KNX" is a registered trademark of the KNX Association. This project is an
+> independent tool, not affiliated with or endorsed by the KNX Association.
 
 ## Author
 

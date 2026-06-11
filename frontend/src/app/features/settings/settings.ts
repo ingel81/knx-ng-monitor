@@ -183,31 +183,34 @@ export class Settings implements OnInit {
     try {
       this.isTesting = true;
 
-      // First save the settings silently
+      // Persist the entered settings first (silent)
       await this.saveSettings(false);
 
-      // Get the configuration
       const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
-
       if (!configs || configs.length === 0) {
         throw new Error('No configuration found');
       }
 
-      // Try to connect
-      await this.http.post(`${environment.apiUrl}/knx/connect`, configs[0].id).toPromise();
+      // Non-destructive probe: does NOT touch the live recording connection.
+      const result = await this.http
+        .post<{ success: boolean }>(`${environment.apiUrl}/knx/test-connection`, configs[0].id)
+        .toPromise();
 
-      this.snackBar.open('✓ Settings saved and connection successful!', 'Close', {
-        duration: 4000,
-        horizontalPosition: 'end',
-        verticalPosition: 'top',
-        panelClass: ['success-snackbar']
-      });
-
-      // Disconnect after test
-      setTimeout(async () => {
-        await this.http.post(`${environment.apiUrl}/knx/disconnect`, {}).toPromise();
-      }, 1000);
-
+      if (result?.success) {
+        this.snackBar.open('✓ Settings saved and connection successful!', 'Close', {
+          duration: 4000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['success-snackbar']
+        });
+      } else {
+        this.snackBar.open('✗ Connection failed. Please check your settings.', 'Close', {
+          duration: 5000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['error-snackbar']
+        });
+      }
     } catch (error) {
       console.error('Connection test failed:', error);
       this.snackBar.open('✗ Connection failed. Please check your settings.', 'Close', {

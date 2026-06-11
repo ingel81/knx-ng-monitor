@@ -6,7 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subscription } from 'rxjs';
-import { SignalrService, KnxTelegram } from '../../core/services/signalr.service';
+import { KnxTelegram } from '../../core/services/signalr.service';
+import { LiveBufferService } from '../../core/services/live-buffer.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment.development';
 import { ThemeService } from '../../core/services/theme.service';
@@ -33,7 +34,7 @@ interface KnxConfiguration {
   styleUrl: './live-view.component.scss'
 })
 export class LiveViewComponent implements OnInit, OnDestroy {
-  private signalrService = inject(SignalrService);
+  private buffer = inject(LiveBufferService);
   private http = inject(HttpClient);
   private router = inject(Router);
   private detail = inject(TelegramDetailService);
@@ -42,11 +43,9 @@ export class LiveViewComponent implements OnInit, OnDestroy {
 
   @ViewChild(KnxTableComponent) table?: KnxTableComponent;
 
-  telegrams: KnxTelegram[] = [];
   filtered: KnxTelegram[] = [];
   isConnected = false;
-  isPaused = false;
-  isConnecting = false;
+  linkState: 'Disconnected' | 'Connecting' | 'Connected' = 'Disconnected';
   autoScroll = true;
   quickFilterText = '';
   isMobile = window.innerWidth < 768;
@@ -54,21 +53,31 @@ export class LiveViewComponent implements OnInit, OnDestroy {
   hasProject = false;
   hasKnxConfig = false;
 
-  // Live-Telegramme kommen vor dem Persistieren -> id=0. Eindeutige Client-Sequenz
-  // vergeben (stabil pro Zeile) -> Zebra + trackBy funktionieren wie in History.
-  private clientSeq = 0;
+  private statusPoll?: ReturnType<typeof setInterval>;
+
+  // Status-Text für den Indikator (Auto-Connect-Mindset: kein manuelles Verbinden).
+  get statusLabel(): string {
+    if (this.isPaused) return 'Paused';
+    if (this.isConnected) return 'Live';
+    if (this.linkState === 'Connecting') return 'Connecting…';
+    return 'Reconnecting…';
+  }
+
+  // Buffer lebt im Singleton-Service -> überlebt Tab-Wechsel.
+  get telegrams(): KnxTelegram[] { return this.buffer.telegrams; }
+  get isPaused(): boolean { return this.buffer.isPaused; }
 
   readonly allColumns: KnxColumn[] = [
-    { key: 'timestamp', header: 'Zeit', kind: 'time', width: 120 },
-    { key: 'sourceAddress', header: 'Quelle', kind: 'mono', width: 90 },
-    { key: 'destinationAddress', header: 'Ziel', kind: 'mono', width: 90 },
-    { key: 'groupAddressName', header: 'Name', kind: 'name', grow: 2, minWidth: 180 },
-    { key: 'datapointType', header: 'DPT', kind: 'muted-mono', width: 110 },
-    { key: 'messageType', header: 'Typ', kind: 'type', width: 110 },
-    { key: 'value', header: 'Rohwert', kind: 'muted-mono', width: 120 },
-    { key: 'valueDecoded', header: 'Wert', kind: 'value', grow: 1, minWidth: 130 },
-    { key: 'priority', header: 'Priorität', kind: 'muted-mono', width: 90 },
-    { key: 'flags', header: 'Flags', kind: 'muted-mono', width: 90 }
+    { key: 'timestamp', header: 'Time', kind: 'time', width: 140 },
+    { key: 'sourceAddress', header: 'Source', kind: 'mono', width: 105 },
+    { key: 'destinationAddress', header: 'Dest', kind: 'mono', width: 105 },
+    { key: 'groupAddressName', header: 'Name', kind: 'name', grow: 1.4, minWidth: 200 },
+    { key: 'datapointType', header: 'DPT', kind: 'muted-mono', width: 120, align: 'right' },
+    { key: 'messageType', header: 'Type', kind: 'type', width: 110 },
+    { key: 'value', header: 'Raw', kind: 'muted-mono', width: 140, align: 'right' },
+    { key: 'valueDecoded', header: 'Value', kind: 'value', grow: 1, minWidth: 150, align: 'right' },
+    { key: 'priority', header: 'Priority', kind: 'muted-mono', width: 90, align: 'right' },
+    { key: 'flags', header: 'Flags', kind: 'muted-mono', width: 90, align: 'right' }
   ];
   readonly defaultHiddenCols = ['priority', 'flags'];
   columnOptions = this.allColumns.map((c) => ({ key: c.key as string, header: c.header }));
@@ -83,15 +92,27 @@ export class LiveViewComponent implements OnInit, OnDestroy {
   onHiddenChange(hidden: Set<string>): void { this.hiddenCols = hidden; }
 
   async ngOnInit(): Promise<void> {
-    await this.signalrService.startConnection();
-    this.subscription = this.signalrService.telegram$.subscribe((t) => this.addTelegram(t));
+    await this.buffer.start();
+    // Buffer kann beim Mount bereits gefüllt sein (Rückkehr von History) -> sofort anzeigen.
+    this.applyClientFilter();
+    if (this.autoScroll) setTimeout(() => this.table?.scrollToTop(), 0);
+    this.subscription = this.buffer.changed$.subscribe(() => this.onBufferChanged());
     this.checkConnectionStatus();
     this.checkSetupStatus();
+    // Status periodisch pollen, damit Auto-Reconnect im Indikator sichtbar wird.
+    this.statusPoll = setInterval(() => this.checkConnectionStatus(), 5000);
   }
 
   ngOnDestroy(): void {
+    // NUR die View-Subscription lösen — Connection + Buffer leben im Singleton weiter,
+    // damit die Live-Ansicht beim Zurückwechseln nicht leer ist.
     this.subscription?.unsubscribe();
-    this.signalrService.stopConnection();
+    if (this.statusPoll) clearInterval(this.statusPoll);
+  }
+
+  private onBufferChanged(): void {
+    this.applyClientFilter();
+    if (this.autoScroll && !this.isPaused) setTimeout(() => this.table?.scrollToTop(), 0);
   }
 
   @HostListener('window:resize')
@@ -108,15 +129,6 @@ export class LiveViewComponent implements OnInit, OnDestroy {
     }
   }
 
-  private addTelegram(t: KnxTelegram): void {
-    if (this.isPaused) return;
-    if (!t.id) t.id = ++this.clientSeq; // eindeutige, stabile id für Zebra/trackBy
-    this.telegrams.unshift(t);
-    if (this.telegrams.length > 1000) this.telegrams.pop();
-    this.applyClientFilter();
-    if (this.autoScroll) setTimeout(() => this.table?.scrollToTop(), 0);
-  }
-
   applyClientFilter(): void {
     const q = this.quickFilterText.trim().toLowerCase();
     this.filtered = q
@@ -130,15 +142,12 @@ export class LiveViewComponent implements OnInit, OnDestroy {
 
   showDetail(row: KnxTelegram): void { this.detail.open(row); }
 
-  togglePause(): void { this.isPaused = !this.isPaused; }
+  togglePause(): void { this.buffer.togglePause(); }
 
-  clearTelegrams(): void {
-    this.telegrams = [];
-    this.applyClientFilter();
-  }
+  clearTelegrams(): void { this.buffer.clear(); }
 
   exportCsv(): void {
-    const header = ['Zeit', 'Quelle', 'Ziel', 'Name', 'DPT', 'Typ', 'Rohwert', 'Wert'];
+    const header = ['Time', 'Source', 'Dest', 'Name', 'DPT', 'Type', 'Raw', 'Value'];
     const lines = [header.join(',')];
     for (const t of this.filtered) {
       lines.push([
@@ -160,37 +169,13 @@ export class LiveViewComponent implements OnInit, OnDestroy {
     return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   }
 
-  async connectToKnx(): Promise<void> {
-    try {
-      this.isConnecting = true;
-      const configs = await this.http.get<KnxConfiguration[]>(`${environment.apiUrl}/knx/configurations`).toPromise();
-      if (!configs || configs.length === 0) {
-        alert('No KNX configuration found. Please configure your KNX Gateway in Settings first.');
-        return;
-      }
-      await this.http.post(`${environment.apiUrl}/knx/connect`, configs[0].id).toPromise();
-      this.isConnected = true;
-    } catch (error) {
-      console.error('Failed to connect to KNX:', error);
-      alert('Failed to connect to KNX Gateway. Please check your settings and try again.');
-    } finally {
-      this.isConnecting = false;
-    }
-  }
-
-  async disconnectFromKnx(): Promise<void> {
-    try {
-      await this.http.post(`${environment.apiUrl}/knx/disconnect`, {}).toPromise();
-      this.isConnected = false;
-    } catch (error) {
-      console.error('Failed to disconnect from KNX:', error);
-    }
-  }
-
   async checkConnectionStatus(): Promise<void> {
     try {
-      const status = await this.http.get<{ isConnected: boolean }>(`${environment.apiUrl}/knx/status`).toPromise();
+      const status = await this.http
+        .get<{ isConnected: boolean; state?: string }>(`${environment.apiUrl}/knx/status`)
+        .toPromise();
       this.isConnected = status?.isConnected || false;
+      this.linkState = (status?.state as typeof this.linkState) ?? (this.isConnected ? 'Connected' : 'Disconnected');
     } catch (error) {
       console.error('Failed to check connection status:', error);
     }

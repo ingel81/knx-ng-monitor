@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,15 @@ using KnxMonitor.Infrastructure.KnxConnection;
 using KnxMonitor.Api.Hubs;
 using KnxMonitor.Api.Services;
 using Serilog;
+
+// Pin the process culture to English so Falcon's DPT enum labels (On/Off, Open/Close,
+// Active/Inactive …) and number formatting are language-stable regardless of host locale.
+// Must run before any Falcon master-data access (it may cache the language on first use).
+var enCulture = CultureInfo.GetCultureInfo("en");
+CultureInfo.DefaultThreadCurrentCulture = enCulture;
+CultureInfo.DefaultThreadCurrentUICulture = enCulture;
+CultureInfo.CurrentCulture = enCulture;
+CultureInfo.CurrentUICulture = enCulture;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -152,6 +162,9 @@ builder.Services.AddScoped<IKnxProjectParserService, KnxProjectParserService>();
 
 builder.Services.AddSingleton<IGroupAddressCacheService, GroupAddressCacheService>();
 builder.Services.AddSingleton<IKnxConnectionService, KnxConnectionService>();
+
+// Keeps the bus link up automatically (startup + reconnect on loss).
+builder.Services.AddHostedService<KnxAutoConnectWorker>();
 
 // Telegram persistence: one bounded channel, drop-oldest under burst.
 // The same instance backs the queue (writer) and the hosted worker (reader).

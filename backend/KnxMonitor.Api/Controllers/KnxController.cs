@@ -32,6 +32,8 @@ public class KnxController : ControllerBase
         return Ok(new
         {
             IsConnected = _knxService.IsConnected,
+            State = _knxService.State.ToString(),
+            ManualDisconnect = _knxService.ManualDisconnect,
             Configuration = config
         });
     }
@@ -61,6 +63,24 @@ public class KnxController : ControllerBase
         return Ok(new { Message = "Disconnected successfully" });
     }
 
+    /// <summary>
+    /// Non-destructive connectivity probe — never interrupts the live recording.
+    /// </summary>
+    [HttpPost("test-connection")]
+    public async Task<IActionResult> TestConnection([FromBody] int configurationId)
+    {
+        var config = await _configRepository.GetByIdAsync(configurationId);
+        if (config == null)
+        {
+            return NotFound("Configuration not found");
+        }
+
+        var success = await _knxService.TestConnectionAsync(config);
+        return success
+            ? Ok(new { Success = true, Message = "Connection successful" })
+            : Ok(new { Success = false, Message = "Connection failed" });
+    }
+
     [HttpPost("configurations")]
     public async Task<IActionResult> CreateConfiguration([FromBody] CreateConfigRequest request)
     {
@@ -70,6 +90,7 @@ public class KnxController : ControllerBase
             Port = request.Port,
             PhysicalAddress = request.PhysicalAddress,
             ConnectionType = request.ConnectionType,
+            AutoConnect = request.AutoConnect,
             IsActive = false,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -107,14 +128,38 @@ public class KnxController : ControllerBase
             return NotFound();
         }
 
+        var connectionRelevantChange =
+            config.IpAddress != request.IpAddress ||
+            config.Port != request.Port ||
+            config.ConnectionType != request.ConnectionType;
+
         config.IpAddress = request.IpAddress;
         config.Port = request.Port;
         config.PhysicalAddress = request.PhysicalAddress;
         config.ConnectionType = request.ConnectionType;
+        config.AutoConnect = request.AutoConnect;
         config.UpdatedAt = DateTime.UtcNow;
 
         await _configRepository.UpdateAsync(config);
-        return Ok(config);
+
+        // If the live link is up and the gateway endpoint actually changed, re-apply it
+        // to the running connection so the new settings take effect without a restart.
+        // ConnectAsync is non-latching (clears ManualDisconnect), so the worker stays happy.
+        var reconnected = false;
+        if (connectionRelevantChange && config.AutoConnect && _knxService.IsConnected)
+        {
+            try
+            {
+                reconnected = await _knxService.ConnectAsync(config);
+            }
+            catch (Exception ex)
+            {
+                // Non-fatal: the auto-connect worker will retry on its next tick.
+                _logger.LogWarning(ex, "Reconnect after configuration change failed; worker will retry");
+            }
+        }
+
+        return Ok(new { Configuration = config, Reconnected = reconnected });
     }
 }
 
@@ -122,5 +167,6 @@ public record CreateConfigRequest(
     string IpAddress,
     int Port,
     string PhysicalAddress,
-    ConnectionType ConnectionType
+    ConnectionType ConnectionType,
+    bool AutoConnect = true
 );

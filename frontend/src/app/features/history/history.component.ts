@@ -48,11 +48,13 @@ export class HistoryComponent implements OnInit {
   types = new Set<string>();
   search = '';
   timeRange: 'all' | 'hour' | 'today' | '7d' = 'all';
+  // Terms match the (often German) group-address names in the imported project,
+  // so only the display labels are translated — not the search terms.
   readonly topics: ReadonlyArray<{ label: string; term: string }> = [
-    { label: 'Temperatur', term: 'temp' },
-    { label: 'Licht', term: 'licht' },
-    { label: 'Beschattung', term: 'jalousie' },
-    { label: 'Leistung', term: 'leistung' }
+    { label: 'Temperature', term: 'temp' },
+    { label: 'Light', term: 'licht' },
+    { label: 'Shading', term: 'jalousie' },
+    { label: 'Power', term: 'leistung' }
   ];
 
   totalCount: number | null = null;
@@ -61,16 +63,16 @@ export class HistoryComponent implements OnInit {
   isMobile = window.innerWidth < 768;
 
   readonly allColumns: KnxColumn[] = [
-    { key: 'timestamp', header: 'Zeitpunkt', kind: 'datetime', width: 175, sortable: true },
-    { key: 'sourceAddress', header: 'Quelle', kind: 'mono', width: 90 },
-    { key: 'destinationAddress', header: 'Ziel', kind: 'mono', width: 90 },
-    { key: 'groupAddressName', header: 'Name', kind: 'name', grow: 2, minWidth: 180 },
-    { key: 'datapointType', header: 'DPT', kind: 'muted-mono', width: 110 },
-    { key: 'messageType', header: 'Typ', kind: 'type', width: 110 },
-    { key: 'value', header: 'Rohwert', kind: 'muted-mono', width: 120 },
-    { key: 'valueDecoded', header: 'Wert', kind: 'value', grow: 1, minWidth: 130 },
-    { key: 'priority', header: 'Priorität', kind: 'muted-mono', width: 90 },
-    { key: 'flags', header: 'Flags', kind: 'muted-mono', width: 90 }
+    { key: 'timestamp', header: 'Timestamp', kind: 'datetime', width: 200, sortable: true },
+    { key: 'sourceAddress', header: 'Source', kind: 'mono', width: 105 },
+    { key: 'destinationAddress', header: 'Dest', kind: 'mono', width: 105 },
+    { key: 'groupAddressName', header: 'Name', kind: 'name', grow: 1.4, minWidth: 200 },
+    { key: 'datapointType', header: 'DPT', kind: 'muted-mono', width: 120, align: 'right' },
+    { key: 'messageType', header: 'Type', kind: 'type', width: 110 },
+    { key: 'value', header: 'Raw', kind: 'muted-mono', width: 140, align: 'right' },
+    { key: 'valueDecoded', header: 'Value', kind: 'value', grow: 1, minWidth: 150, align: 'right' },
+    { key: 'priority', header: 'Priority', kind: 'muted-mono', width: 90, align: 'right' },
+    { key: 'flags', header: 'Flags', kind: 'muted-mono', width: 90, align: 'right' }
   ];
   readonly defaultHiddenCols = ['priority', 'flags'];
   columnOptions = this.allColumns.map((c) => ({ key: c.key as string, header: c.header }));

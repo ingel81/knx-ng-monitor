@@ -9,7 +9,7 @@
     <div class="tb-right">
       <button class="knx-btn knx-btn--primary" (click)="openImportWizard()">
         <mat-icon svgIcon="knx:upload"></mat-icon>
-        Projekt importieren
+        Import project
       </button>
     </div>
   </div>
@@ -18,22 +18,22 @@
   <div class="projects-body">
 
   @if (isLoading) {
-    <div class="placeholder"><mat-spinner></mat-spinner><p>Lade Projekte…</p></div>
+    <div class="placeholder"><mat-spinner></mat-spinner><p>Loading projects…</p></div>
   } @else if (projects.length === 0) {
     <div class="placeholder">
       <mat-icon svgIcon="knx:folder"></mat-icon>
-      <h2>Noch keine Projekte</h2>
-      <p>Importiere dein erstes ETS-Projekt (.knxproj), um KNX-Telegramme mit Klartext-Namen zu versehen.</p>
+      <h2>No projects yet</h2>
+      <p>Import your first ETS project (.knxproj) to enrich KNX telegrams with plain-text names.</p>
       <button class="knx-btn knx-btn--primary" (click)="openImportWizard()">
         <mat-icon svgIcon="knx:upload"></mat-icon>
-        Projekt importieren
+        Import project
       </button>
     </div>
   } @else {
     <table class="proj-table">
       <thead>
         <tr>
-          <th>Name</th><th>Datei</th><th>Import-Datum</th><th>Statistik</th><th>Aktiv</th><th></th>
+          <th>Name</th><th>File</th><th>Import date</th><th>Statistics</th><th>Active</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -45,7 +45,7 @@
             <td>
               <div class="proj-stats">
                 <span class="proj-stat"><mat-icon svgIcon="knx:sitemap"></mat-icon><b>{{ project.groupAddressCount }}</b> GAs</span>
-                <span class="proj-stat"><mat-icon svgIcon="knx:monitor"></mat-icon><b>{{ project.deviceCount }}</b> Geräte</span>
+                <span class="proj-stat"><mat-icon svgIcon="knx:monitor"></mat-icon><b>{{ project.deviceCount }}</b> devices</span>
               </div>
             </td>
             <td>
@@ -56,10 +56,10 @@
             </td>
             <td>
               <div class="proj-actions">
-                <button class="knx-btn knx-btn--ghost knx-btn--icon knx-btn--sm" (click)="viewDetails(project)" matTooltip="Details ansehen">
+                <button class="knx-btn knx-btn--ghost knx-btn--icon knx-btn--sm" (click)="viewDetails(project)" matTooltip="View details">
                   <mat-icon svgIcon="knx:eye"></mat-icon>
                 </button>
-                <button class="knx-btn knx-btn--danger knx-btn--icon knx-btn--sm" (click)="deleteProject(project)" matTooltip="Löschen">
+                <button class="knx-btn knx-btn--danger knx-btn--icon knx-btn--sm" (click)="deleteProject(project)" matTooltip="Delete">
                   <mat-icon svgIcon="knx:trash"></mat-icon>
                 </button>
               </div>

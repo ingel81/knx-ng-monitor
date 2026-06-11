@@ -19,11 +19,14 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     private readonly ITelegramQueue _telegramQueue;
     private KnxBus? _knxBus;
     private KnxConfiguration? _activeConfiguration;
-    private bool _isConnected;
+    private volatile KnxLinkState _state = KnxLinkState.Disconnected;
+    private volatile bool _manualDisconnect;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
     public event EventHandler<KnxTelegram>? TelegramReceived;
-    public bool IsConnected => _isConnected;
+    public bool IsConnected => _state == KnxLinkState.Connected;
+    public KnxLinkState State => _state;
+    public bool ManualDisconnect => _manualDisconnect;
 
     public KnxConnectionService(
         ILogger<KnxConnectionService> logger,
@@ -39,34 +42,18 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     {
         try
         {
-            if (_isConnected)
-            {
-                await DisconnectAsync();
-            }
+            // A manual ConnectAsync clears any prior manual-disconnect latch.
+            _manualDisconnect = false;
+            _state = KnxLinkState.Connecting;
+
+            // Tear down a previous bus without latching manual-disconnect.
+            await CleanupBusConnection();
 
             _logger.LogInformation("Connecting to KNX bus at {IpAddress}:{Port} via {ConnectionType}",
                 configuration.IpAddress, configuration.Port, configuration.ConnectionType);
 
-            // Create connector parameters based on configuration type
-            ConnectorParameters connectorParameters;
-            if (configuration.ConnectionType == Core.Enums.ConnectionType.Tunneling)
-            {
-                // Create tunneling parameters
-                connectorParameters = new IpTunnelingConnectorParameters(
-                    configuration.IpAddress,
-                    configuration.Port,
-                    IpProtocol.Udp,
-                    true  // Use NAT mode
-                );
-            }
-            else
-            {
-                // Create routing parameters
-                connectorParameters = new IpRoutingConnectorParameters(IPAddress.Parse(configuration.IpAddress));
-            }
-
             // Create KNX bus instance
-            _knxBus = new KnxBus(connectorParameters);
+            _knxBus = new KnxBus(BuildConnectorParameters(configuration));
 
             // Subscribe to events before connecting
             _knxBus.GroupMessageReceived += OnGroupMessageReceived;
@@ -76,7 +63,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             await _knxBus.ConnectAsync(_cancellationTokenSource.Token);
 
             _activeConfiguration = configuration;
-            _isConnected = true;
+            _state = KnxLinkState.Connected;
 
             _logger.LogInformation("Successfully connected to KNX bus. InterfaceAddress: {IndividualAddress}",
                 _knxBus.InterfaceConfiguration.IndividualAddress);
@@ -86,18 +73,67 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to connect to KNX bus");
-            _isConnected = false;
+            _state = KnxLinkState.Disconnected;
             await CleanupBusConnection();
             return false;
         }
+    }
+
+    /// <summary>
+    /// Probes a configuration with a throwaway bus. Does NOT touch the live connection,
+    /// link state or the manual-disconnect latch — so a "test connection" in Settings can
+    /// never interrupt the ongoing recording or stop the auto-connect worker.
+    /// </summary>
+    public async Task<bool> TestConnectionAsync(KnxConfiguration configuration)
+    {
+        KnxBus? probe = null;
+        try
+        {
+            probe = new KnxBus(BuildConnectorParameters(configuration));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            await probe.ConnectAsync(cts.Token);
+            var ok = probe.ConnectionState == BusConnectionState.Connected;
+            _logger.LogInformation("Test connection to {IpAddress}:{Port} => {Result}",
+                configuration.IpAddress, configuration.Port, ok ? "success" : "failed");
+            return ok;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation(ex, "Test connection to {IpAddress}:{Port} failed",
+                configuration.IpAddress, configuration.Port);
+            return false;
+        }
+        finally
+        {
+            if (probe != null)
+            {
+                try { await probe.DisposeAsync(); } catch { /* best effort */ }
+            }
+        }
+    }
+
+    private static ConnectorParameters BuildConnectorParameters(KnxConfiguration configuration)
+    {
+        if (configuration.ConnectionType == Core.Enums.ConnectionType.Tunneling)
+        {
+            return new IpTunnelingConnectorParameters(
+                configuration.IpAddress,
+                configuration.Port,
+                IpProtocol.Udp,
+                true /* NAT mode */);
+        }
+
+        return new IpRoutingConnectorParameters(IPAddress.Parse(configuration.IpAddress));
     }
 
     public async Task DisconnectAsync()
     {
         try
         {
+            // User-initiated disconnect: latch so the auto-connect worker stays away.
+            _manualDisconnect = true;
             await CleanupBusConnection();
-            _isConnected = false;
+            _state = KnxLinkState.Disconnected;
             _activeConfiguration = null;
 
             _logger.LogInformation("Disconnected from KNX bus");
@@ -136,17 +172,16 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     {
         try
         {
-            // Map EventType to our MessageType enum
-            var eventTypeString = e.EventType.ToString();
-            var messageType = eventTypeString switch
+            // Map EventType to our MessageType enum (typed enum, not string)
+            var messageType = e.EventType switch
             {
-                "ValueWrite" => MessageType.Write,
-                "ValueRead" => MessageType.Read,
-                "ValueResponse" => MessageType.Response,
+                GroupEventType.ValueWrite => MessageType.Write,
+                GroupEventType.ValueRead => MessageType.Read,
+                GroupEventType.ValueResponse => MessageType.Response,
                 _ => MessageType.Read // Default to Read if unknown
             };
 
-            // Get raw value bytes
+            // Get raw value bytes (for storage / hex display)
             var valueBytes = GetValueBytes(e.Value);
 
             // Convert Falcon telegram to our domain model
@@ -171,8 +206,8 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
                 datapointType = groupAddress.DatapointType;
             }
 
-            // Decode value using DPT information
-            telegram.ValueDecoded = DptConverter.Decode(datapointType, valueBytes);
+            // Decode using the original GroupValue (keeps correct bit-size for short DPTs)
+            telegram.ValueDecoded = DptConverter.Decode(datapointType, e.Value);
 
             // Raise event for SignalR broadcasting (now with GroupAddressId set!)
             TelegramReceived?.Invoke(this, telegram);
@@ -197,8 +232,12 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             var state = bus.ConnectionState;
             _logger.LogInformation("KNX connection state changed to: {ConnectionState}", state);
 
-            // Update our internal connection status
-            _isConnected = state == BusConnectionState.Connected;
+            // Map Falcon's bus state onto our link state. A drop here (Closed/Broken/
+            // MediumFailure, not user-initiated) leaves State=Disconnected, which the
+            // auto-connect worker picks up to reconnect.
+            _state = state == BusConnectionState.Connected
+                ? KnxLinkState.Connected
+                : KnxLinkState.Disconnected;
         }
     }
 

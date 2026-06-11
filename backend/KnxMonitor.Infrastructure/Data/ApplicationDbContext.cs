@@ -129,6 +129,7 @@ public class ApplicationDbContext : DbContext
                 .HasConversion<string>();
             entity.Property(e => e.PhysicalAddress).IsRequired().HasMaxLength(20);
             entity.Property(e => e.IsActive).IsRequired();
+            entity.Property(e => e.AutoConnect).IsRequired().HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
         });

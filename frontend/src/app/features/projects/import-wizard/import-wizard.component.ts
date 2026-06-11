@@ -267,9 +267,9 @@ export class ImportWizardComponent implements OnInit, OnDestroy {
       case EtsVersion.Ets6:
         return 'ETS 6';
       case EtsVersion.Unknown:
-        return 'Unbekannt';
+        return 'Unknown';
       default:
-        return 'Unbekannt';
+        return 'Unknown';
     }
   }
 }

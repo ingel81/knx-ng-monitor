@@ -43,6 +43,7 @@
     &.sortable { cursor: pointer; }
     &.sortable:hover { color: var(--ink); }
     &.active { color: var(--brand); }
+    &.align-right { justify-content: flex-end; text-align: right; }
 
     .sort-arrow { font-size: 9px; }
   }
@@ -92,6 +93,8 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+
+    &.align-right { justify-content: flex-end; text-align: right; }
   }
 }
 

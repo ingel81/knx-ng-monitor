@@ -66,8 +66,8 @@ export class ProjectsComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result: ImportJob | null) => {
       if (result && result.status === ImportStatus.Completed) {
         this.snackBar.open(
-          `Projekt "${result.projectName}" erfolgreich importiert! ${result.groupAddressCount} Gruppenadressen und ${result.deviceCount} Geräte gefunden.`,
-          'Schließen',
+          `Project "${result.projectName}" imported successfully! Found ${result.groupAddressCount} group addresses and ${result.deviceCount} devices.`,
+          'Close',
           { duration: 5000 }
         );
         this.loadProjects();

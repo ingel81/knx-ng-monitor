@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, inject, LOCALE_ID } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -28,7 +28,7 @@ export interface TelegramDetailData {
       <header class="knx-sheet-head">
         <div class="knx-sheet-title">
           <span class="name" [class.empty]="!data.groupAddressName">
-            {{ data.groupAddressName || '(unbekannt)' }}
+            {{ data.groupAddressName || '(unknown)' }}
           </span>
           @if (kind) {
             <span class="knx-type" [class]="'knx-type--' + kind">
@@ -36,7 +36,7 @@ export interface TelegramDetailData {
             </span>
           }
         </div>
-        <button mat-icon-button (click)="close()" aria-label="Schließen">
+        <button mat-icon-button (click)="close()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </header>
@@ -47,14 +47,14 @@ export interface TelegramDetailData {
       </div>
 
       <dl class="knx-sheet-grid">
-        <div class="field"><dt>Zeitpunkt</dt><dd class="mono">{{ formatTime(data.timestamp) }}</dd></div>
-        <div class="field"><dt>Quelle</dt><dd class="mono">{{ data.sourceAddress || '–' }}</dd></div>
-        <div class="field"><dt>Ziel-GA</dt><dd class="mono">{{ data.destinationAddress || '–' }}</dd></div>
+        <div class="field"><dt>Timestamp</dt><dd class="mono">{{ formatTime(data.timestamp) }}</dd></div>
+        <div class="field"><dt>Source</dt><dd class="mono">{{ data.sourceAddress || '–' }}</dd></div>
+        <div class="field"><dt>Dest GA</dt><dd class="mono">{{ data.destinationAddress || '–' }}</dd></div>
         <div class="field"><dt>DPT</dt><dd class="mono">{{ data.datapointType || '–' }}</dd></div>
-        <div class="field"><dt>Rohwert</dt><dd class="mono">{{ data.value || '–' }}</dd></div>
-        <div class="field"><dt>Typ</dt><dd>{{ typeName || '–' }}</dd></div>
+        <div class="field"><dt>Raw</dt><dd class="mono">{{ data.value || '–' }}</dd></div>
+        <div class="field"><dt>Type</dt><dd>{{ typeName || '–' }}</dd></div>
         @if (data.priority !== undefined && data.priority !== null && data.priority !== '') {
-          <div class="field"><dt>Priorität</dt><dd class="mono">{{ data.priority }}</dd></div>
+          <div class="field"><dt>Priority</dt><dd class="mono">{{ data.priority }}</dd></div>
         }
         @if (data.flags) {
           <div class="field"><dt>Flags</dt><dd class="mono">{{ data.flags }}</dd></div>
@@ -69,6 +69,8 @@ export class TelegramDetailComponent {
     @Inject(MAT_DIALOG_DATA) public data: TelegramDetailData,
     private ref: MatDialogRef<TelegramDetailComponent>
   ) {}
+
+  private locale = inject(LOCALE_ID);
 
   get kind(): '' | 'write' | 'read' | 'response' {
     return messageTypeKind(this.data.messageType);
@@ -91,7 +93,7 @@ export class TelegramDetailComponent {
     if (!ts) return '–';
     const d = new Date(ts);
     if (isNaN(d.getTime())) return '–';
-    return d.toLocaleString('de-DE', {
+    return d.toLocaleString(this.locale, {
       year: '2-digit', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit',
       fractionalSecondDigits: 3

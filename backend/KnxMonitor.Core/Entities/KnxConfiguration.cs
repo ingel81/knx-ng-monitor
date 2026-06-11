@@ -10,6 +10,13 @@ public class KnxConfiguration
     public ConnectionType ConnectionType { get; set; } = ConnectionType.Tunneling;
     public string PhysicalAddress { get; set; } = "1.0.58";
     public bool IsActive { get; set; }
+
+    /// <summary>
+    /// When true, the backend connects to this configuration automatically on
+    /// startup (and reconnects on link loss) without manual interaction.
+    /// </summary>
+    public bool AutoConnect { get; set; } = true;
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

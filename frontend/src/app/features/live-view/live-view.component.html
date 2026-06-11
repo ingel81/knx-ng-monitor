@@ -1,22 +1,10 @@
 <div class="live-view-container">
   <div class="toolbar">
     <div class="tb-left">
-      @if (!isConnected) {
-        <button class="knx-btn knx-btn--primary" (click)="connectToKnx()" [disabled]="isConnecting">
-          <mat-icon svgIcon="knx:link"></mat-icon>
-          {{ isConnecting ? 'Verbinde…' : 'Verbinden' }}
-        </button>
-      } @else {
-        <button class="knx-btn knx-btn--danger" (click)="disconnectFromKnx()">
-          <mat-icon svgIcon="knx:disconnect"></mat-icon>
-          Trennen
-        </button>
-      }
-
       <button class="knx-btn knx-btn--outline" (click)="togglePause()" [disabled]="!isConnected"
-              matTooltip="Pause/Fortsetzen — auch mit Leertaste (Space)">
+              matTooltip="Pause/Resume — also with the Space key">
         <mat-icon svgIcon="{{ isPaused ? 'knx:play' : 'knx:pause' }}"></mat-icon>
-        {{ isPaused ? 'Fortsetzen' : 'Pause' }}
+        {{ isPaused ? 'Resume' : 'Pause' }}
       </button>
 
       <label class="knx-switch">
@@ -29,22 +17,23 @@
     <div class="tb-right">
       <span class="knx-status"
             [class.knx-status--live]="isConnected && !isPaused"
-            [class.knx-status--warn]="isConnected && isPaused"
-            [class.knx-status--err]="!isConnected">
+            [class.knx-status--warn]="(isConnected && isPaused) || linkState === 'Connecting'"
+            [class.knx-status--err]="!isConnected && linkState !== 'Connecting'"
+            [matTooltip]="isConnected ? 'Connected — auto-recording' : 'Auto-connecting to the KNX gateway'">
         <span class="led"></span>
-        {{ !isConnected ? 'Getrennt' : (isPaused ? 'Pausiert' : 'Live') }}
+        {{ statusLabel }}
       </span>
 
-      <span class="knx-badge knx-badge--count" matTooltip="Telegramme (gefiltert)">{{ filtered.length | number }}</span>
+      <span class="knx-badge knx-badge--count" matTooltip="Telegrams (filtered)">{{ filtered.length | number }}</span>
 
       <span class="tb-divider"></span>
 
       <div class="knx-field" style="width: 230px;">
         <mat-icon class="field-icon" svgIcon="knx:search"></mat-icon>
         <input class="knx-input knx-input--search" type="text" [(ngModel)]="quickFilterText"
-               (ngModelChange)="onQuickFilterChanged()" placeholder="Suchen…" aria-label="Telegramme durchsuchen">
+               (ngModelChange)="onQuickFilterChanged()" placeholder="Search…" aria-label="Search telegrams">
         @if (quickFilterText) {
-          <button class="field-clear" (click)="quickFilterText=''; onQuickFilterChanged()" aria-label="Suche leeren">
+          <button class="field-clear" (click)="quickFilterText=''; onQuickFilterChanged()" aria-label="Clear search">
             <mat-icon svgIcon="knx:close"></mat-icon>
           </button>
         }
@@ -70,7 +59,7 @@
       <app-telegram-cards [rows]="filtered" (select)="showDetail($event)"></app-telegram-cards>
     } @else {
       <knx-table [rows]="filtered" [columns]="visibleColumns" [rowHeight]="rowHeight"
-                 emptyText="Verbunden – warte auf KNX-Telegramme…"
+                 emptyText="Connected – waiting for KNX telegrams…"
                  (rowClick)="showDetail($event)"></knx-table>
     }
 
@@ -111,11 +100,11 @@
               <mat-icon class="checklist-icon">radio_button_unchecked</mat-icon>
               <div class="checklist-content">
                 <span class="checklist-title">Connect to KNX</span>
-                <span class="checklist-hint">Click "Verbinden" button above</span>
+                <span class="checklist-hint">Automatic — connects once a gateway is configured</span>
               </div>
               <button mat-icon-button class="checklist-action checklist-action-disabled" disabled
-                      matTooltip="Use button in header" matTooltipPosition="left">
-                <mat-icon>arrow_upward</mat-icon>
+                      matTooltip="Connects automatically" matTooltipPosition="left">
+                <mat-icon>autorenew</mat-icon>
               </button>
             </div>
           </div>
