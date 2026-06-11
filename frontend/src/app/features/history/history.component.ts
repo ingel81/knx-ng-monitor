@@ -3,7 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { TelegramHistoryService } from '../../core/services/telegram-history.service';
 import { ArchiveDay, TelegramQueryParams } from '../../core/models/telegram-history.models';
 import { KnxTelegram } from '../../core/services/signalr.service';
@@ -16,7 +19,7 @@ import { ColumnManagerComponent } from '../../shared/grid/column-manager.compone
 @Component({
   selector: 'app-history',
   imports: [
-    CommonModule, FormsModule, MatIconModule, MatTooltipModule, MatSnackBarModule,
+    CommonModule, FormsModule, MatIconModule, MatTooltipModule, MatMenuModule, MatSnackBarModule,
     KnxTableComponent, TelegramCardsComponent, ColumnManagerComponent
   ],
   templateUrl: './history.component.html',
@@ -25,6 +28,7 @@ import { ColumnManagerComponent } from '../../shared/grid/column-manager.compone
 export class HistoryComponent implements OnInit {
   private historyService = inject(TelegramHistoryService);
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
   private detail = inject(TelegramDetailService);
   private density = inject(ThemeService).density;
 
@@ -59,6 +63,7 @@ export class HistoryComponent implements OnInit {
 
   totalCount: number | null = null;
   isExporting = false;
+  isClearing = false;
   archiveDays: ArchiveDay[] = [];
   isMobile = window.innerWidth < 768;
 
@@ -208,6 +213,36 @@ export class HistoryComponent implements OnInit {
         this.isExporting = false;
         this.toast('✗ Export failed');
       }
+    });
+  }
+
+  clearHistory(): void {
+    const total = this.totalCount;
+    const countText = total != null ? `${total.toLocaleString()} telegram(s)` : 'the entire telegram history';
+    this.dialog.open(ConfirmDialogComponent, {
+      autoFocus: false,
+      data: {
+        title: 'Clear history?',
+        message: `This permanently deletes ${countText} from the database.`,
+        warning: 'This action cannot be undone. Archived NDJSON day-files are not affected.',
+        confirmText: 'Delete all',
+        danger: true
+      }
+    }).afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+      this.isClearing = true;
+      this.historyService.clearAll().subscribe({
+        next: (res) => {
+          this.isClearing = false;
+          this.toast(`✓ Cleared ${res.deleted.toLocaleString()} telegram(s)`);
+          this.loadCount();
+          this.reset();
+        },
+        error: () => {
+          this.isClearing = false;
+          this.toast('✗ Failed to clear history');
+        }
+      });
     });
   }
 

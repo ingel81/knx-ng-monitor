@@ -50,6 +50,15 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
             .ToListAsync();
     }
 
+    public async Task<int> DeleteAllAsync()
+    {
+        // Set-based delete: a single SQL statement, no entity tracking / no row load.
+        var removed = await _dbSet.ExecuteDeleteAsync();
+        // Shrink the WAL after a bulk delete so the file does not stay bloated.
+        await CheckpointWalAsync();
+        return removed;
+    }
+
     public async Task<int> GetTotalCountAsync()
     {
         return await _dbSet.CountAsync();

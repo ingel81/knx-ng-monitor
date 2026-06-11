@@ -75,6 +75,15 @@ public partial class TelegramsController : ControllerBase
         return Ok(new { count });
     }
 
+    /// <summary>Permanently deletes the entire telegram history (the DB hot-tier). Irreversible.</summary>
+    [HttpDelete]
+    public async Task<IActionResult> ClearAll()
+    {
+        var deleted = await _repository.DeleteAllAsync();
+        _logger.LogWarning("Telegram history cleared by user: {Deleted} rows deleted", deleted);
+        return Ok(new { deleted });
+    }
+
     /// <summary>Server-streamed CSV export over the full filtered DB range.</summary>
     [HttpGet("export")]
     public async Task<IActionResult> Export([FromQuery] TelegramQueryRequest request, string format = "csv")

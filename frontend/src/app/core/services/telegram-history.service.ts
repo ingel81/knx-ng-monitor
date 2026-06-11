@@ -23,6 +23,10 @@ export class TelegramHistoryService {
     return this.http.get(`${this.apiUrl}/export`, { params: httpParams, responseType: 'blob' });
   }
 
+  clearAll(): Observable<{ deleted: number }> {
+    return this.http.delete<{ deleted: number }>(this.apiUrl);
+  }
+
   listArchiveDays(): Observable<ArchiveDay[]> {
     return this.http.get<ArchiveDay[]>(`${this.apiUrl}/archive/days`);
   }

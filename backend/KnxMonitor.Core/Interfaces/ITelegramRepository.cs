@@ -35,6 +35,9 @@ public interface ITelegramRepository : IRepository<KnxTelegram>
 
     Task<int> CountByFilterAsync(TelegramFilter filter);
 
+    /// <summary>Deletes the entire telegram history (set-based) and checkpoints the WAL. Returns rows removed.</summary>
+    Task<int> DeleteAllAsync();
+
     /// <summary>Streams the filtered range chronologically (Timestamp ASC) without buffering all rows.</summary>
     IAsyncEnumerable<KnxTelegram> StreamByFilterAsync(TelegramFilter filter, CancellationToken ct = default);
 }

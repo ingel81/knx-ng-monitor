@@ -63,3 +63,9 @@
     }
   }
 }
+
+// Danger menu item (Clear history) inside the "more actions" kebab menu.
+.cd-danger-item:not([disabled]) {
+  color: var(--err);
+  mat-icon { color: var(--err); }
+}

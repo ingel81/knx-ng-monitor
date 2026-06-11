@@ -78,6 +78,31 @@ Settings→Live-Reconnect · Lizenz-Notices. Details in den ✅-Abschnitten unte
 - [ ] Live + History zu **einer** Ansicht zusammenführen — bewusst offen (braucht Konzept-
       Entscheidung, vorher beraten).
 
+## Projekte & Connection — Folge-Themen (2026-06-12)
+
+**Modell (geklärt):** Es gibt immer **genau ein aktives Projekt**, und genau das ist
+mit dem Bus verbunden. Aktiv ⇒ verbunden; deaktivieren ⇒ trennen. AutoConnect default `true`.
+
+- [ ] **Connection-Test: keine zweite Verbindung** — aktuell öffnet `TestConnectionAsync`
+      einen temporären `KnxBus` (2. Tunnel) → Problem bei Gateways mit begrenzter Tunnel-Anzahl.
+      Stattdessen: ist bereits zur getesteten Config verbunden → Live-Status melden statt
+      neuen Tunnel zu öffnen; nur probe-connecten, wenn aktuell getrennt.
+- [ ] **AutoConnect-Toggle auf der Projektzeile** (Projects-View), default `true`.
+      (Bus-Connection ist an das aktive Projekt gekoppelt — AutoConnect steuert, ob das
+      aktive Projekt automatisch verbunden wird.)
+- [ ] **Projekt deaktivieren / Verbindung generell zumachen** — aktuell nicht möglich:
+      Aktiv-Toggle ist bei aktivem Projekt disabled (`[disabled]="project.isActive"`),
+      `ProjectService` hat nur `ActivateProjectAsync`, kein Deactivate. Nötig:
+      Deactivate-Pfad (IsActive=false → Cache leeren → Bus trennen, ManualDisconnect-Latch).
+- [ ] **Projekt-Löschen beschleunigen + Feedback** — aktuell sehr langsam, wirkt eingefroren.
+      Root Cause: `KnxTelegrams → GroupAddress` FK ist `OnDelete(SetNull)`, aber
+      **`GroupAddressId` hat keinen Index** (nur Composite `Timestamp,DestinationAddress`).
+      Beim Delete setzt EF/SQLite die FK auf NULL für bis zu **1 Mio** Telegramme → Full-Scans
+      pro GA → extrem langsam. Fix:
+      - Index auf `KnxTelegrams.GroupAddressId` (Migration)
+      - Set-basiertes Löschen (`ExecuteUpdate`/`ExecuteDelete`) statt EF-Cascade mit Tracking
+      - UI: Spinner/disabled + sofortiges Feedback während des Löschens (ggf. Background-Job)
+
 ## Feature-Backlog (priorisiert nach Review v0.3.x)
 
 ### Phase 1 — gewünscht
@@ -121,6 +146,8 @@ Settings→Live-Reconnect · Lizenz-Notices. Details in den ✅-Abschnitten unte
       offen → s. „Diff zweier Zeitpunkte" im Feature-Backlog.
 - [ ] Mobile-Ansicht systematisch optimieren (Card-View existiert, systematischer Pass offen)
 - [ ] Accessibility-Audit (WCAG 2.1 Level AA)
+- [ ] **Live-View: msg/s-Rate-Anzeige** — kleine Info mit Telegrammen/s neben dem „Live"-
+      Status-Indikator und dem Message-Count-Badge (gleitender Durchschnitt über ein paar Sek).
 
 ### Betrieb / Qualität
 - [ ] Health-Check vertiefen — Basis-Liveness `/healthz` **existiert bereits** (Program.cs).
@@ -132,3 +159,8 @@ Settings→Live-Reconnect · Lizenz-Notices. Details in den ✅-Abschnitten unte
     `signalr.service`, `live-view`, `import-wizard`)
 - [ ] API-Integration- und E2E-Tests (Cypress / Playwright)
 - [ ] Frontend Unit-Test-Coverage ausbauen
+- [ ] **CI: GitHub-Actions Node-20-Deprecation** — Release-Workflow nutzt Actions auf Node.js 20
+      (u.a. `actions/upload-artifact@v5`, vermutlich auch checkout/setup-node/setup-dotnet).
+      Node 20 ab **16.06.2026** zwangsweise Node 24, Removal **16.09.2026**. Actions auf
+      Node-24-fähige Versionen bumpen (`.github/workflows/release.yml`); übergangsweise
+      `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` möglich.

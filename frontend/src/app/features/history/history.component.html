@@ -14,6 +14,16 @@
         <mat-icon svgIcon="knx:download"></mat-icon>
         {{ isExporting ? 'Exporting…' : 'Export CSV' }}
       </button>
+      <button class="knx-btn knx-btn--ghost knx-btn--icon" [matMenuTriggerFor]="moreMenu"
+              [disabled]="isClearing" matTooltip="More actions" aria-label="More actions">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #moreMenu="matMenu">
+        <button mat-menu-item class="cd-danger-item" (click)="clearHistory()" [disabled]="totalCount === 0">
+          <mat-icon svgIcon="knx:trash"></mat-icon>
+          <span>{{ isClearing ? 'Clearing…' : 'Clear history' }}</span>
+        </button>
+      </mat-menu>
     </div>
   </div>
 
