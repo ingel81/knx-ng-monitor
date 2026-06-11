@@ -240,7 +240,17 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.4.0 (latest)
+### v0.4.1 (latest)
+
+- **Fix: DPT decoding returned raw hex in Docker / single-file builds** — Falcon's master-data loader derives its search directories from `Assembly.Location`, which is **empty for assemblies in a single-file bundle**, so `DptFactory` threw and every value fell back to hex (`0x…`). The published binary now self-extracts all content to disk (`IncludeAllContentForSelfExtract`), restoring a valid assembly path. Affects v0.4.0 only; framework-dependent/dev runs were never impacted
+- **Decode failures are now logged** instead of silently falling back to hex
+- **Fix:** empty-state button icon alignment (the "Import project" upload icon overflowed the button)
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.4.1
+```
+
+### v0.4.0
 
 - **DPT decoding via Falcon SDK** — the hand-rolled converter is replaced by Falcon's built-in datapoint catalog: the full DPT range, **sub-type aware** (e.g. 5.001 % vs 5.010 counter pulses), with **units** and **enumeration names** (DPT 20 → `Comfort`, DPT 232 → `#FF8000`). Boolean states now render their spec-correct labels (Switch → On/Off, OpenClose → Open/Close, State → Active/Inactive); labels are pinned to **English** regardless of host locale, numbers stay invariant
 - **Always-on recording** — the bus link is now managed by a backend **auto-connect worker**: it connects on startup and **reconnects automatically** after a gateway reboot, network blip or container restart (`KnxConfiguration.AutoConnect`, default on). The manual Connect/Disconnect buttons are gone — the toolbar shows a live **status indicator** (Live / Paused / Connecting / Reconnecting)
@@ -343,7 +353,7 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.4.0: Falcon-based DPT decoding (full catalog, sub-types, units, enum names, English labels), always-on recording via auto-connect/reconnect worker with a status-only toolbar, singleton live buffer (History↔Live keeps state, Pause without telegram loss), fully English UI, grid polish (column widths, right-aligned numbers, truncation tooltips), non-destructive connection test, and `THIRD-PARTY-NOTICES` for the proprietary Falcon SDK.
+**Current** — v0.4.1 (hotfix: DPT decoding in single-file/Docker builds): Falcon-based DPT decoding (full catalog, sub-types, units, enum names, English labels), always-on recording via auto-connect/reconnect worker with a status-only toolbar, singleton live buffer (History↔Live keeps state, Pause without telegram loss), fully English UI, grid polish (column widths, right-aligned numbers, truncation tooltips), non-destructive connection test, and `THIRD-PARTY-NOTICES` for the proprietary Falcon SDK.
 **Next** — Language switcher (i18n) and merging Live + History into one view; telegram-time decryption using stored tool keys; live-values dashboard, time-series charts and bus-load statistics.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.
