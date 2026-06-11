@@ -31,6 +31,13 @@ public static partial class DptConverter
     private static readonly CultureInfo FormatUiCulture = CultureInfo.GetCultureInfo("en");
 
     /// <summary>
+    /// Wired to an ILogger by the connection service so decode failures (e.g. a missing
+    /// Falcon master-data dependency under single-file publish) are visible instead of
+    /// silently falling back to hex.
+    /// </summary>
+    public static Action<string?, Exception>? OnError;
+
+    /// <summary>
     /// Decode a group value based on its DPT.
     /// </summary>
     /// <param name="dptType">DPT identifier in any common form ("9.001", "DPST-9-1", "DPT-9", "9").</param>
@@ -66,8 +73,9 @@ public static partial class DptConverter
                 CultureInfo.CurrentUICulture = prevUi;
             }
         }
-        catch
+        catch (Exception ex)
         {
+            OnError?.Invoke(dptType, ex);
             return ToHex(value.Value);
         }
     }

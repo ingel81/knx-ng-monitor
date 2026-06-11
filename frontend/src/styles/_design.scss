@@ -193,6 +193,8 @@
 /* ---------------- placeholder / empty page ---------------- */
 .placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: var(--sp-2); color: var(--ink-3); text-align: center; padding: var(--sp-12) var(--sp-6); }
-.placeholder mat-icon { color: var(--line-strong); width: 48px; height: 48px; font-size: 48px; }
+/* Only the empty-state's own icon — not icons inside nested buttons (same specificity,
+   would otherwise blow up the button icon to 48px and push it out of the button). */
+.placeholder > mat-icon { color: var(--line-strong); width: 48px; height: 48px; font-size: 48px; }
 .placeholder h2 { margin: var(--sp-3) 0 0; color: var(--ink); font-weight: var(--fw-semi); }
 .placeholder p { max-width: 42ch; font-size: var(--fs-md); margin: var(--sp-1) 0 var(--sp-4); }

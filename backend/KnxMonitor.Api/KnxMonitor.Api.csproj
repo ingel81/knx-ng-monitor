@@ -4,6 +4,15 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!--
+      Single-file publish must self-extract ALL content (managed assemblies) to disk,
+      not just native libs. The Knx.Falcon ApplicationData master-data loader derives its
+      search directories from Assembly.Location, which is EMPTY for assemblies embedded in
+      a single-file bundle (Path.Combine(null,...) -> DptFactory.Default throws -> every DPT
+      decode falls back to hex). Extracting to disk gives a valid Assembly.Location.
+      Only takes effect when PublishSingleFile=true; ignored otherwise.
+    -->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>

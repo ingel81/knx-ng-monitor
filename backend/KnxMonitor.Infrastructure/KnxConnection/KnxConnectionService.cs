@@ -36,7 +36,18 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         _logger = logger;
         _groupAddressCache = groupAddressCache;
         _telegramQueue = telegramQueue;
+
+        // Surface DPT decode failures (first few only, to avoid log spam on a busy bus).
+        DptConverter.OnError = (dpt, ex) =>
+        {
+            if (Interlocked.Increment(ref _decodeErrorLogged) <= 5)
+            {
+                _logger.LogWarning(ex, "DPT decode failed for {Dpt} (falling back to hex)", dpt);
+            }
+        };
     }
+
+    private int _decodeErrorLogged;
 
     public async Task<bool> ConnectAsync(KnxConfiguration configuration)
     {
