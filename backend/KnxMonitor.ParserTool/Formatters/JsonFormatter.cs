@@ -37,6 +37,22 @@ public class JsonFormatter : IOutputFormatter
                 manufacturer = d.Manufacturer,
                 productName = d.ProductName
             }),
+            groupRanges = result.GroupRanges?.Select(r => new
+            {
+                name = r.Name,
+                rangeStart = r.RangeStart,
+                rangeEnd = r.RangeEnd
+            }),
+            communicationObjects = result.CommunicationObjects?.Select(c => new
+            {
+                deviceAddress = c.DeviceAddress,
+                number = c.Number,
+                name = c.Name,
+                functionText = c.FunctionText,
+                groupAddressLinks = c.GroupAddressLinks,
+                datapointType = c.DatapointType,
+                flags = c.Flags
+            }),
             statistics = result.Statistics != null ? new
             {
                 duration = result.Statistics.Duration.TotalMilliseconds,

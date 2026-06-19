@@ -81,7 +81,9 @@ public class ProjectParser : IProjectParser
             {
                 Duration = DateTime.UtcNow - startTime,
                 GroupAddressCount = result.GroupAddresses.Count,
-                DeviceCount = result.Devices.Count
+                DeviceCount = result.Devices.Count,
+                LocationCount = result.Locations.Count,
+                CommunicationObjectCount = result.CommunicationObjects.Count
             };
 
             ReportProgress(progress, ParseStep.Complete, 100);

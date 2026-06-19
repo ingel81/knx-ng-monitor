@@ -3,6 +3,7 @@ using System;
 using KnxMonitor.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KnxMonitor.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260612103212_AddLocationsCommObjectsAndKeyring")]
+    partial class AddLocationsCommObjectsAndKeyring
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.10");
@@ -139,33 +142,6 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
                     b.ToTable("GroupAddresses");
                 });
 
-            modelBuilder.Entity("KnxMonitor.Core.Entities.GroupRange", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("RangeEnd")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("RangeStart")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectId", "RangeStart");
-
-                    b.ToTable("GroupRanges");
-                });
-
             modelBuilder.Entity("KnxMonitor.Core.Entities.KnxConfiguration", b =>
                 {
                     b.Property<int>("Id")
@@ -202,11 +178,6 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("UseSecureTunnel")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(false);
 
                     b.HasKey("Id");
 
@@ -331,32 +302,6 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Projects");
-                });
-
-            modelBuilder.Entity("KnxMonitor.Core.Entities.ProjectKeyringBlob", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<byte[]>("KeyringFile")
-                        .IsRequired()
-                        .HasColumnType("BLOB");
-
-                    b.Property<string>("KeyringPassword")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectId")
-                        .IsUnique();
-
-                    b.ToTable("ProjectKeyringBlobs");
                 });
 
             modelBuilder.Entity("KnxMonitor.Core.Entities.ProjectKeyringKey", b =>
@@ -510,17 +455,6 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("KnxMonitor.Core.Entities.GroupRange", b =>
-                {
-                    b.HasOne("KnxMonitor.Core.Entities.Project", "Project")
-                        .WithMany("GroupRanges")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
-                });
-
             modelBuilder.Entity("KnxMonitor.Core.Entities.KnxTelegram", b =>
                 {
                     b.HasOne("KnxMonitor.Core.Entities.GroupAddress", "GroupAddress")
@@ -536,17 +470,6 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
                     b.HasOne("KnxMonitor.Core.Entities.Project", "Project")
                         .WithMany("Locations")
                         .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
-                });
-
-            modelBuilder.Entity("KnxMonitor.Core.Entities.ProjectKeyringBlob", b =>
-                {
-                    b.HasOne("KnxMonitor.Core.Entities.Project", "Project")
-                        .WithOne("KeyringBlob")
-                        .HasForeignKey("KnxMonitor.Core.Entities.ProjectKeyringBlob", "ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -587,10 +510,6 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
                     b.Navigation("Devices");
 
                     b.Navigation("GroupAddresses");
-
-                    b.Navigation("GroupRanges");
-
-                    b.Navigation("KeyringBlob");
 
                     b.Navigation("KeyringKeys");
 

@@ -45,7 +45,9 @@ public class KnxAutoConnectWorker : BackgroundService
         {
             try
             {
-                if (!_knx.IsConnected && !_knx.ManualDisconnect)
+                // Skip while a test probe is running — it briefly pauses the live link and
+                // restores it itself; reconnecting here would open a competing second tunnel.
+                if (!_knx.IsConnected && !_knx.ManualDisconnect && !_knx.TestInProgress)
                 {
                     var config = await GetAutoConnectConfigAsync(stoppingToken);
                     if (config != null)

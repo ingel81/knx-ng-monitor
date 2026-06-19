@@ -142,6 +142,9 @@ public class ParseCommand : Command
             var output = formatter.FormatParseResult(result);
             Console.WriteLine(output);
 
+            Console.WriteLine();
+            Console.WriteLine($"Locations: {result.Locations.Count}, CommunicationObjects: {result.CommunicationObjects.Count}");
+
             if (result.Keyring != null)
             {
                 Console.WriteLine();

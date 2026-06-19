@@ -81,6 +81,82 @@ public class KnxController : ControllerBase
             : Ok(new { Success = false, Message = "Connection failed" });
     }
 
+    /// <summary>
+    /// Auto-connect state for the effective configuration (active one, else the first).
+    /// The active project is coupled to the bus link, so this governs whether it auto-connects.
+    /// </summary>
+    [HttpGet("autoconnect")]
+    public async Task<IActionResult> GetAutoConnect()
+    {
+        var config = await GetEffectiveConfigAsync();
+        return Ok(new { Enabled = config?.AutoConnect ?? true, Connected = _knxService.IsConnected });
+    }
+
+    [HttpPut("autoconnect")]
+    public async Task<IActionResult> SetAutoConnect([FromBody] SetAutoConnectRequest request)
+    {
+        var config = await GetEffectiveConfigAsync();
+        if (config == null)
+            return NotFound(new { error = "No KNX configuration found" });
+
+        config.AutoConnect = request.Enabled;
+        config.UpdatedAt = DateTime.UtcNow;
+        await _configRepository.UpdateAsync(config);
+
+        // Apply immediately: enabling connects now (clears the manual-disconnect latch),
+        // disabling severs the link and latches so the worker stays away.
+        if (request.Enabled)
+        {
+            if (!_knxService.IsConnected)
+            {
+                try { await _knxService.ConnectAsync(config); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Auto-connect enable: immediate connect failed; worker will retry"); }
+            }
+        }
+        else if (_knxService.IsConnected)
+        {
+            await _knxService.DisconnectAsync();
+        }
+
+        return Ok(new { Enabled = config.AutoConnect, Connected = _knxService.IsConnected });
+    }
+
+    /// <summary>
+    /// Sends a GroupValueWrite to the bus. ⚠ Writes to the real KNX installation — the frontend
+    /// gates this behind an explicit confirmation dialog.
+    /// </summary>
+    [HttpPost("write")]
+    public async Task<IActionResult> WriteGroupValue([FromBody] WriteGroupValueRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Address))
+            return BadRequest(new { Success = false, Message = "Address is required" });
+
+        var ok = await _knxService.WriteGroupValueAsync(request.Address, request.DatapointType, request.Value ?? string.Empty);
+        return ok
+            ? Ok(new { Success = true, Message = "Value written" })
+            : BadRequest(new { Success = false, Message = "Write failed — not connected or value could not be encoded" });
+    }
+
+    /// <summary>Sends a GroupValueRead; the response shows up as a normal telegram.</summary>
+    [HttpPost("read")]
+    public async Task<IActionResult> ReadGroupValue([FromBody] ReadGroupValueRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Address))
+            return BadRequest(new { Success = false, Message = "Address is required" });
+
+        var ok = await _knxService.ReadGroupValueAsync(request.Address);
+        return ok
+            ? Ok(new { Success = true, Message = "Read request sent" })
+            : BadRequest(new { Success = false, Message = "Read request failed — not connected" });
+    }
+
+    /// <summary>Effective configuration: the active one if any, else the first stored config.</summary>
+    private async Task<Core.Entities.KnxConfiguration?> GetEffectiveConfigAsync()
+    {
+        var configs = await _configRepository.GetAllAsync();
+        return configs.FirstOrDefault(c => c.IsActive) ?? configs.FirstOrDefault();
+    }
+
     [HttpPost("configurations")]
     public async Task<IActionResult> CreateConfiguration([FromBody] CreateConfigRequest request)
     {
@@ -170,3 +246,9 @@ public record CreateConfigRequest(
     ConnectionType ConnectionType,
     bool AutoConnect = true
 );
+
+public record SetAutoConnectRequest(bool Enabled);
+
+public record WriteGroupValueRequest(string Address, string? DatapointType, string? Value);
+
+public record ReadGroupValueRequest(string Address);

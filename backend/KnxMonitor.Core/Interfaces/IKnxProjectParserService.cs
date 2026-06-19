@@ -5,6 +5,12 @@ namespace KnxMonitor.Core.Interfaces;
 
 public interface IKnxProjectParserService
 {
-    Task<(List<GroupAddress> GroupAddresses, List<Device> Devices)> ParseProjectFileAsync(Stream fileStream, int projectId);
-    Task<(List<GroupAddress> GroupAddresses, List<Device> Devices)> ParseProjectFileAsync(Stream fileStream, int projectId, ImportContext context);
+    Task<ParsedProjectData> ParseProjectFileAsync(Stream fileStream, int projectId);
+    Task<ParsedProjectData> ParseProjectFileAsync(Stream fileStream, int projectId, ImportContext context);
+
+    /// <summary>
+    /// Decrypts a standalone keyring (.knxkeys) and maps its keys to ProjectKeyringKey rows for the
+    /// given project. Used by the keyring-upload-after-import endpoint (no project re-parse).
+    /// </summary>
+    Task<List<ProjectKeyringKey>> ParseKeyringAsync(byte[] keyringData, string keyringPassword, int projectId);
 }

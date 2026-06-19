@@ -274,14 +274,18 @@ public class ProjectImportService
             await projectRepository.AddAsync(project);
 
             using var fileStream = new MemoryStream(fileData);
-            var (groupAddresses, devices) = await parserService.ParseProjectFileAsync(fileStream, project.Id, context);
-            _logger.LogInformation("Job {JobId}: parser produced {Addresses} addresses, {Devices} devices",
-                jobId, groupAddresses.Count, devices.Count);
+            var parsed = await parserService.ParseProjectFileAsync(fileStream, project.Id, context);
+            _logger.LogInformation("Job {JobId}: parser produced {Addresses} addresses, {Devices} devices, {Locations} locations, {ComObjects} com objects",
+                jobId, parsed.GroupAddresses.Count, parsed.Devices.Count, parsed.Locations.Count, parsed.CommunicationObjects.Count);
 
             _jobManager.UpdateStep(jobId, ImportStepType.Save, "in-progress", 0);
 
-            project.GroupAddresses = groupAddresses;
-            project.Devices = devices;
+            project.GroupAddresses = parsed.GroupAddresses;
+            project.Devices = parsed.Devices;
+            project.Locations = parsed.Locations;
+            project.CommunicationObjects = parsed.CommunicationObjects;
+            project.GroupRanges = parsed.GroupRanges;
+            project.KeyringKeys = parsed.KeyringKeys;
 
             // Auto-activate when no other project is active yet (first import).
             var existingActive = await projectRepository.GetActiveProjectAsync();
@@ -293,12 +297,36 @@ public class ProjectImportService
 
             await projectRepository.UpdateAsync(project);
 
+            // If a keyring was supplied during import, persist the RAW .knxkeys bytes + password so
+            // KNX Data Secure can Load() them at connect time. The decrypted per-GA keys stored above
+            // (parsed.KeyringKeys) are not sufficient for the Falcon Load() call.
+            // SECURITY: stores the keyring password at rest — see ProjectKeyringBlob.
+            if (context.KeyringFile is { Length: > 0 } && !string.IsNullOrEmpty(context.KeyringPassword))
+            {
+                await projectRepository.UpsertKeyringBlobAsync(project.Id, context.KeyringFile, context.KeyringPassword);
+                _logger.LogInformation("Job {JobId}: stored raw keyring blob for runtime Data Secure", jobId);
+            }
+
             _jobManager.UpdateStep(jobId, ImportStepType.Save, "completed", 100);
             _jobManager.UpdateStep(jobId, ImportStepType.RefreshCache, "in-progress", 0);
 
             if (project.IsActive)
             {
                 await cacheService.RefreshAsync();
+
+                // Couple the bus to the freshly auto-activated project. A prior deactivate/delete
+                // leaves the ManualDisconnect latch set, which keeps the auto-connect worker away —
+                // so without this an import that auto-activates would NOT go live until the user
+                // manually toggled active off/on. ConnectAsync clears the latch and connects now.
+                var knx = scope.ServiceProvider.GetRequiredService<KnxMonitor.Core.Services.IKnxConnectionService>();
+                var configRepo = scope.ServiceProvider.GetRequiredService<IKnxConfigurationRepository>();
+                var configs = await configRepo.GetAllAsync();
+                var config = configs.FirstOrDefault(c => c.IsActive) ?? configs.FirstOrDefault();
+                if (config != null && config.AutoConnect && !knx.IsConnected)
+                {
+                    try { await knx.ConnectAsync(config); }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Job {JobId}: auto-connect after import failed; worker will retry", jobId); }
+                }
             }
 
             _jobManager.UpdateStep(jobId, ImportStepType.RefreshCache, "completed", 100);
@@ -310,8 +338,8 @@ public class ProjectImportService
                 jobId,
                 project.Id,
                 project.Name,
-                groupAddresses.Count,
-                devices.Count,
+                parsed.GroupAddresses.Count,
+                parsed.Devices.Count,
                 etsVersion,
                 hasKnxSecure
             );

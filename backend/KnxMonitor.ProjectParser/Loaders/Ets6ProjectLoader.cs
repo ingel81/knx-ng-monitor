@@ -79,7 +79,7 @@ public class Ets6ProjectLoader : BaseProjectLoader
 
         foreach (var element in deviceElements)
         {
-            var rawAddress = int.Parse(element.Attribute("Address")?.Value ?? "0");
+            var rawAddress = ComputeDeviceRawAddress(element, ns);
             var productRefId = element.Attribute("ProductRefId")?.Value;
 
             var device = new Device
@@ -95,6 +95,8 @@ public class Ets6ProjectLoader : BaseProjectLoader
                 device.Manufacturer = hwInfo.Manufacturer;
                 device.ProductName = hwInfo.ProductName;
             }
+
+            EnsureDeviceName(device);
 
             devices.Add(device);
         }

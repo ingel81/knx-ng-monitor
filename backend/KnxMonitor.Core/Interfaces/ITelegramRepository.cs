@@ -40,4 +40,24 @@ public interface ITelegramRepository : IRepository<KnxTelegram>
 
     /// <summary>Streams the filtered range chronologically (Timestamp ASC) without buffering all rows.</summary>
     IAsyncEnumerable<KnxTelegram> StreamByFilterAsync(TelegramFilter filter, CancellationToken ct = default);
+
+    // --- Charts / statistics ---
+
+    /// <summary>
+    /// Returns telegrams for the given destination addresses within [from,to], ordered by
+    /// Timestamp ASC. Uses the (Timestamp, DestinationAddress) index. Includes the GroupAddress
+    /// navigation for name/DPT lookup. Bounded by <paramref name="maxRows"/> (oldest kept).
+    /// </summary>
+    Task<IReadOnlyList<KnxTelegram>> GetSeriesRangeAsync(
+        IReadOnlyCollection<string> addresses, DateTime from, DateTime to, int maxRows,
+        CancellationToken ct = default);
+
+    /// <summary>Counts telegrams in [from,to] (no other filter). Backs the statistics view.</summary>
+    Task<int> CountInRangeAsync(DateTime from, DateTime to, CancellationToken ct = default);
+
+    /// <summary>
+    /// Streams (Timestamp only) for telegrams in [from,to] ordered ASC, for in-memory bucketing.
+    /// </summary>
+    IAsyncEnumerable<DateTime> StreamTimestampsInRangeAsync(
+        DateTime from, DateTime to, CancellationToken ct = default);
 }

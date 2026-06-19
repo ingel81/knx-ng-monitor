@@ -17,6 +17,15 @@ public class KnxConfiguration
     /// </summary>
     public bool AutoConnect { get; set; } = true;
 
+    /// <summary>
+    /// When true, the IP connection is established as a KNX IP Secure unicast tunnel
+    /// (encrypted tunneling) instead of a plain tunnel. Default false — everyone today
+    /// keeps the existing non-secure behavior. Secure credentials are derived best-effort
+    /// from the active project's keyring blob; see <see cref="KnxConnectionService"/>.
+    /// NOTE: the secure-tunnel path is unverified on real hardware.
+    /// </summary>
+    public bool UseSecureTunnel { get; set; } = false;
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

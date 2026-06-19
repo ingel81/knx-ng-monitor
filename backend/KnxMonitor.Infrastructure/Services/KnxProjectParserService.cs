@@ -3,10 +3,15 @@ using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Models;
 using Microsoft.Extensions.Logging;
 using LibraryParser = KnxMonitor.ProjectParser.Core.Interfaces.IProjectParser;
+using LibraryKeyringReader = KnxMonitor.ProjectParser.Core.Interfaces.IKeyringReader;
 using LibraryParserOptions = KnxMonitor.ProjectParser.Core.Models.ParserOptions;
 using LibraryParserProgress = KnxMonitor.ProjectParser.Core.Models.ParserProgress;
 using LibraryGroupAddress = KnxMonitor.ProjectParser.Core.Models.GroupAddress;
 using LibraryDevice = KnxMonitor.ProjectParser.Core.Models.Device;
+using LibraryLocation = KnxMonitor.ProjectParser.Core.Models.Location;
+using LibraryComObject = KnxMonitor.ProjectParser.Core.Models.ComObject;
+using LibraryGroupRange = KnxMonitor.ProjectParser.Core.Models.GroupRange;
+using LibraryKeyringData = KnxMonitor.ProjectParser.Core.Models.KeyringData;
 
 namespace KnxMonitor.Infrastructure.Services;
 
@@ -17,17 +22,20 @@ namespace KnxMonitor.Infrastructure.Services;
 public class KnxProjectParserService : IKnxProjectParserService
 {
     private readonly LibraryParser _parser;
+    private readonly LibraryKeyringReader _keyringReader;
     private readonly ILogger<KnxProjectParserService> _logger;
 
     public KnxProjectParserService(
         LibraryParser parser,
+        LibraryKeyringReader keyringReader,
         ILogger<KnxProjectParserService> logger)
     {
         _parser = parser;
+        _keyringReader = keyringReader;
         _logger = logger;
     }
 
-    public async Task<(List<GroupAddress> GroupAddresses, List<Device> Devices)> ParseProjectFileAsync(
+    public async Task<ParsedProjectData> ParseProjectFileAsync(
         Stream fileStream,
         int projectId)
     {
@@ -41,7 +49,7 @@ public class KnxProjectParserService : IKnxProjectParserService
         return await ParseProjectFileAsync(fileStream, projectId, context);
     }
 
-    public async Task<(List<GroupAddress> GroupAddresses, List<Device> Devices)> ParseProjectFileAsync(
+    public async Task<ParsedProjectData> ParseProjectFileAsync(
         Stream fileStream,
         int projectId,
         ImportContext context)
@@ -73,23 +81,40 @@ public class KnxProjectParserService : IKnxProjectParserService
                     MapProgressToLibrary(context.ProgressCallback)
                 );
 
-            // 2. Map Library-DTOs zu Infrastructure-Entities
-            var groupAddresses = result.GroupAddresses
-                .Select(dto => MapGroupAddressToEntity(dto, projectId))
-                .ToList();
+                // 2. Map Library-DTOs zu Infrastructure-Entities
+                var parsed = new ParsedProjectData
+                {
+                    GroupAddresses = result.GroupAddresses
+                        .Select(dto => MapGroupAddressToEntity(dto, projectId))
+                        .ToList(),
+                    Devices = result.Devices
+                        .Select(dto => MapDeviceToEntity(dto, projectId))
+                        .ToList(),
+                    Locations = result.Locations
+                        .Select(dto => MapLocationToEntity(dto, projectId))
+                        .ToList(),
+                    CommunicationObjects = result.CommunicationObjects
+                        .SelectMany(dto => MapComObjectToEntities(dto, projectId))
+                        .ToList(),
+                    GroupRanges = result.GroupRanges
+                        .Select(dto => MapGroupRangeToEntity(dto, projectId))
+                        .ToList(),
+                    KeyringKeys = result.Keyring != null
+                        ? MapKeyringToEntities(result.Keyring, projectId)
+                        : new List<ProjectKeyringKey>()
+                };
 
-            var devices = result.Devices
-                .Select(dto => MapDeviceToEntity(dto, projectId))
-                .ToList();
+                _logger.LogInformation(
+                    "Parsed: {GAs} GAs, {Devices} Devices, {Locations} Locations, {ComObjects} ComObjects, {GroupRanges} GroupRanges in {Duration}ms",
+                    parsed.GroupAddresses.Count,
+                    parsed.Devices.Count,
+                    parsed.Locations.Count,
+                    parsed.CommunicationObjects.Count,
+                    parsed.GroupRanges.Count,
+                    result.Statistics.Duration.TotalMilliseconds
+                );
 
-            _logger.LogInformation(
-                "Parsed: {GAs} GAs, {Devices} Devices in {Duration}ms",
-                groupAddresses.Count,
-                devices.Count,
-                result.Statistics.Duration.TotalMilliseconds
-            );
-
-                return (groupAddresses, devices);
+                return parsed;
             }
             finally
             {
@@ -100,6 +125,24 @@ public class KnxProjectParserService : IKnxProjectParserService
         {
             _logger.LogError(ex, "Failed to parse project");
             throw new InvalidOperationException($"Failed to parse .knxproj file: {ex.Message}", ex);
+        }
+    }
+
+    public async Task<List<ProjectKeyringKey>> ParseKeyringAsync(
+        byte[] keyringData,
+        string keyringPassword,
+        int projectId)
+    {
+        try
+        {
+            using var stream = new MemoryStream(keyringData, writable: false);
+            var keyring = await _keyringReader.ReadAsync(stream, keyringPassword);
+            return MapKeyringToEntities(keyring, projectId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to parse keyring for project {ProjectId}", projectId);
+            throw new InvalidOperationException($"Failed to parse keyring file: {ex.Message}", ex);
         }
     }
 
@@ -127,6 +170,90 @@ public class KnxProjectParserService : IKnxProjectParserService
             Manufacturer = dto.Manufacturer,
             ProductName = dto.ProductName
         };
+    }
+
+    private Location MapLocationToEntity(LibraryLocation dto, int projectId)
+    {
+        return new Location
+        {
+            ProjectId = projectId,
+            ExternalId = dto.Id,
+            Name = dto.Name,
+            Type = dto.Type,
+            ParentExternalId = dto.ParentId,
+            DeviceAddresses = dto.DeviceRefIds.Count > 0 ? string.Join(",", dto.DeviceRefIds) : null,
+            GroupAddresses = dto.GroupAddressRefIds.Count > 0 ? string.Join(",", dto.GroupAddressRefIds) : null
+        };
+    }
+
+    // One library ComObject can link multiple GAs; store one row per (device, GA-link) pair.
+    private IEnumerable<CommunicationObject> MapComObjectToEntities(LibraryComObject dto, int projectId)
+    {
+        foreach (var link in dto.GroupAddressLinks)
+        {
+            yield return new CommunicationObject
+            {
+                ProjectId = projectId,
+                DeviceAddress = dto.DeviceAddress,
+                Number = dto.Number,
+                Name = dto.Name,
+                FunctionText = dto.FunctionText,
+                GroupAddressLink = link,
+                DatapointType = dto.DatapointType,
+                Flags = dto.Flags
+            };
+        }
+    }
+
+    private GroupRange MapGroupRangeToEntity(LibraryGroupRange dto, int projectId)
+    {
+        return new GroupRange
+        {
+            ProjectId = projectId,
+            Name = dto.Name,
+            RangeStart = dto.RangeStart,
+            RangeEnd = dto.RangeEnd
+        };
+    }
+
+    private List<ProjectKeyringKey> MapKeyringToEntities(LibraryKeyringData keyring, int projectId)
+    {
+        var keys = new List<ProjectKeyringKey>();
+
+        if (keyring.BackboneKey != null)
+        {
+            keys.Add(new ProjectKeyringKey
+            {
+                ProjectId = projectId,
+                KeyType = "Backbone",
+                IndividualAddress = keyring.BackboneMulticastAddress,
+                KeyBase64 = Convert.ToBase64String(keyring.BackboneKey)
+            });
+        }
+
+        foreach (var device in keyring.Devices.Where(d => d.ToolKey != null))
+        {
+            keys.Add(new ProjectKeyringKey
+            {
+                ProjectId = projectId,
+                KeyType = "ToolKey",
+                IndividualAddress = device.IndividualAddress,
+                KeyBase64 = Convert.ToBase64String(device.ToolKey!)
+            });
+        }
+
+        foreach (var ga in keyring.GroupAddresses.Where(g => g.Key != null))
+        {
+            keys.Add(new ProjectKeyringKey
+            {
+                ProjectId = projectId,
+                KeyType = "GroupAddress",
+                GroupAddress = ga.Address,
+                KeyBase64 = Convert.ToBase64String(ga.Key!)
+            });
+        }
+
+        return keys;
     }
 
     // Progress-Mapping: Infrastructure → Library

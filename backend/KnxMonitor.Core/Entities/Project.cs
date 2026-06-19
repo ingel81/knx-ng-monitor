@@ -12,4 +12,11 @@ public class Project
     // Navigation properties
     public ICollection<GroupAddress> GroupAddresses { get; set; } = new List<GroupAddress>();
     public ICollection<Device> Devices { get; set; } = new List<Device>();
+    public ICollection<Location> Locations { get; set; } = new List<Location>();
+    public ICollection<CommunicationObject> CommunicationObjects { get; set; } = new List<CommunicationObject>();
+    public ICollection<GroupRange> GroupRanges { get; set; } = new List<GroupRange>();
+    public ICollection<ProjectKeyringKey> KeyringKeys { get; set; } = new List<ProjectKeyringKey>();
+
+    /// <summary>Raw .knxkeys blob + password for KNX Data Secure runtime decryption (one per project, optional).</summary>
+    public ProjectKeyringBlob? KeyringBlob { get; set; }
 }

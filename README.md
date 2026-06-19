@@ -13,9 +13,14 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 - **ETS project import** — ETS 4 / 5 / 6 `.knxproj` files, three- / two-level / free addressing
 - **KNX Secure** — password-protected projects (incl. ETS6 PBKDF2/AES wrapping) and `.knxkeys` keyring decryption (PBKDF2-HMAC-SHA256 + AES-128-CBC)
 - **Two-stage import wizard** — re-detects KNX Secure after the project password is provided and asks for the optional keyring
-- **Live view UI** — custom CDK-virtual-scroll grid with color-coding (Read / Write / Response), value semantics + DPST units, status indicator, pause (no telegram loss), auto-scroll, free-text filter
+- **Unified Monitor view** — one view with a **Live / Archive** toggle and a shared filter; custom CDK-virtual-scroll grid with color-coding (Read / Write / Response), value semantics + DPST units, live bus-load badge (msg/s + %), pause (no telegram loss), auto-scroll, free-text + room filter
+- **Charts & statistics** — time-series charts for numeric DPTs (separate Y-axes per unit, live append) and a statistics view (total, average msg/s, telegrams over time)
+- **Write / read from the UI** — send GroupValueRead or write a DPT-typed value to the live bus from the detail drawer, behind a confirmation dialog
+- **KNX Secure runtime** — Data Secure group telegrams decrypted at runtime from the stored keyring; optional opt-in IP-Secure tunnel
+- **Topology & communication objects** — Locations (building → floor → room) and com-objects parsed across ETS 4/5/6, with a Topology tree view, room filter and "used by" device list
+- **Runtime DE / EN** — full bilingual UI, switchable without a reload
 - **JWT auth** — access tokens (15 min) + refresh tokens (7 days), JWT secret auto-generated on first start
-- **Data recording** — two-tier, fully self-contained: count-based SQLite hot-tier ring buffer (bounded size) plus an opt-in NDJSON+gzip long-term archive; `/history` view with keyset-paginated query API and server-streamed CSV export
+- **Data recording** — two-tier, fully self-contained: count-based SQLite hot-tier ring buffer (bounded size) plus an opt-in NDJSON+gzip long-term archive; keyset-paginated query API and server-streamed CSV export
 - **Single-port deployment** — backend serves the Angular frontend in production
 
 ## Tech Stack
@@ -33,7 +38,7 @@ knx-ng-monitor/
 │   ├── KnxMonitor.Core/                # Domain layer (entities, interfaces, DTOs)
 │   ├── KnxMonitor.Infrastructure/      # EF Core, repositories, KNX bus, project import adapter
 │   ├── KnxMonitor.ProjectParser/       # Standalone .knxproj parser library (ETS 4/5/6 + Keyring)
-│   ├── KnxMonitor.ProjectParser.Tests/ # 187 xUnit tests (~99 % line coverage)
+│   ├── KnxMonitor.ProjectParser.Tests/ # 192 xUnit tests (~99 % line coverage)
 │   └── KnxMonitor.ParserTool/          # CLI: parse / detect a .knxproj from the shell
 ├── frontend/                           # Angular application
 ├── docs/
@@ -240,7 +245,23 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.5.0 (latest)
+### v0.6.0 (latest)
+
+- **Unified Monitor view** — the separate *Live View* and *History* pages are merged into one **Monitor** view with a **Live / Archive** toggle (default Live). A single shared quick-search applies in both modes; the live buffer keeps recording in the background while you browse the archive. Archive keeps keyset pagination + infinite scroll
+- **Runtime DE / EN language switch** — full English/German UI, switchable **without a reload** (signal-backed translation, ~250 keys); default English, choice persisted in `localStorage`
+- **Time-series charts** — new **Charts** view: pick up to 8 numeric group addresses, plot them over **1 h / 24 h / 7 d / 30 d / custom** with **separate Y-axes per unit** (°C vs W vs %), zoom/scroll, DPT-1 rendered as step lines; initial history is loaded and **new telegrams append live** (ECharts, lazy-loaded)
+- **Statistics view** — total telegrams, average **msg/s** and a telegrams-over-time histogram for the selected range; plus a live **bus-load badge** (msg/s + % of TP1 bandwidth) in the Monitor header
+- **Write / read group values from the UI** — the telegram detail drawer can send a **GroupValueRead** or **write** a DPT-typed value (On/Off toggle for 1-bit, number/text otherwise) to the live bus, gated behind a confirmation dialog. Encoding is verified end-to-end over an in-process KNX/IP loopback bus
+- **KNX Secure runtime decryption** — when a project keyring is stored, **Data Secure** group telegrams are decrypted at runtime (Falcon `GroupCommunicationSecurity`); optional **IP-Secure tunnel** (opt-in per configuration). Fully isolated — without a keyring the connection path is unchanged
+- **Building topology + communication objects** — the parser now extracts **Locations** (building → floor → room) and **communication objects** across ETS 4/5/6. New **Topology** view (building tree), a **room filter** in the archive, a **"used by"** list of device objects in the detail drawer, and **upload a `.knxkeys` keyring after import** without re-parsing
+- **Project lifecycle** — **deactivate** a project (severs the bus link), an **auto-connect toggle** on the active project, a **delete preview** (group-address / device / telegram counts) before deletion, and a faster, transactional **set-based delete**
+- **CI** — release workflow actions bumped to the **Node 24** runtime ahead of GitHub's Node 20 removal
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.6.0
+```
+
+### v0.5.0
 
 - **Clear history** — the History view gained a "more actions" kebab menu (next to *Export CSV*) with a **Clear history** action that wipes the entire telegram database after a confirmation dialog. The delete is set-based (`ExecuteDelete` + WAL checkpoint), so it is fast even on a full 1 M-row hot-tier; archived NDJSON day-files are left untouched
 

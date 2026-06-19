@@ -9,9 +9,15 @@ public interface IKnxConnectionService
     Task<bool> ConnectAsync(KnxConfiguration configuration);
 
     /// <summary>
-    /// Probes a configuration without touching the live connection (non-destructive).
+    /// Probes a configuration. If a live link is up it is briefly paused (its tunnel freed)
+    /// for the duration of the probe and then restored — so gateways with a single tunnel
+    /// slot can still be tested. Callers should warn the user before triggering this while live.
     /// </summary>
     Task<bool> TestConnectionAsync(KnxConfiguration configuration);
+
+    /// <summary>True while a test probe is running (live link paused). The auto-connect
+    /// worker must not try to (re)connect in this window or it would open a second tunnel.</summary>
+    bool TestInProgress { get; }
 
     Task DisconnectAsync();
     bool IsConnected { get; }
@@ -26,4 +32,17 @@ public interface IKnxConnectionService
     bool ManualDisconnect { get; }
 
     Task<KnxConfiguration?> GetActiveConfigurationAsync();
+
+    /// <summary>
+    /// Sends a GroupValueWrite to the bus. ⚠ Writes to the real KNX installation — callers must
+    /// gate this behind an explicit user confirmation. Returns false if not connected or the value
+    /// could not be encoded for the given DPT.
+    /// </summary>
+    Task<bool> WriteGroupValueAsync(string address, string? dptType, string value);
+
+    /// <summary>
+    /// Sends a GroupValueRead request. The response arrives as a normal received telegram.
+    /// Returns false if not connected.
+    /// </summary>
+    Task<bool> ReadGroupValueAsync(string address);
 }

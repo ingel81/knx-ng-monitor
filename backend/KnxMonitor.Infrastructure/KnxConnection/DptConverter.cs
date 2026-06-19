@@ -80,6 +80,91 @@ public static partial class DptConverter
         }
     }
 
+    /// <summary>
+    /// Encodes a user-entered value into a <see cref="GroupValue"/> for sending on the bus,
+    /// the inverse of <see cref="Decode"/>. Uses Falcon's <c>DptBase.ToGroupValue</c>.
+    /// </summary>
+    /// <param name="dptType">DPT identifier ("1.001", "9.001", "5", …). Required for typed encoding.</param>
+    /// <param name="value">The value as entered by the user (e.g. "1"/"true"/"on", "21.5", "60").</param>
+    /// <returns>The encoded group value, or null if it cannot be encoded for the given DPT.</returns>
+    /// <remarks>
+    /// ⚠ This path writes to a real KNX bus. Per-DPT numeric typing is best-effort: DPT-1 maps
+    /// to a boolean; integer-family DPTs (5/6/7/8/12/13) to a long; float-family (9/14) to a
+    /// double; everything else is handed to Falcon as the trimmed string. Verify on hardware.
+    /// </remarks>
+    public static GroupValue? Encode(string? dptType, string value)
+    {
+        if (value is null)
+            return null;
+
+        if (string.IsNullOrWhiteSpace(dptType) || !TryParseDpt(dptType, out var main, out var sub))
+        {
+            // No DPT: accept a raw hex byte string ("0x01", "01 02") as a last resort.
+            return TryParseHex(value, out var bytes) ? new GroupValue(bytes) : null;
+        }
+
+        try
+        {
+            DptBase? dpt = null;
+            if (sub.HasValue)
+            {
+                try { dpt = Factory.Get(main, sub.Value); }
+                catch { /* unknown sub-type -> fall back to the main type's default */ }
+            }
+            dpt ??= Factory.Create(Factory.GetDatapointType(main));
+
+            object typed = CoerceValue(main, value.Trim());
+            return dpt.ToGroupValue(typed);
+        }
+        catch (Exception ex)
+        {
+            OnError?.Invoke(dptType, ex);
+            return null;
+        }
+    }
+
+    /// <summary>Parses a user string into the CLR type Falcon expects for the DPT main number.</summary>
+    private static object CoerceValue(int main, string value)
+    {
+        // DPT-1: boolean (1-bit). Accept common truthy/falsy spellings.
+        if (main == 1)
+        {
+            if (bool.TryParse(value, out var b)) return b;
+            return value is "1" or "on" or "On" or "ON" or "true" or "yes" or "Yes";
+        }
+
+        // Float-family DPTs -> double.
+        if (main is 9 or 14)
+        {
+            if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+                return d;
+        }
+        // Integer-family DPTs -> long (Falcon narrows to the DPT's actual width).
+        else if (main is 5 or 6 or 7 or 8 or 12 or 13)
+        {
+            if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l))
+                return l;
+            if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+                return (long)d;
+        }
+
+        // Fallback: hand the raw string to Falcon (covers strings, scenes, enums by number).
+        return value;
+    }
+
+    private static bool TryParseHex(string value, out byte[] bytes)
+    {
+        bytes = Array.Empty<byte>();
+        var cleaned = value.Trim();
+        if (cleaned.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            cleaned = cleaned[2..];
+        cleaned = cleaned.Replace(" ", string.Empty).Replace("-", string.Empty);
+        if (cleaned.Length == 0 || cleaned.Length % 2 != 0)
+            return false;
+        try { bytes = Convert.FromHexString(cleaned); return true; }
+        catch { return false; }
+    }
+
     /// <summary>Extracts main (and optional sub) number from any common DPT string form.</summary>
     private static bool TryParseDpt(string dptType, out int main, out int? sub)
     {

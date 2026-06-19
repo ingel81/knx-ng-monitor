@@ -1,5 +1,6 @@
 using Knx.Falcon;
 using Knx.Falcon.Configuration;
+using Knx.Falcon.DataSecurity;
 using Knx.Falcon.KnxnetIp;
 using Knx.Falcon.Sdk;
 using KnxMonitor.Core.Entities;
@@ -7,8 +8,10 @@ using KnxMonitor.Core.Enums;
 using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Services;
 using KnxMonitor.Infrastructure.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Net;
+using System.Security;
 
 namespace KnxMonitor.Infrastructure.KnxConnection;
 
@@ -17,25 +20,32 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     private readonly ILogger<KnxConnectionService> _logger;
     private readonly IGroupAddressCacheService _groupAddressCache;
     private readonly ITelegramQueue _telegramQueue;
+    // Scope factory lets this singleton reach scoped repos (active project + keyring blob)
+    // at connect time, mirroring KnxAutoConnectWorker. Used ONLY for secure setup.
+    private readonly IServiceScopeFactory _scopeFactory;
     private KnxBus? _knxBus;
     private KnxConfiguration? _activeConfiguration;
     private volatile KnxLinkState _state = KnxLinkState.Disconnected;
     private volatile bool _manualDisconnect;
+    private volatile bool _testInProgress;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
     public event EventHandler<KnxTelegram>? TelegramReceived;
     public bool IsConnected => _state == KnxLinkState.Connected;
     public KnxLinkState State => _state;
     public bool ManualDisconnect => _manualDisconnect;
+    public bool TestInProgress => _testInProgress;
 
     public KnxConnectionService(
         ILogger<KnxConnectionService> logger,
         IGroupAddressCacheService groupAddressCache,
-        ITelegramQueue telegramQueue)
+        ITelegramQueue telegramQueue,
+        IServiceScopeFactory scopeFactory)
     {
         _logger = logger;
         _groupAddressCache = groupAddressCache;
         _telegramQueue = telegramQueue;
+        _scopeFactory = scopeFactory;
 
         // Surface DPT decode failures (first few only, to avoid log spam on a busy bus).
         DptConverter.OnError = (dpt, ex) =>
@@ -63,8 +73,18 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             _logger.LogInformation("Connecting to KNX bus at {IpAddress}:{Port} via {ConnectionType}",
                 configuration.IpAddress, configuration.Port, configuration.ConnectionType);
 
+            // Resolve the active project's keyring blob ONCE (if any). Used both for the optional
+            // IP-Secure tunnel credentials and for Data Secure group security below. Defensive:
+            // a null blob means everything stays on the exact current non-secure path.
+            var keyringBlob = await TryGetActiveKeyringBlobAsync();
+
             // Create KNX bus instance
-            _knxBus = new KnxBus(BuildConnectorParameters(configuration));
+            _knxBus = new KnxBus(await BuildConnectorParameters(configuration, keyringBlob));
+
+            // Apply KNX Data Secure group communication BEFORE subscribing to GroupMessageReceived
+            // (Falcon requires GroupCommunicationSecurity to be set before any group communication /
+            // event subscription). No-op + exact current behavior when no keyring blob is present.
+            await TryApplyGroupSecurityAsync(_knxBus, keyringBlob);
 
             // Subscribe to events before connecting
             _knxBus.GroupMessageReceived += OnGroupMessageReceived;
@@ -91,16 +111,34 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     }
 
     /// <summary>
-    /// Probes a configuration with a throwaway bus. Does NOT touch the live connection,
-    /// link state or the manual-disconnect latch — so a "test connection" in Settings can
-    /// never interrupt the ongoing recording or stop the auto-connect worker.
+    /// Probes a configuration with a throwaway bus. If a live link is currently up, it is
+    /// paused first (its tunnel freed) so gateways that allow only a single tunnel can still
+    /// accept the probe, and restored afterwards. The brief recording gap is an accepted
+    /// tradeoff — the UI warns the user before triggering this while live. The
+    /// <see cref="TestInProgress"/> flag keeps the auto-connect worker out of the window.
     /// </summary>
     public async Task<bool> TestConnectionAsync(KnxConfiguration configuration)
     {
+        // Latch the test-in-progress guard FIRST, before reading IsConnected, so the auto-connect
+        // worker cannot slip a reconnect into the gap between the check and the pause below.
+        _testInProgress = true;
+        // Capture and pause the live link (non-latching) so we don't open a second tunnel.
+        var liveConfig = IsConnected ? _activeConfiguration : null;
+        if (liveConfig != null)
+        {
+            _logger.LogInformation("Pausing live link for test probe (freeing tunnel)");
+            await CleanupBusConnection();
+            _state = KnxLinkState.Disconnected;
+        }
+
         KnxBus? probe = null;
         try
         {
-            probe = new KnxBus(BuildConnectorParameters(configuration));
+            // Test probe stays a plain reachability check (no secure credentials, no group
+            // security). Passing null keyringBlob => identical to the previous behavior
+            // (UseSecureTunnel is the only thing that could change params, and with a null blob it
+            // falls straight through to the existing non-secure tunnel).
+            probe = new KnxBus(await BuildConnectorParameters(configuration, null));
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await probe.ConnectAsync(cts.Token);
             var ok = probe.ConnectionState == BusConnectionState.Connected;
@@ -120,13 +158,47 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             {
                 try { await probe.DisposeAsync(); } catch { /* best effort */ }
             }
+
+            // Restore the live link if we paused it. ConnectAsync is non-latching.
+            if (liveConfig != null)
+            {
+                try
+                {
+                    await ConnectAsync(liveConfig);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to restore live link after test probe; "
+                        + "auto-connect worker will retry");
+                }
+            }
+
+            _testInProgress = false;
         }
     }
 
-    private static ConnectorParameters BuildConnectorParameters(KnxConfiguration configuration)
+    private async Task<ConnectorParameters> BuildConnectorParameters(KnxConfiguration configuration, ProjectKeyringBlob? keyringBlob)
     {
         if (configuration.ConnectionType == Core.Enums.ConnectionType.Tunneling)
         {
+            // NEW (opt-in, guarded): KNX IP Secure tunnel. Only attempted when the config
+            // explicitly enables it (UseSecureTunnel, default false for everyone today). When the
+            // branch is not taken — i.e. the default — the existing IpTunnelingConnectorParameters
+            // path below is byte-for-byte unchanged.
+            if (configuration.UseSecureTunnel)
+            {
+                var secure = await TryBuildSecureTunnelParameters(configuration, keyringBlob);
+                if (secure != null)
+                {
+                    return secure;
+                }
+                // Could not derive secure credentials (e.g. no keyring, or the keyring has no
+                // matching tunnel slot) → fall through to the plain tunnel rather than fail.
+                _logger.LogWarning(
+                    "UseSecureTunnel is set but secure tunnel parameters could not be built; "
+                    + "falling back to the non-secure tunnel");
+            }
+
             return new IpTunnelingConnectorParameters(
                 configuration.IpAddress,
                 configuration.Port,
@@ -135,6 +207,158 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         }
 
         return new IpRoutingConnectorParameters(IPAddress.Parse(configuration.IpAddress));
+    }
+
+    /// <summary>
+    /// Builds KNX IP Secure tunnel parameters. UNVERIFIED ON HARDWARE: no secure gateway was
+    /// available to test against. This follows the documented Falcon contract:
+    /// <see cref="IpUnicastConnectorParameters"/> is abstract, so the concrete secure tunnel is an
+    /// <see cref="IpTunnelingConnectorParameters"/> (HostAddress/IpPort/UseNat set), whose secure
+    /// credentials (UserId, UserPasswordHash, DeviceAuthenticationCodeHash → IsSecure) are loaded
+    /// from the .knxkeys keyring via the supported
+    /// <see cref="Knx.Falcon.Configuration.ConnectorParameters.LoadSecurityDataAsync(System.IO.Stream,System.Security.SecureString)"/>.
+    /// Returns null when no keyring is present or the keyring yields no matching secure data, so the
+    /// caller safely falls back to the plain tunnel.
+    /// </summary>
+    private async Task<IpTunnelingConnectorParameters?> TryBuildSecureTunnelParameters(
+        KnxConfiguration configuration, ProjectKeyringBlob? keyringBlob)
+    {
+        try
+        {
+            if (keyringBlob == null || keyringBlob.KeyringFile.Length == 0)
+            {
+                _logger.LogWarning(
+                    "Secure tunnel requested but no keyring blob is available for credential derivation");
+                return null;
+            }
+
+            // Concrete secure-capable tunnel parameters. IpUnicastConnectorParameters (the type the
+            // task contract names) is abstract; IpTunnelingConnectorParameters derives from it and
+            // exposes the same IsSecure/HostAddress/IpPort/UseNat/UserId/credential surface.
+            var p = new IpTunnelingConnectorParameters(
+                configuration.IpAddress,
+                configuration.Port,
+                IpProtocol.Udp,
+                true /* NAT mode */);
+
+            // Load UserId + UserPasswordHash + DeviceAuthenticationCodeHash from the keyring's
+            // tunnel slot via the supported Falcon API. Returns true if relevant secure data was
+            // found; this also flips IsSecure on. We do NOT hand-derive credentials (that path is
+            // exactly what cannot be verified without hardware) — we use the documented loader.
+            using var keyringStream = new MemoryStream(keyringBlob.KeyringFile, writable: false);
+            using var securePassword = ToSecureString(keyringBlob.KeyringPassword);
+
+            var found = await p.LoadSecurityDataAsync(keyringStream, securePassword);
+            if (!found || !p.IsSecure)
+            {
+                // TODO(secure-hardware): the keyring contained no secure tunnel slot matching this
+                // host, or the data was insufficient to make the tunnel secure. Without a real
+                // secure interface we cannot confirm the exact keyring layout, so rather than emit
+                // a half-configured "secure" tunnel we fall back to the non-secure tunnel.
+                _logger.LogWarning(
+                    "Keyring did not yield secure tunnel credentials for {Host} (found={Found}, isSecure={IsSecure}); "
+                    + "falling back to the non-secure tunnel",
+                    configuration.IpAddress, found, p.IsSecure);
+                return null;
+            }
+
+            _logger.LogInformation(
+                "KNX IP Secure tunnel parameters built from keyring (UserId={UserId}) — UNVERIFIED ON HARDWARE",
+                p.UserId);
+            return p;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to build secure tunnel parameters; using the non-secure tunnel");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Loads the active project's keyring blob (if any). Defensive: any failure (no active
+    /// project, no blob, repo error) returns null, which keeps the connection on the exact
+    /// current non-secure path. Never throws.
+    /// </summary>
+    private async Task<ProjectKeyringBlob?> TryGetActiveKeyringBlobAsync()
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
+            var active = await repo.GetActiveProjectAsync();
+            if (active == null)
+            {
+                return null;
+            }
+            return await repo.GetKeyringBlobAsync(active.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not load keyring blob for secure setup; continuing non-secure");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Wires KNX Data Secure group communication onto the bus when the active project has a stored
+    /// keyring blob. Falcon then auto-decrypts incoming secure group telegrams and auto-encrypts
+    /// outgoing writes. Fully defensive:
+    ///  - No blob  => does nothing, GroupCommunicationSecurity stays null => EXACT current behavior.
+    ///  - Any error => logs a warning and continues WITHOUT secure; never breaks a normal connection.
+    /// UNVERIFIED ON HARDWARE: no secure gateway was available; this is wired per the documented
+    /// Falcon API contract (GroupCommunicationSecurity.Load(stream, SecureString) → settable
+    /// KnxBus.GroupCommunicationSecurity) but not tested end-to-end.
+    /// </summary>
+    private Task TryApplyGroupSecurityAsync(KnxBus bus, ProjectKeyringBlob? keyringBlob)
+    {
+        try
+        {
+            if (keyringBlob == null || keyringBlob.KeyringFile.Length == 0)
+            {
+                // No keyring => stay on the non-secure path. This is the default for every
+                // installation that has not uploaded a keyring.
+                return Task.CompletedTask;
+            }
+
+            using var keyringStream = new MemoryStream(keyringBlob.KeyringFile, writable: false);
+            using var securePassword = ToSecureString(keyringBlob.KeyringPassword);
+
+            // Static factory — the supported load path (no public ctor / builder Build()).
+            var groupSecurity = GroupCommunicationSecurity.Load(keyringStream, securePassword);
+
+            // Settable property on KnxBus. MUST be assigned before subscribing to
+            // GroupMessageReceived (the caller does so right after this).
+            bus.GroupCommunicationSecurity = groupSecurity;
+
+            _logger.LogInformation(
+                "KNX Data Secure enabled (keyring loaded for active project {ProjectId})",
+                keyringBlob.ProjectId);
+
+            // TODO(secure-hardware): with group security set, Falcon delivers already-decrypted
+            // values via GroupMessageReceived; secure telegrams it cannot decrypt simply won't
+            // raise a decoded event. Designing a visible "encrypted/undecryptable" badge in the UI
+            // needs a real secure bus to observe the actual event behavior, so it is intentionally
+            // NOT faked here. OnGroupMessageReceived decoding is left unchanged.
+        }
+        catch (Exception ex)
+        {
+            // Never let secure setup break a normal connection.
+            _logger.LogWarning(ex,
+                "Failed to enable KNX Data Secure; continuing WITHOUT secure group communication");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static SecureString ToSecureString(string value)
+    {
+        var secure = new SecureString();
+        foreach (var c in value ?? string.Empty)
+        {
+            secure.AppendChar(c);
+        }
+        secure.MakeReadOnly();
+        return secure;
     }
 
     public async Task DisconnectAsync()
@@ -177,6 +401,69 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     public Task<KnxConfiguration?> GetActiveConfigurationAsync()
     {
         return Task.FromResult(_activeConfiguration);
+    }
+
+    public async Task<bool> WriteGroupValueAsync(string address, string? dptType, string value)
+    {
+        if (!IsConnected || _knxBus == null)
+        {
+            _logger.LogWarning("GA write rejected: not connected");
+            return false;
+        }
+
+        if (!Knx.Falcon.GroupAddress.TryParse(address, out var ga))
+        {
+            _logger.LogWarning("GA write rejected: invalid address {Address}", address);
+            return false;
+        }
+
+        var groupValue = DptConverter.Encode(dptType, value);
+        if (groupValue == null)
+        {
+            _logger.LogWarning("GA write rejected: could not encode '{Value}' for DPT {Dpt}", value, dptType);
+            return false;
+        }
+
+        try
+        {
+            await _knxBus.WriteGroupValueAsync(ga, groupValue, MessagePriority.Low, _cancellationTokenSource.Token);
+            _logger.LogInformation("GA write: {Address} = {Value} (DPT {Dpt})", address, value, dptType);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GA write to {Address} failed", address);
+            return false;
+        }
+    }
+
+    public async Task<bool> ReadGroupValueAsync(string address)
+    {
+        if (!IsConnected || _knxBus == null)
+        {
+            _logger.LogWarning("GA read rejected: not connected");
+            return false;
+        }
+
+        if (!Knx.Falcon.GroupAddress.TryParse(address, out var ga))
+        {
+            _logger.LogWarning("GA read rejected: invalid address {Address}", address);
+            return false;
+        }
+
+        try
+        {
+            // Fire a GroupValueRead; the answering GroupValueResponse arrives via the normal
+            // receive path and shows up as a telegram in the live stream / history.
+            await _knxBus.RequestGroupValueAsync(ga, MessagePriority.Low, _cancellationTokenSource.Token);
+            _logger.LogInformation("GA read request sent to {Address}", address);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GA read request to {Address} failed", address);
+            return false;
+        }
     }
 
     private void OnGroupMessageReceived(object? sender, GroupEventArgs e)

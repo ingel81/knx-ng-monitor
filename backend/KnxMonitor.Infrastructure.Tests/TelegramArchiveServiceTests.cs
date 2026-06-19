@@ -126,9 +126,12 @@ public class TelegramArchiveServiceTests : IDisposable
         public bool IsConnected => false;
         public KnxMonitor.Core.Enums.KnxLinkState State => KnxMonitor.Core.Enums.KnxLinkState.Disconnected;
         public bool ManualDisconnect => false;
+        public bool TestInProgress => false;
         public Task<bool> ConnectAsync(KnxConfiguration configuration) => Task.FromResult(false);
         public Task<bool> TestConnectionAsync(KnxConfiguration configuration) => Task.FromResult(false);
         public Task DisconnectAsync() => Task.CompletedTask;
+        public Task<bool> WriteGroupValueAsync(string address, string? dptType, string value) => Task.FromResult(false);
+        public Task<bool> ReadGroupValueAsync(string address) => Task.FromResult(false);
         public Task<KnxConfiguration?> GetActiveConfigurationAsync() => Task.FromResult<KnxConfiguration?>(null);
         public void Raise(KnxTelegram telegram) => TelegramReceived?.Invoke(this, telegram);
     }

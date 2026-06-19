@@ -141,6 +141,46 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
             .AsAsyncEnumerable();
     }
 
+    // --- Charts / statistics ---
+
+    public async Task<IReadOnlyList<KnxTelegram>> GetSeriesRangeAsync(
+        IReadOnlyCollection<string> addresses, DateTime from, DateTime to, int maxRows,
+        CancellationToken ct = default)
+    {
+        if (addresses.Count == 0)
+        {
+            return Array.Empty<KnxTelegram>();
+        }
+
+        var addressList = addresses.ToList();
+        return await _dbSet
+            .Where(t => t.Timestamp >= from && t.Timestamp <= to && addressList.Contains(t.DestinationAddress))
+            .Include(t => t.GroupAddress)
+            .OrderBy(t => t.Timestamp)
+            .ThenBy(t => t.Id)
+            .Take(maxRows)
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> CountInRangeAsync(DateTime from, DateTime to, CancellationToken ct = default)
+    {
+        return await _dbSet
+            .Where(t => t.Timestamp >= from && t.Timestamp <= to)
+            .CountAsync(ct);
+    }
+
+    public IAsyncEnumerable<DateTime> StreamTimestampsInRangeAsync(
+        DateTime from, DateTime to, CancellationToken ct = default)
+    {
+        return _dbSet
+            .AsNoTracking()
+            .Where(t => t.Timestamp >= from && t.Timestamp <= to)
+            .OrderBy(t => t.Timestamp)
+            .Select(t => t.Timestamp)
+            .AsAsyncEnumerable();
+    }
+
     private IQueryable<KnxTelegram> BuildFilteredQuery(TelegramFilter filter)
     {
         var query = _dbSet.AsQueryable();

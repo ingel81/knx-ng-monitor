@@ -106,6 +106,30 @@ public class Ets4ProjectTests : IClassFixture<SampleFileFixture>
     }
 
     [Fact]
+    public async Task ParseProject_Ets4NoPassword_ResolvesManufacturerName()
+    {
+        // Arrange
+        var samplePath = Path.Combine("TestData", "test_project-ets4-no_password.knxproj");
+        await using var stream = File.OpenRead(samplePath);
+        var options = new ParserOptions { Password = null };
+
+        // Act
+        var result = await _fixture.Parser.ParseAsync(stream, options);
+
+        // Assert: the manufacturer is resolved to its real NAME from knx_master.xml,
+        // not the useless "M" the old RefId-split produced.
+        result.Devices.Should().NotBeEmpty();
+        result.Devices.Should().Contain(d => d.Manufacturer == "ABB");
+
+        foreach (var device in result.Devices)
+        {
+            device.Manufacturer.Should().NotBeNullOrEmpty();
+            device.Manufacturer.Should().NotBe("M");
+            device.Manufacturer.Should().NotBe("Unknown");
+        }
+    }
+
+    [Fact]
     public async Task ParseProject_Ets4Statistics_ArePopulated()
     {
         // Arrange

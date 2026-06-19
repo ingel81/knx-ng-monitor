@@ -163,6 +163,162 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    [HttpPut("{id}/deactivate")]
+    public async Task<IActionResult> DeactivateProject(int id)
+    {
+        try
+        {
+            var success = await _projectService.DeactivateProjectAsync(id);
+
+            if (!success)
+                return NotFound(new { error = "Project not found" });
+
+            _logger.LogInformation("Project {ProjectId} deactivated", id);
+            return Ok(new { message = "Project deactivated successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to deactivate project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to deactivate project" });
+        }
+    }
+
+    [HttpGet("{id}/delete-preview")]
+    public async Task<IActionResult> GetDeletePreview(int id)
+    {
+        try
+        {
+            var preview = await _projectService.GetDeletePreviewAsync(id);
+
+            if (preview == null)
+                return NotFound(new { error = "Project not found" });
+
+            return Ok(preview);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to build delete preview for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to build delete preview" });
+        }
+    }
+
+    [HttpGet("{id}/locations")]
+    public async Task<IActionResult> GetLocations(int id)
+    {
+        try
+        {
+            var locations = await _projectService.GetLocationsAsync(id);
+
+            if (locations == null)
+                return NotFound(new { error = "Project not found" });
+
+            return Ok(locations);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve locations for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to retrieve locations" });
+        }
+    }
+
+    [HttpGet("{id}/commobjects")]
+    public async Task<IActionResult> GetCommObjects(int id, [FromQuery] string? address)
+    {
+        try
+        {
+            var comObjects = await _projectService.GetCommObjectsAsync(id, address);
+
+            if (comObjects == null)
+                return NotFound(new { error = "Project not found" });
+
+            return Ok(comObjects);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve communication objects for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to retrieve communication objects" });
+        }
+    }
+
+    [HttpGet("{id}/groupranges")]
+    public async Task<IActionResult> GetGroupRanges(int id)
+    {
+        try
+        {
+            var ranges = await _projectService.GetGroupRangesAsync(id);
+
+            if (ranges == null)
+                return NotFound(new { error = "Project not found" });
+
+            return Ok(ranges);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve group ranges for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to retrieve group ranges" });
+        }
+    }
+
+    [HttpGet("{id}/device")]
+    public async Task<IActionResult> GetDeviceByAddress(int id, [FromQuery] string? address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+            return BadRequest(new { error = "Query parameter 'address' is required" });
+
+        try
+        {
+            var device = await _projectService.GetDeviceByAddressAsync(id, address);
+
+            if (device == null)
+                return NotFound(new { error = "Device not found" });
+
+            return Ok(device);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve device {Address} for project {ProjectId}", address, id);
+            return StatusCode(500, new { error = "Failed to resolve device" });
+        }
+    }
+
+    [HttpPost("{id}/keyring")]
+    public async Task<IActionResult> UploadKeyring(int id, IFormFile file, [FromForm] string? password)
+    {
+        try
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { error = "No keyring file uploaded" });
+
+            if (!file.FileName.EndsWith(".knxkeys", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { error = "Invalid file type. Only .knxkeys files are allowed" });
+
+            if (string.IsNullOrEmpty(password))
+                return BadRequest(new { error = "Keyring password is required" });
+
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+
+            var result = await _projectService.UploadKeyringAsync(id, memoryStream.ToArray(), password);
+
+            if (result == null)
+                return NotFound(new { error = "Project not found" });
+
+            _logger.LogInformation("Keyring uploaded for project {ProjectId}: {Total} keys", id, result.TotalKeys);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Bad password or malformed keyring — user-actionable, not a server fault.
+            _logger.LogWarning(ex, "Keyring upload rejected for project {ProjectId}", id);
+            return BadRequest(new { error = "Failed to read keyring file. Check the file and password." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload keyring for project {ProjectId}", id);
+            return StatusCode(500, new { error = "Failed to upload keyring" });
+        }
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteProject(int id)
     {
