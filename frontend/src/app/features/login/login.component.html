@@ -6,14 +6,14 @@
         <img src="KNX_logo.svg" alt="KNX" class="logo-icon">
         <h1 class="auth-title">-NG-Monitor</h1>
       </div>
-      <p class="auth-subtitle">Professional KNX Bus Monitoring</p>
+      <p class="auth-subtitle">{{ 'login.subtitle' | translate }}</p>
     </div>
 
     <!-- Login Form -->
     <div class="login-content">
       <form (ngSubmit)="onSubmit()" #loginForm="ngForm">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Username</mat-label>
+          <mat-label>{{ 'login.username' | translate }}</mat-label>
           <input
             matInput
             type="text"
@@ -27,7 +27,7 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Password</mat-label>
+          <mat-label>{{ 'login.password' | translate }}</mat-label>
           <input
             matInput
             [type]="hidePassword ? 'password' : 'text'"
@@ -44,7 +44,7 @@
             type="button"
             tabindex="-1"
             (click)="hidePassword = !hidePassword"
-            [attr.aria-label]="'Hide password'"
+            [attr.aria-label]="'login.hidePassword' | translate"
             [attr.aria-pressed]="hidePassword"
           >
             <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
@@ -70,7 +70,7 @@
           } @else {
             <ng-container>
               <mat-icon>login</mat-icon>
-              Sign In
+              {{ 'login.signIn' | translate }}
             </ng-container>
           }
         </button>
@@ -79,7 +79,7 @@
 
     <!-- Footer -->
     <div class="login-footer">
-      <span class="version-info">Version 1.0.0</span>
+      <span class="version-info">{{ 'login.version' | translate:{ version: '1.0.0' } }}</span>
     </div>
   </div>
 </div>

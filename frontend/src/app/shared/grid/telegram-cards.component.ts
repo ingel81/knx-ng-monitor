@@ -1,20 +1,23 @@
-import { Component, EventEmitter, Input, Output, inject, LOCALE_ID } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { KnxTelegram } from '../../core/services/signalr.service';
 import { messageTypeKind, messageTypeName, unitForDpt } from './knx-grid.util';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { LanguageService } from '../../core/i18n/language.service';
+import { localeTag } from '../../core/i18n/locale.util';
 
 /** Mobile Karten-Ansicht (<768px) statt Grid-Zeilen. Tippen -> select. */
 @Component({
   selector: 'app-telegram-cards',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe],
   template: `
     <div class="knx-mcards">
       @for (row of rows; track row.id) {
         <button class="knx-mcard" [class]="rowClass(row)" (click)="select.emit(row)">
           <div class="mc-top">
             <span class="mc-name" [class.empty]="!row.groupAddressName">
-              {{ row.groupAddressName || '(unknown)' }}
+              {{ row.groupAddressName || ('cards.unknown' | translate) }}
             </span>
             <span class="mc-val mono">
               {{ row.valueDecoded || decodedFallback(row) }}<span class="mc-unit">{{ unit(row) }}</span>
@@ -39,7 +42,7 @@ export class TelegramCardsComponent {
   @Input() rows: KnxTelegram[] = [];
   @Output() select = new EventEmitter<KnxTelegram>();
 
-  private locale = inject(LOCALE_ID);
+  private langSvc = inject(LanguageService);
 
   kind(row: KnxTelegram): string { return messageTypeKind(row.messageType) || 'write'; }
   typeName(row: KnxTelegram): string { return messageTypeName(row.messageType); }
@@ -57,7 +60,8 @@ export class TelegramCardsComponent {
   formatTime(ts: string | number | Date): string {
     const d = new Date(ts);
     if (isNaN(d.getTime())) return '–';
-    return d.toLocaleString(this.locale, {
+    return d.toLocaleString(localeTag(this.langSvc.lang()), {
+      hour12: false,
       day: '2-digit', month: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     });

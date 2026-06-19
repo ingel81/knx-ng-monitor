@@ -1,10 +1,10 @@
-<h2 mat-dialog-title>Import project</h2>
+<h2 mat-dialog-title>{{ 'wizard.title' | translate }}</h2>
 
 <mat-dialog-content class="wizard-content">
   <!-- Step 1: File Selection -->
   <div *ngIf="currentStep === 'file-selection'" class="wizard-step">
-    <h3>Select ETS project</h3>
-    <p>Please choose a .knxproj file:</p>
+    <h3>{{ 'wizard.selectProject' | translate }}</h3>
+    <p>{{ 'wizard.chooseFilePrompt' | translate }}</p>
 
     <div class="file-input-container">
       <input
@@ -16,7 +16,7 @@
       />
       <button mat-raised-button color="primary" (click)="fileInput.click()">
         <mat-icon>upload_file</mat-icon>
-        Choose file
+        {{ 'wizard.chooseFile' | translate }}
       </button>
       <span *ngIf="selectedFile" class="file-name">{{ selectedFile.name }}</span>
     </div>
@@ -24,19 +24,19 @@
 
   <!-- Step 2: Analyzing -->
   <div *ngIf="currentStep === 'analyzing'" class="wizard-step">
-    <h3>Analyzing project...</h3>
+    <h3>{{ 'wizard.analyzing' | translate }}</h3>
     <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-    <p class="analysis-text">Detecting project features and requirements...</p>
+    <p class="analysis-text">{{ 'wizard.analyzingText' | translate }}</p>
   </div>
 
   <!-- Step 3: Requirements (Password/Keyring) -->
   <div *ngIf="currentStep === 'requirements'" class="wizard-step">
-    <h3>Additional input required</h3>
+    <h3>{{ 'wizard.additionalInput' | translate }}</h3>
 
     <!-- Project Password -->
     <div *ngIf="hasRequirement(RequirementType.ProjectPassword)" class="requirement-section">
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Project password</mat-label>
+        <mat-label>{{ 'wizard.projectPassword' | translate }}</mat-label>
         <input
           matInput
           type="password"
@@ -45,18 +45,18 @@
         />
         <mat-icon matSuffix>lock</mat-icon>
       </mat-form-field>
-      <p class="requirement-message">This project is password-protected.</p>
+      <p class="requirement-message">{{ 'wizard.passwordProtected' | translate }}</p>
       <p *ngIf="passwordError" class="error-message">{{ passwordError }}</p>
       <button mat-raised-button color="primary" (click)="submitPassword()" [disabled]="!projectPassword">
-        Submit password
+        {{ 'wizard.submitPassword' | translate }}
       </button>
     </div>
 
     <!-- Keyring File -->
     <div *ngIf="hasRequirement(RequirementType.KeyringFile)" class="requirement-section">
       <h4>
-        KNX Secure Keyring
-        <span *ngIf="isOptional(RequirementType.KeyringFile)" class="optional-tag">(optional)</span>
+        {{ 'wizard.keyringTitle' | translate }}
+        <span *ngIf="isOptional(RequirementType.KeyringFile)" class="optional-tag">{{ 'wizard.optional' | translate }}</span>
       </h4>
       <p class="requirement-message">{{ getRequirementMessage(RequirementType.KeyringFile) }}</p>
 
@@ -70,13 +70,13 @@
         />
         <button mat-raised-button (click)="keyringInput.click()">
           <mat-icon>vpn_key</mat-icon>
-          Choose keyring
+          {{ 'wizard.chooseKeyring' | translate }}
         </button>
         <span *ngIf="keyringFile" class="file-name">{{ keyringFile.name }}</span>
       </div>
 
       <mat-form-field appearance="outline" class="full-width" style="margin-top: 16px;">
-        <mat-label>Keyring password</mat-label>
+        <mat-label>{{ 'wizard.keyringPassword' | translate }}</mat-label>
         <input
           matInput
           type="password"
@@ -92,14 +92,14 @@
           (click)="submitKeyring()"
           [disabled]="!keyringFile || !keyringPassword"
         >
-          Upload keyring
+          {{ 'wizard.uploadKeyring' | translate }}
         </button>
         <button
           *ngIf="isOptional(RequirementType.KeyringFile)"
           mat-button
           (click)="skipKeyring()"
         >
-          Skip
+          {{ 'wizard.skip' | translate }}
         </button>
       </div>
     </div>
@@ -107,7 +107,7 @@
 
   <!-- Step 4: Importing Progress -->
   <div *ngIf="currentStep === 'importing'" class="wizard-step">
-    <h3>Import in progress...</h3>
+    <h3>{{ 'wizard.importing' | translate }}</h3>
 
     <mat-progress-bar
       mode="determinate"
@@ -129,25 +129,25 @@
   <div *ngIf="currentStep === 'complete'" class="wizard-step">
     <div *ngIf="importJob?.status === ImportStatus.Completed" class="success-container">
       <mat-icon class="success-icon">check_circle</mat-icon>
-      <h3>Import successful!</h3>
+      <h3>{{ 'wizard.importSuccess' | translate }}</h3>
 
       <div class="import-summary">
-        <p><strong>Project:</strong> {{ importJob?.projectName }}</p>
-        <p><strong>Group addresses:</strong> {{ importJob?.groupAddressCount }}</p>
-        <p><strong>Devices:</strong> {{ importJob?.deviceCount }}</p>
+        <p><strong>{{ 'wizard.project' | translate }}</strong> {{ importJob?.projectName }}</p>
+        <p><strong>{{ 'wizard.groupAddresses' | translate }}</strong> {{ importJob?.groupAddressCount }}</p>
+        <p><strong>{{ 'wizard.devices' | translate }}</strong> {{ importJob?.deviceCount }}</p>
         <p *ngIf="importJob?.etsVersion !== undefined">
-          <strong>ETS version:</strong> {{ getEtsVersionLabel(importJob?.etsVersion) }}
+          <strong>{{ 'wizard.etsVersion' | translate }}</strong> {{ getEtsVersionLabel(importJob?.etsVersion) }}
         </p>
         <p *ngIf="importJob?.hasKnxSecure === true" class="secure-info">
           <mat-icon class="inline-icon">security</mat-icon>
-          <span><strong>KNX Secure enabled</strong></span>
+          <span><strong>{{ 'wizard.knxSecureEnabled' | translate }}</strong></span>
         </p>
       </div>
     </div>
 
     <div *ngIf="importJob?.status === ImportStatus.Failed" class="error-container">
       <mat-icon class="error-icon">error</mat-icon>
-      <h3>Import failed</h3>
+      <h3>{{ 'wizard.importFailed' | translate }}</h3>
       <p class="error-message">{{ importJob?.errorMessage }}</p>
     </div>
   </div>
@@ -155,7 +155,7 @@
 
 <mat-dialog-actions align="end">
   <button mat-button (click)="cancel()" *ngIf="currentStep !== 'complete'">
-    Cancel
+    {{ 'wizard.cancel' | translate }}
   </button>
   <button
     mat-raised-button
@@ -164,7 +164,7 @@
     [disabled]="!selectedFile"
     *ngIf="currentStep === 'file-selection'"
   >
-    Start import
+    {{ 'wizard.startImport' | translate }}
   </button>
   <button
     mat-raised-button
@@ -172,6 +172,6 @@
     (click)="close()"
     *ngIf="currentStep === 'complete'"
   >
-    Close
+    {{ 'wizard.close' | translate }}
   </button>
 </mat-dialog-actions>

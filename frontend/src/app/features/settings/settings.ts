@@ -4,10 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { environment } from '../../../environments/environment.development';
 import { RecordingSettingsService } from '../../core/services/recording-settings.service';
 import { RecordingSettings } from '../../core/models/recording-settings.models';
 import { ThemeService, ThemeMode, Density } from '../../core/services/theme.service';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/confirm-dialog.component';
+import { LanguageService } from '../../core/i18n/language.service';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { LoggerService } from '../../core/logging/logger.service';
 
 interface KnxConfiguration {
   id: number;
@@ -24,15 +29,18 @@ interface KnxSettings {
 
 @Component({
   selector: 'app-settings',
-  imports: [CommonModule, FormsModule, MatIconModule, MatSnackBarModule],
+  imports: [CommonModule, FormsModule, MatIconModule, MatSnackBarModule, MatDialogModule, TranslatePipe],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
 export class Settings implements OnInit {
   private http = inject(HttpClient);
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
   private recordingService = inject(RecordingSettingsService);
   private themeService = inject(ThemeService);
+  private lang = inject(LanguageService);
+  private logger = inject(LoggerService);
 
   // Erscheinungsbild (Theme + Dichte), aus ThemeService gespiegelt
   readonly theme = this.themeService.theme;
@@ -68,7 +76,7 @@ export class Settings implements OnInit {
         this.recording = settings;
       }
     } catch (error) {
-      console.error('Failed to load recording settings:', error);
+      this.logger.error('Failed to load recording settings:', error);
     }
   }
 
@@ -82,15 +90,15 @@ export class Settings implements OnInit {
       if (updated) {
         this.recording = updated;
       }
-      this.snackBar.open('✓ Recording settings applied (live)', 'Close', {
+      this.snackBar.open(this.lang.translate('settings.recordingApplied'), this.lang.translate('common.close'), {
         duration: 3000,
         horizontalPosition: 'end',
         verticalPosition: 'top',
         panelClass: ['success-snackbar']
       });
     } catch (error) {
-      console.error('Failed to save recording settings:', error);
-      this.snackBar.open('✗ Failed to save recording settings', 'Close', {
+      this.logger.error('Failed to save recording settings:', error);
+      this.snackBar.open(this.lang.translate('settings.recordingSaveFailed'), this.lang.translate('common.close'), {
         duration: 3000,
         horizontalPosition: 'end',
         verticalPosition: 'top',
@@ -126,7 +134,7 @@ export class Settings implements OnInit {
         };
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      this.logger.error('Failed to load settings:', error);
     }
   }
 
@@ -156,7 +164,7 @@ export class Settings implements OnInit {
       }
 
       if (showToast) {
-        this.snackBar.open('✓ Settings saved successfully', 'Close', {
+        this.snackBar.open(this.lang.translate('settings.saved'), this.lang.translate('common.close'), {
           duration: 3000,
           horizontalPosition: 'end',
           verticalPosition: 'top',
@@ -164,9 +172,9 @@ export class Settings implements OnInit {
         });
       }
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      this.logger.error('Failed to save settings:', error);
       if (showToast) {
-        this.snackBar.open('✗ Failed to save settings', 'Close', {
+        this.snackBar.open(this.lang.translate('settings.saveFailed'), this.lang.translate('common.close'), {
           duration: 3000,
           horizontalPosition: 'end',
           verticalPosition: 'top',
@@ -181,6 +189,27 @@ export class Settings implements OnInit {
 
   async testConnection() {
     try {
+      // If a live link is up, the probe briefly pauses it (frees the tunnel). Warn first.
+      const status = await this.http
+        .get<{ isConnected: boolean }>(`${environment.apiUrl}/knx/status`)
+        .toPromise();
+
+      if (status?.isConnected) {
+        const data: ConfirmDialogData = {
+          title: this.lang.translate('settings.testTitle'),
+          message: this.lang.translate('settings.testMsg'),
+          confirmText: this.lang.translate('settings.testConfirm'),
+          cancelText: this.lang.translate('common.cancel')
+        };
+        const confirmed = await this.dialog
+          .open(ConfirmDialogComponent, { data, width: '440px' })
+          .afterClosed()
+          .toPromise();
+        if (!confirmed) {
+          return;
+        }
+      }
+
       this.isTesting = true;
 
       // Persist the entered settings first (silent)
@@ -197,14 +226,14 @@ export class Settings implements OnInit {
         .toPromise();
 
       if (result?.success) {
-        this.snackBar.open('✓ Settings saved and connection successful!', 'Close', {
+        this.snackBar.open(this.lang.translate('settings.testSuccess'), this.lang.translate('common.close'), {
           duration: 4000,
           horizontalPosition: 'end',
           verticalPosition: 'top',
           panelClass: ['success-snackbar']
         });
       } else {
-        this.snackBar.open('✗ Connection failed. Please check your settings.', 'Close', {
+        this.snackBar.open(this.lang.translate('settings.testFailed'), this.lang.translate('common.close'), {
           duration: 5000,
           horizontalPosition: 'end',
           verticalPosition: 'top',
@@ -212,8 +241,8 @@ export class Settings implements OnInit {
         });
       }
     } catch (error) {
-      console.error('Connection test failed:', error);
-      this.snackBar.open('✗ Connection failed. Please check your settings.', 'Close', {
+      this.logger.error('Connection test failed:', error);
+      this.snackBar.open(this.lang.translate('settings.testFailed'), this.lang.translate('common.close'), {
         duration: 5000,
         horizontalPosition: 'end',
         verticalPosition: 'top',

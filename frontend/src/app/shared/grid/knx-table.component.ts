@@ -1,9 +1,12 @@
-import { Component, EventEmitter, Input, Output, ViewChild, inject, LOCALE_ID } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { KnxTelegram } from '../../core/services/signalr.service';
 import { messageTypeKind, messageTypeName, unitForDpt } from './knx-grid.util';
 import { OverflowTitleDirective } from './overflow-title.directive';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { LanguageService } from '../../core/i18n/language.service';
+import { localeTag } from '../../core/i18n/locale.util';
 
 export type ColumnKind = 'time' | 'datetime' | 'mono' | 'muted-mono' | 'name' | 'type' | 'value';
 
@@ -32,7 +35,7 @@ const ROOM_RE = /^(KG|UG|EG|OG|DG)(\d{0,2})(?:\s+|(?=[A-ZÄÖÜ]))(.+)$/;
 @Component({
   selector: 'knx-table',
   standalone: true,
-  imports: [CommonModule, ScrollingModule, OverflowTitleDirective],
+  imports: [CommonModule, ScrollingModule, OverflowTitleDirective, TranslatePipe],
   templateUrl: './knx-table.component.html',
   styleUrl: './knx-table.component.scss'
 })
@@ -43,7 +46,7 @@ export class KnxTableComponent {
   @Input() sortKey?: string;
   @Input() sortDir: SortDir = 'desc';
   @Input() loading = false;
-  @Input() emptyText = 'No telegrams.';
+  @Input() emptyText = 'monitor.emptyArchive';
 
   @Output() rowClick = new EventEmitter<KnxTelegram>();
   @Output() sortChange = new EventEmitter<{ key: string; dir: SortDir }>();
@@ -51,8 +54,9 @@ export class KnxTableComponent {
 
   @ViewChild(CdkVirtualScrollViewport) viewport?: CdkVirtualScrollViewport;
 
-  // Zeit-/Datumsformat folgt der aktiven Angular-Locale (statt hartkodiertem de-DE).
-  private locale = inject(LOCALE_ID);
+  // Zeit-/Datumsformat folgt der aktiven UI-Sprache (Runtime-Switch) — immer 24h.
+  private langSvc = inject(LanguageService);
+  private get locale(): string { return localeTag(this.langSvc.lang()); }
 
   get gridCols(): string {
     return this.columns.map((c) =>
@@ -125,13 +129,14 @@ export class KnxTableComponent {
     const d = new Date(v as string);
     if (isNaN(d.getTime())) return '';
     return d.toLocaleTimeString(this.locale, {
-      hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3
+      hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3
     });
   }
   formatDateTime(v: unknown): string {
     const d = new Date(v as string);
     if (isNaN(d.getTime())) return '';
     return d.toLocaleString(this.locale, {
+      hour12: false,
       year: '2-digit', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3
     });

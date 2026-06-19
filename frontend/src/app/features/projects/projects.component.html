@@ -1,7 +1,7 @@
 <div class="projects-container">
   <div class="toolbar">
     <div class="tb-left">
-      <h2 class="page-title">Projects</h2>
+      <h2 class="page-title">{{ 'projects.title' | translate }}</h2>
       @if (projects.length > 0) {
         <span class="knx-badge knx-badge--count">{{ projects.length }}</span>
       }
@@ -9,7 +9,7 @@
     <div class="tb-right">
       <button class="knx-btn knx-btn--primary" (click)="openImportWizard()">
         <mat-icon svgIcon="knx:upload"></mat-icon>
-        Import project
+        {{ 'projects.import' | translate }}
       </button>
     </div>
   </div>
@@ -18,22 +18,22 @@
   <div class="projects-body">
 
   @if (isLoading) {
-    <div class="placeholder"><mat-spinner></mat-spinner><p>Loading projects…</p></div>
+    <div class="placeholder"><mat-spinner></mat-spinner><p>{{ 'projects.loading' | translate }}</p></div>
   } @else if (projects.length === 0) {
     <div class="placeholder">
       <mat-icon svgIcon="knx:folder"></mat-icon>
-      <h2>No projects yet</h2>
-      <p>Import your first ETS project (.knxproj) to enrich KNX telegrams with plain-text names.</p>
+      <h2>{{ 'projects.noneTitle' | translate }}</h2>
+      <p>{{ 'projects.noneHint' | translate }}</p>
       <button class="knx-btn knx-btn--primary" (click)="openImportWizard()">
         <mat-icon svgIcon="knx:upload"></mat-icon>
-        Import project
+        {{ 'projects.import' | translate }}
       </button>
     </div>
   } @else {
     <table class="proj-table">
       <thead>
         <tr>
-          <th>Name</th><th>File</th><th>Import date</th><th>Statistics</th><th>Active</th><th></th>
+          <th>{{ 'projects.colName' | translate }}</th><th>{{ 'projects.colFile' | translate }}</th><th>{{ 'projects.colImportDate' | translate }}</th><th>{{ 'projects.colStatistics' | translate }}</th><th>{{ 'projects.colActive' | translate }}</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -44,23 +44,47 @@
             <td><span class="proj-date">{{ project.importDate | date:'short' }}</span></td>
             <td>
               <div class="proj-stats">
-                <span class="proj-stat"><mat-icon svgIcon="knx:sitemap"></mat-icon><b>{{ project.groupAddressCount }}</b> GAs</span>
-                <span class="proj-stat"><mat-icon svgIcon="knx:monitor"></mat-icon><b>{{ project.deviceCount }}</b> devices</span>
+                <span class="proj-stat"><mat-icon svgIcon="knx:sitemap"></mat-icon><b>{{ project.groupAddressCount }}</b> {{ 'projects.gas' | translate }}</span>
+                <span class="proj-stat"><mat-icon svgIcon="knx:monitor"></mat-icon><b>{{ project.deviceCount }}</b> {{ 'projects.devices' | translate }}</span>
               </div>
             </td>
             <td>
-              <label class="knx-switch">
-                <input type="checkbox" [checked]="project.isActive" [disabled]="project.isActive" (change)="toggleActivation(project)">
-                <span class="track"></span>
-              </label>
+              <div class="proj-active-cell">
+                <label class="knx-switch" [matTooltip]="(project.isActive ? 'projects.activeTooltipOn' : 'projects.activeTooltipOff') | translate">
+                  <input type="checkbox" [checked]="project.isActive" [disabled]="togglingId === project.id" (change)="toggleActivation(project)">
+                  <span class="track"></span>
+                  <span class="sw-label">{{ 'projects.colActive' | translate }}</span>
+                </label>
+                @if (project.isActive) {
+                  <label class="knx-switch knx-autoconnect" [class.is-busy]="autoConnectBusy"
+                         [matTooltip]="'projects.autoConnectTooltip' | translate">
+                    <input type="checkbox" [checked]="autoConnect" [disabled]="autoConnectBusy" (change)="toggleAutoConnect()">
+                    <span class="track"></span>
+                    <span class="sw-label">{{ 'projects.autoConnect' | translate }}</span>
+                  </label>
+                }
+              </div>
             </td>
             <td>
               <div class="proj-actions">
-                <button class="knx-btn knx-btn--ghost knx-btn--icon knx-btn--sm" (click)="viewDetails(project)" matTooltip="View details">
+                <button class="knx-btn knx-btn--ghost knx-btn--icon knx-btn--sm" (click)="viewDetails(project)" [matTooltip]="'projects.viewDetails' | translate">
                   <mat-icon svgIcon="knx:eye"></mat-icon>
                 </button>
-                <button class="knx-btn knx-btn--danger knx-btn--icon knx-btn--sm" (click)="deleteProject(project)" matTooltip="Delete">
-                  <mat-icon svgIcon="knx:trash"></mat-icon>
+                <button class="knx-btn knx-btn--ghost knx-btn--icon knx-btn--sm" (click)="uploadKeyring(project)"
+                        [disabled]="uploadingKeyringId === project.id" [matTooltip]="'projects.uploadKeyring' | translate">
+                  @if (uploadingKeyringId === project.id) {
+                    <mat-spinner diameter="16"></mat-spinner>
+                  } @else {
+                    <mat-icon>vpn_key</mat-icon>
+                  }
+                </button>
+                <button class="knx-btn knx-btn--danger knx-btn--icon knx-btn--sm" (click)="deleteProject(project)"
+                        [disabled]="deletingId === project.id" [matTooltip]="'projects.delete' | translate">
+                  @if (deletingId === project.id) {
+                    <mat-spinner diameter="16"></mat-spinner>
+                  } @else {
+                    <mat-icon svgIcon="knx:trash"></mat-icon>
+                  }
                 </button>
               </div>
             </td>
@@ -84,50 +108,54 @@
             <mat-expansion-panel-header>
               <mat-panel-title>
                 <mat-icon>device_hub</mat-icon>
-                Group Addresses ({{ expandedProject.groupAddresses.length }})
+                {{ 'projects.groupAddresses' | translate }} ({{ expandedProject.groupAddresses.length }})
               </mat-panel-title>
             </mat-expansion-panel-header>
+            <div class="details-table-wrap">
             <table mat-table [dataSource]="expandedProject.groupAddresses" class="details-table">
               <ng-container matColumnDef="address">
-                <th mat-header-cell *matHeaderCellDef>Address</th>
+                <th mat-header-cell *matHeaderCellDef>{{ 'projects.address' | translate }}</th>
                 <td mat-cell *matCellDef="let ga">{{ ga.address }}</td>
               </ng-container>
               <ng-container matColumnDef="name">
-                <th mat-header-cell *matHeaderCellDef>Name</th>
+                <th mat-header-cell *matHeaderCellDef>{{ 'projects.colName' | translate }}</th>
                 <td mat-cell *matCellDef="let ga">{{ ga.name }}</td>
               </ng-container>
               <ng-container matColumnDef="dpt">
-                <th mat-header-cell *matHeaderCellDef>DPT</th>
-                <td mat-cell *matCellDef="let ga">{{ ga.datapointType || 'N/A' }}</td>
+                <th mat-header-cell *matHeaderCellDef>{{ 'columns.dpt' | translate }}</th>
+                <td mat-cell *matCellDef="let ga">{{ ga.datapointType || ('common.na' | translate) }}</td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="['address', 'name', 'dpt']"></tr>
               <tr mat-row *matRowDef="let row; columns: ['address', 'name', 'dpt'];"></tr>
             </table>
+            </div>
           </mat-expansion-panel>
 
           <mat-expansion-panel>
             <mat-expansion-panel-header>
               <mat-panel-title>
                 <mat-icon>devices</mat-icon>
-                Devices ({{ expandedProject.devices.length }})
+                {{ 'projects.devicesPanel' | translate }} ({{ expandedProject.devices.length }})
               </mat-panel-title>
             </mat-expansion-panel-header>
+            <div class="details-table-wrap">
             <table mat-table [dataSource]="expandedProject.devices" class="details-table">
               <ng-container matColumnDef="address">
-                <th mat-header-cell *matHeaderCellDef>Address</th>
+                <th mat-header-cell *matHeaderCellDef>{{ 'projects.address' | translate }}</th>
                 <td mat-cell *matCellDef="let device">{{ device.physicalAddress }}</td>
               </ng-container>
               <ng-container matColumnDef="name">
-                <th mat-header-cell *matHeaderCellDef>Name</th>
+                <th mat-header-cell *matHeaderCellDef>{{ 'projects.colName' | translate }}</th>
                 <td mat-cell *matCellDef="let device">{{ device.name }}</td>
               </ng-container>
               <ng-container matColumnDef="manufacturer">
-                <th mat-header-cell *matHeaderCellDef>Manufacturer</th>
-                <td mat-cell *matCellDef="let device">{{ device.manufacturer || 'N/A' }}</td>
+                <th mat-header-cell *matHeaderCellDef>{{ 'projects.manufacturer' | translate }}</th>
+                <td mat-cell *matCellDef="let device">{{ device.manufacturer || ('common.na' | translate) }}</td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="['address', 'name', 'manufacturer']"></tr>
               <tr mat-row *matRowDef="let row; columns: ['address', 'name', 'manufacturer'];"></tr>
             </table>
+            </div>
           </mat-expansion-panel>
         </mat-card-content>
       </mat-card>

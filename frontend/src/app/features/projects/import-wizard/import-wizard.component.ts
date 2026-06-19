@@ -12,6 +12,9 @@ import { Subject, takeUntil } from 'rxjs';
 import { ProjectService } from '../../../core/services/project.service';
 import { ImportPollingService } from '../../../core/services/import-polling.service';
 import { ImportJob, ImportStatus, RequirementType, ImportStep, EtsVersion } from '../../../shared/models/import-job.model';
+import { LanguageService } from '../../../core/i18n/language.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { LoggerService } from '../../../core/logging/logger.service';
 
 @Component({
   selector: 'app-import-wizard',
@@ -25,7 +28,8 @@ import { ImportJob, ImportStatus, RequirementType, ImportStep, EtsVersion } from
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    FormsModule
+    FormsModule,
+    TranslatePipe
   ],
   templateUrl: './import-wizard.component.html',
   styleUrls: ['./import-wizard.component.scss']
@@ -34,6 +38,8 @@ export class ImportWizardComponent implements OnInit, OnDestroy {
   private dialogRef = inject(MatDialogRef<ImportWizardComponent>);
   private projectService = inject(ProjectService);
   private pollingService = inject(ImportPollingService);
+  private lang = inject(LanguageService);
+  private logger = inject(LoggerService);
   private destroy$ = new Subject<void>();
 
   selectedFile: File | null = null;
@@ -85,7 +91,7 @@ export class ImportWizardComponent implements OnInit, OnDestroy {
           this.startPolling(job.id);
         },
         error: (error) => {
-          console.error('Upload failed:', error);
+          this.logger.error('Upload failed:', error);
           // TODO: Show error message
         }
       });
@@ -100,7 +106,7 @@ export class ImportWizardComponent implements OnInit, OnDestroy {
           this.updateCurrentStep(job);
         },
         error: (error) => {
-          console.error('Polling error:', error);
+          this.logger.error('Polling error:', error);
         }
       });
   }
@@ -135,8 +141,8 @@ export class ImportWizardComponent implements OnInit, OnDestroy {
         this.currentStep = 'importing';
       },
       error: (error) => {
-        this.passwordError = 'Falsches Passwort. Bitte versuchen Sie es erneut.';
-        console.error('Failed to provide password:', error);
+        this.passwordError = this.lang.translate('wizard.wrongPassword');
+        this.logger.error('Failed to provide password:', error);
       }
     });
   }
@@ -158,7 +164,7 @@ export class ImportWizardComponent implements OnInit, OnDestroy {
         this.submitKeyringPassword();
       },
       error: (error) => {
-        console.error('Failed to provide keyring:', error);
+        this.logger.error('Failed to provide keyring:', error);
       }
     });
   }
@@ -176,7 +182,7 @@ export class ImportWizardComponent implements OnInit, OnDestroy {
         this.currentStep = 'importing';
       },
       error: (error) => {
-        console.error('Failed to provide keyring password:', error);
+        this.logger.error('Failed to provide keyring password:', error);
       }
     });
   }
@@ -251,10 +257,10 @@ export class ImportWizardComponent implements OnInit, OnDestroy {
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => { this.currentStep = 'importing'; },
-          error: (e) => console.error('Failed to skip keyring password:', e)
+          error: (e) => this.logger.error('Failed to skip keyring password:', e)
         });
       },
-      error: (e) => console.error('Failed to skip keyring file:', e)
+      error: (e) => this.logger.error('Failed to skip keyring file:', e)
     });
   }
 
@@ -267,9 +273,9 @@ export class ImportWizardComponent implements OnInit, OnDestroy {
       case EtsVersion.Ets6:
         return 'ETS 6';
       case EtsVersion.Unknown:
-        return 'Unknown';
+        return this.lang.translate('wizard.unknownVersion');
       default:
-        return 'Unknown';
+        return this.lang.translate('wizard.unknownVersion');
     }
   }
 }

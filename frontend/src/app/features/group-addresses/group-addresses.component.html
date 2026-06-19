@@ -1,0 +1,140 @@
+<div class="ga-container">
+  <div class="toolbar">
+    <div class="tb-left">
+      <h2 class="page-title">{{ 'ga.title' | translate }}</h2>
+      @if (hasGroupAddresses) {
+        <span class="knx-badge knx-badge--count">{{ totalCount }}</span>
+      }
+    </div>
+    <div class="tb-right">
+      @if (hasGroupAddresses) {
+        <input class="knx-input ga-filter" type="text"
+               [(ngModel)]="filter" (ngModelChange)="onFilterChange()"
+               [placeholder]="'ga.filterPlaceholder' | translate" />
+        <button class="knx-btn knx-btn--outline" (click)="setAllOpen(true)">
+          <mat-icon>unfold_more</mat-icon>
+          {{ 'ga.expandAll' | translate }}
+        </button>
+        <button class="knx-btn knx-btn--ghost" (click)="setAllOpen(false)">
+          <mat-icon>unfold_less</mat-icon>
+          {{ 'ga.collapseAll' | translate }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="ga-body">
+    @if (loading) {
+      <div class="empty-state">
+        <mat-icon class="spin">progress_activity</mat-icon>
+        <p>{{ 'ga.loading' | translate }}</p>
+      </div>
+    } @else if (error) {
+      <div class="empty-state">
+        <mat-icon>error_outline</mat-icon>
+        <p>{{ 'ga.loadFailed' | translate }}</p>
+      </div>
+    } @else if (!hasActiveProject) {
+      <div class="empty-state">
+        <mat-icon>lan</mat-icon>
+        <p>{{ 'ga.emptyNoProject' | translate }}</p>
+      </div>
+    } @else if (!hasGroupAddresses) {
+      <div class="empty-state">
+        <mat-icon>lan</mat-icon>
+        <p>{{ 'ga.emptyNoGas' | translate }}</p>
+      </div>
+    } @else if (mains.length === 0) {
+      <div class="empty-state">
+        <mat-icon>search_off</mat-icon>
+        <p>{{ 'ga.emptyNoMatch' | translate }}</p>
+      </div>
+    } @else {
+      <ul class="ga-tree">
+        @for (main of mains; track main.number) {
+          <li class="ga-node">
+            <details [open]="allOpen">
+              <summary class="ga-summary">
+                <mat-icon class="ga-icon">folder</mat-icon>
+                <span class="ga-num mono">{{ main.number }}</span>
+                @if (main.name) {
+                  <span class="ga-range-name">{{ main.name }}</span>
+                }
+                <span class="ga-pill" [attr.title]="'ga.count' | translate">
+                  <mat-icon>device_hub</mat-icon>{{ main.count }}
+                </span>
+              </summary>
+              <ul class="ga-tree">
+                @for (middle of main.middles; track middle.number) {
+                  <li class="ga-node">
+                    <details [open]="allOpen">
+                      <summary class="ga-summary">
+                        <mat-icon class="ga-icon">folder_open</mat-icon>
+                        <span class="ga-num mono">{{ main.number }}/{{ middle.number }}</span>
+                        @if (middle.name) {
+                          <span class="ga-range-name">{{ middle.name }}</span>
+                        }
+                        <span class="ga-pill" [attr.title]="'ga.count' | translate">
+                          <mat-icon>device_hub</mat-icon>{{ middle.leaves.length }}
+                        </span>
+                      </summary>
+                      <ul class="ga-leaves">
+                        @for (leaf of middle.leaves; track leaf.id) {
+                          <li class="ga-leaf">
+                            <div class="leaf-info">
+                              <span class="leaf-addr mono">{{ leaf.address }}</span>
+                              <span class="leaf-name">{{ leaf.name || ('detail.unknown' | translate) }}</span>
+                              @if (leaf.datapointType) {
+                                <span class="leaf-dpt mono">{{ leaf.datapointType }}</span>
+                              }
+                            </div>
+                            <div class="leaf-actions">
+                              <div class="slot slot-read">
+                                <button class="knx-btn knx-btn--outline knx-btn--sm" (click)="read(leaf)" [disabled]="leaf.busy">
+                                  <mat-icon svgIcon="knx:download"></mat-icon>
+                                  {{ 'detail.read' | translate }}
+                                </button>
+                              </div>
+
+                              <div class="slot slot-write">
+                                @if (leaf.isBool) {
+                                  <select class="knx-input knx-input--sm" [(ngModel)]="leaf.writeValue">
+                                    <option value="1">{{ 'detail.on' | translate }}</option>
+                                    <option value="0">{{ 'detail.off' | translate }}</option>
+                                  </select>
+                                } @else {
+                                  <input class="knx-input knx-input--sm" type="text" [(ngModel)]="leaf.writeValue"
+                                         [attr.inputmode]="leaf.isNumeric ? 'decimal' : null"
+                                         [placeholder]="'detail.writeValue' | translate" />
+                                }
+                                <button class="knx-btn knx-btn--primary knx-btn--sm" (click)="write(leaf)"
+                                        [disabled]="leaf.busy || leaf.writeValue === ''">
+                                  <mat-icon svgIcon="knx:upload"></mat-icon>
+                                  {{ 'detail.write' | translate }}
+                                </button>
+                              </div>
+
+                              <div class="slot slot-chart">
+                                @if (leaf.chartable) {
+                                  <button class="knx-btn knx-btn--ghost knx-btn--sm" (click)="openChart(leaf)"
+                                          [attr.title]="'ga.openChart' | translate">
+                                    <mat-icon>show_chart</mat-icon>
+                                    {{ 'ga.chart' | translate }}
+                                  </button>
+                                }
+                              </div>
+                            </div>
+                          </li>
+                        }
+                      </ul>
+                    </details>
+                  </li>
+                }
+              </ul>
+            </details>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>

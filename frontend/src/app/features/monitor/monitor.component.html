@@ -1,0 +1,280 @@
+<div class="monitor-container">
+  <div class="toolbar">
+    <div class="tb-left">
+      <!-- Mode toggle (Live / Archive) -->
+      <div class="knx-segmented" role="group" [attr.aria-label]="'monitor.modeGroup' | translate">
+        <button class="knx-btn knx-btn--outline" [class.is-active]="mode === 'live'" (click)="setMode('live')">
+          <mat-icon svgIcon="knx:live"></mat-icon>
+          {{ 'monitor.live' | translate }}
+        </button>
+        <button class="knx-btn knx-btn--outline" [class.is-active]="mode === 'archive'" (click)="setMode('archive')">
+          <mat-icon svgIcon="knx:history"></mat-icon>
+          {{ 'monitor.archive' | translate }}
+        </button>
+      </div>
+
+      @if (mode === 'live') {
+        <button class="knx-btn knx-btn--outline" (click)="togglePause()" [disabled]="!isConnected"
+                [matTooltip]="'monitor.pauseTooltip' | translate">
+          <mat-icon svgIcon="{{ isPaused ? 'knx:play' : 'knx:pause' }}"></mat-icon>
+          {{ (isPaused ? 'monitor.resume' : 'monitor.pause') | translate }}
+        </button>
+
+        <label class="knx-switch">
+          <input type="checkbox" [(ngModel)]="autoScroll">
+          <span class="track"></span>
+          {{ 'monitor.autoScroll' | translate }}
+        </label>
+      }
+    </div>
+
+    <div class="tb-right">
+      @if (mode === 'live') {
+        <span class="knx-status"
+              [class.knx-status--live]="isConnected && !isPaused"
+              [class.knx-status--warn]="(isConnected && isPaused) || linkState === 'Connecting'"
+              [class.knx-status--err]="!isConnected && linkState !== 'Connecting'"
+              [matTooltip]="(isConnected ? 'monitor.connectedTooltip' : 'monitor.connectingTooltip') | translate">
+          <span class="led"></span>
+          {{ statusLabel }}
+        </span>
+
+        <span class="knx-badge knx-badge--count" [matTooltip]="'monitor.telegramsFiltered' | translate">{{ filtered.length | number }}</span>
+
+        <span class="knx-badge knx-rate" [class.knx-rate--busy]="busLoadPercent >= 60"
+              [matTooltip]="'monitor.busLoadTooltip' | translate:{ pct: busLoadPercent }">
+          {{ messagesPerSecond | number:'1.0-1' }} {{ 'monitor.msgPerSec' | translate }} · {{ busLoadPercent }}%
+        </span>
+      } @else {
+        @if (totalCount !== null) {
+          <span class="knx-badge knx-badge--count" [matTooltip]="'monitor.telegramsCurrentFilter' | translate">{{ totalCount | number }}</span>
+        }
+      }
+
+      <span class="tb-divider"></span>
+
+      <!-- Shared quick-search (applies in both modes) -->
+      <div class="knx-field" style="width: 230px;">
+        <mat-icon class="field-icon" svgIcon="knx:search"></mat-icon>
+        <input class="knx-input knx-input--search" type="text" [(ngModel)]="quickFilterText"
+               (ngModelChange)="onQuickFilterChanged()" [placeholder]="'monitor.search' | translate" [attr.aria-label]="'monitor.searchAria' | translate">
+        @if (quickFilterText) {
+          <button class="field-clear" (click)="clearQuickFilter()" [attr.aria-label]="'monitor.clearSearch' | translate">
+            <mat-icon svgIcon="knx:close"></mat-icon>
+          </button>
+        }
+      </div>
+
+      <app-column-manager [columns]="columnOptions" storageKey="knx.cols.monitor" [locked]="lockedCols"
+                          [defaultHidden]="defaultHiddenCols" (hiddenChange)="onHiddenChange($event)"></app-column-manager>
+
+      @if (mode === 'live') {
+        <button class="knx-btn knx-btn--ghost" (click)="clearTelegrams()">
+          <mat-icon svgIcon="knx:clear"></mat-icon>
+          {{ 'monitor.clear' | translate }}
+        </button>
+
+        <button class="knx-btn knx-btn--outline" (click)="exportLiveCsv()" [disabled]="filtered.length === 0">
+          <mat-icon svgIcon="knx:download"></mat-icon>
+          {{ 'monitor.export' | translate }}
+        </button>
+      } @else {
+        <button class="knx-btn knx-btn--outline" (click)="exportArchiveCsv()" [disabled]="isExporting"
+                [matTooltip]="'monitor.exportCsvTooltip' | translate">
+          <mat-icon svgIcon="knx:download"></mat-icon>
+          {{ (isExporting ? 'monitor.exporting' : 'monitor.exportCsv') | translate }}
+        </button>
+        <button class="knx-btn knx-btn--ghost knx-btn--icon" [matMenuTriggerFor]="moreMenu"
+                [disabled]="isClearing" [matTooltip]="'monitor.moreActions' | translate" [attr.aria-label]="'monitor.moreActions' | translate">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #moreMenu="matMenu">
+          <button mat-menu-item class="cd-danger-item" (click)="clearHistory()" [disabled]="totalCount === 0">
+            <mat-icon svgIcon="knx:trash"></mat-icon>
+            <span>{{ (isClearing ? 'monitor.clearing' : 'monitor.clearHistory') | translate }}</span>
+          </button>
+        </mat-menu>
+      }
+    </div>
+  </div>
+
+  <!-- Archive-only structured filter bar -->
+  @if (mode === 'archive') {
+    <div class="filterbar">
+      <div class="filterbar-main">
+        <div class="fb-quick" role="group" [attr.aria-label]="'monitor.filter.timeGroup' | translate">
+          <span class="fb-label">{{ 'monitor.filter.time' | translate }}</span>
+          <button class="knx-chip" [class.is-active]="timeRange === 'all'" (click)="setTimeRange('all')">{{ 'monitor.filter.all' | translate }}</button>
+          <button class="knx-chip" [class.is-active]="timeRange === 'hour'" (click)="setTimeRange('hour')">{{ 'monitor.filter.lastHour' | translate }}</button>
+          <button class="knx-chip" [class.is-active]="timeRange === 'today'" (click)="setTimeRange('today')">{{ 'monitor.filter.today' | translate }}</button>
+          <button class="knx-chip" [class.is-active]="timeRange === '7d'" (click)="setTimeRange('7d')">{{ 'monitor.filter.7days' | translate }}</button>
+        </div>
+
+        <span class="fb-sep"></span>
+
+        <div class="fb-quick" role="group" [attr.aria-label]="'monitor.filter.typeGroup' | translate">
+          <span class="fb-label">{{ 'monitor.filter.type' | translate }}</span>
+          <button class="knx-chip" [class.is-active]="types.has('Write')" (click)="setType('Write')">
+            <span class="chip-dot" style="background: var(--write);"></span>{{ 'monitor.filter.write' | translate }}
+          </button>
+          <button class="knx-chip" [class.is-active]="types.has('Read')" (click)="setType('Read')">
+            <span class="chip-dot" style="background: var(--read);"></span>{{ 'monitor.filter.read' | translate }}
+          </button>
+          <button class="knx-chip" [class.is-active]="types.has('Response')" (click)="setType('Response')">
+            <span class="chip-dot" style="background: var(--response);"></span>{{ 'monitor.filter.response' | translate }}
+          </button>
+        </div>
+
+        <span class="fb-sep"></span>
+
+        <div class="fb-quick" role="group" [attr.aria-label]="'monitor.filter.topicGroup' | translate">
+          <span class="fb-label">{{ 'monitor.filter.topic' | translate }}</span>
+          @for (t of topics; track t.term) {
+            <button class="knx-chip" [class.is-active]="quickFilterText === t.term" (click)="setTopic(t.term)">{{ t.label | translate }}</button>
+          }
+        </div>
+      </div>
+
+      <div class="filterbar-main" style="margin-top: 8px;">
+        @if (roomLocations.length > 0) {
+          <label class="fb-room">
+            <span class="fb-label">{{ 'monitor.filter.room' | translate }}</span>
+            <select class="knx-input" style="width: 200px;" [(ngModel)]="selectedRoomId" (ngModelChange)="onRoomChanged()">
+              <option value="">{{ 'monitor.filter.roomAll' | translate }}</option>
+              @for (room of roomLocations; track room.id) {
+                <option [value]="room.id">{{ room.name }}</option>
+              }
+            </select>
+          </label>
+          <span class="fb-sep"></span>
+        }
+        <input class="knx-input" style="width: 150px;" [(ngModel)]="address" [placeholder]="'monitor.filter.destGa' | translate" (keyup.enter)="applyFilters()">
+        <input class="knx-input" style="width: 150px;" [(ngModel)]="source" [placeholder]="'monitor.filter.source' | translate" (keyup.enter)="applyFilters()">
+        <input class="knx-input" style="width: 190px;" type="datetime-local" [(ngModel)]="fromValue" [attr.aria-label]="'monitor.filter.from' | translate">
+        <input class="knx-input" style="width: 190px;" type="datetime-local" [(ngModel)]="toValue" [attr.aria-label]="'monitor.filter.to' | translate">
+
+        <span class="fb-sep"></span>
+
+        <button class="knx-btn knx-btn--primary" (click)="applyFilters()">
+          <mat-icon svgIcon="knx:search"></mat-icon>
+          {{ 'monitor.filter.apply' | translate }}
+        </button>
+        @if (hasActiveFilters) {
+          <button class="knx-btn knx-btn--ghost" (click)="resetFilters()">
+            <mat-icon svgIcon="knx:close"></mat-icon>
+            {{ 'monitor.filter.reset' | translate }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="grid-container">
+    @if (mode === 'live') {
+      @if (isMobile) {
+        <app-telegram-cards [rows]="filtered" (select)="showDetail($event)"></app-telegram-cards>
+      } @else {
+        <knx-table [rows]="filtered" [columns]="gridColumns" [rowHeight]="rowHeight"
+                   emptyText="monitor.emptyLive"
+                   (rowClick)="showDetail($event)"></knx-table>
+      }
+
+      @if (telegrams.length === 0) {
+        <div class="no-telegrams-overlay">
+          <mat-icon>inbox</mat-icon>
+          <h3>{{ 'monitor.getStarted' | translate }}</h3>
+
+          @if (!isConnected) {
+            <div class="setup-checklist">
+              <p class="checklist-intro">{{ 'monitor.followSteps' | translate }}</p>
+
+              <div class="checklist-item" [class.completed]="hasKnxConfig">
+                <mat-icon class="checklist-icon">{{ hasKnxConfig ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                <div class="checklist-content">
+                  <span class="checklist-title">{{ 'monitor.step.configureTitle' | translate }}</span>
+                  <span class="checklist-hint">{{ 'monitor.step.configureHint' | translate }}</span>
+                </div>
+                <button mat-icon-button class="checklist-action" (click)="navigateToSettings()"
+                        [matTooltip]="'monitor.gotoSettings' | translate" matTooltipPosition="left">
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+
+              <div class="checklist-item" [class.completed]="hasProject">
+                <mat-icon class="checklist-icon">{{ hasProject ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                <div class="checklist-content">
+                  <span class="checklist-title">{{ 'monitor.step.importTitle' | translate }}</span>
+                  <span class="checklist-hint">{{ 'monitor.step.importHint' | translate }}</span>
+                </div>
+                <button mat-icon-button class="checklist-action" (click)="navigateToProjects()"
+                        [matTooltip]="'monitor.gotoProjects' | translate" matTooltipPosition="left">
+                  <mat-icon>arrow_forward</mat-icon>
+                </button>
+              </div>
+
+              @if (hasProject && !hasActiveProject) {
+                <div class="checklist-item">
+                  <mat-icon class="checklist-icon">radio_button_unchecked</mat-icon>
+                  <div class="checklist-content">
+                    <span class="checklist-title">{{ 'monitor.step.activateTitle' | translate }}</span>
+                    <span class="checklist-hint">{{ 'monitor.step.activateHint' | translate }}</span>
+                  </div>
+                  <button mat-icon-button class="checklist-action" (click)="navigateToProjects()"
+                          [matTooltip]="'monitor.gotoProjects' | translate" matTooltipPosition="left">
+                    <mat-icon>arrow_forward</mat-icon>
+                  </button>
+                </div>
+              }
+
+              <div class="checklist-item">
+                <mat-icon class="checklist-icon">radio_button_unchecked</mat-icon>
+                <div class="checklist-content">
+                  <span class="checklist-title">{{ 'monitor.step.connectTitle' | translate }}</span>
+                  <span class="checklist-hint">{{ 'monitor.step.connectHint' | translate }}</span>
+                </div>
+                <button mat-icon-button class="checklist-action checklist-action-disabled" disabled
+                        [matTooltip]="'monitor.connectsAutomatically' | translate" matTooltipPosition="left">
+                  <mat-icon>autorenew</mat-icon>
+                </button>
+              </div>
+            </div>
+          } @else {
+            <p class="hint connected">
+              <mat-icon>check_circle</mat-icon>
+              {{ 'monitor.connectedWaiting' | translate }}
+            </p>
+          }
+        </div>
+      }
+    } @else {
+      @if (isMobile) {
+        <div class="mobile-wrap">
+          <app-telegram-cards [rows]="displayRows" (select)="showDetail($event)"></app-telegram-cards>
+          @if (hasMore) {
+            <button class="knx-btn knx-btn--outline load-more" (click)="loadMore()" [disabled]="loading">
+              <mat-icon svgIcon="knx:chevronDown"></mat-icon>
+              {{ (loading ? 'monitor.loading' : 'monitor.loadMore') | translate }}
+            </button>
+          }
+        </div>
+      } @else {
+        <knx-table [rows]="displayRows" [columns]="gridColumns" [rowHeight]="rowHeight"
+                   [sortKey]="sortKey" [sortDir]="sortDir" [loading]="loading"
+                   emptyText="monitor.emptyArchive"
+                   (rowClick)="showDetail($event)" (sortChange)="onSort($event)" (nearEnd)="onNearEnd()"></knx-table>
+      }
+    }
+  </div>
+
+  @if (mode === 'archive' && archiveDays.length > 0) {
+    <div class="archive-bar">
+      <span class="archive-title"><mat-icon svgIcon="knx:database"></mat-icon> {{ 'monitor.archiveTitle' | translate }}</span>
+      @for (day of archiveDays; track day.fileName) {
+        <button class="knx-chip" (click)="downloadArchiveDay(day)" [matTooltip]="'monitor.downloadArchiveDay' | translate">
+          {{ day.date }} · {{ formatBytes(day.sizeBytes) }} · {{ day.compressed ? 'gz' : 'live' }}
+          <mat-icon svgIcon="knx:download"></mat-icon>
+        </button>
+      }
+    </div>
+  }
+</div>

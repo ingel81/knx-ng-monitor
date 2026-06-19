@@ -103,7 +103,16 @@
 
 // Name + Raum-Tag
 .knx-td.name {
-  .name-text { color: var(--ink); font-weight: var(--fw-medium); }
+  // flex item must be allowed to shrink below its content size, otherwise long
+  // GA names push the grid track wide instead of clipping with an ellipsis.
+  .name-text {
+    color: var(--ink);
+    font-weight: var(--fw-medium);
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
   .name-text.empty { color: var(--ink-3); font-weight: var(--fw-normal); }
 }
 .room-tag {

@@ -124,6 +124,7 @@
 .fb-quick { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .fb-sep { width: 1px; height: 20px; background: var(--line-2); flex: none; }
 .fb-label { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); }
+.fb-room { display: inline-flex; align-items: center; gap: var(--sp-2); }
 
 /* ---------------- grid host / empty ---------------- */
 .grid-host { flex: 1; min-height: 0; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }

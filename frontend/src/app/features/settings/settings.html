@@ -1,6 +1,6 @@
 <div class="settings-container">
   <div class="toolbar">
-    <h2 class="page-title">Settings</h2>
+    <h2 class="page-title">{{ 'settings.title' | translate }}</h2>
   </div>
 
   <div class="page-scroll">
@@ -10,27 +10,27 @@
       <div class="set-card">
         <div class="set-head">
           <span class="set-ic"><mat-icon svgIcon="knx:sun"></mat-icon></span>
-          <div><h3>Appearance</h3><p>Theme and grid density</p></div>
+          <div><h3>{{ 'settings.appearance' | translate }}</h3><p>{{ 'settings.appearanceSub' | translate }}</p></div>
         </div>
         <div class="set-body">
           <div class="set-row">
             <div>
-              <div class="set-row-label">Color scheme</div>
-              <div class="set-row-sub">Light for daytime, Console for dark control rooms</div>
+              <div class="set-row-label">{{ 'settings.colorScheme' | translate }}</div>
+              <div class="set-row-sub">{{ 'settings.colorSchemeSub' | translate }}</div>
             </div>
             <div class="knx-seg">
-              <button [class.is-active]="theme() === 'light'" (click)="setTheme('light')"><mat-icon svgIcon="knx:sun"></mat-icon>Light</button>
-              <button [class.is-active]="theme() === 'dark'" (click)="setTheme('dark')"><mat-icon svgIcon="knx:moon"></mat-icon>Console</button>
+              <button [class.is-active]="theme() === 'light'" (click)="setTheme('light')"><mat-icon svgIcon="knx:sun"></mat-icon>{{ 'settings.light' | translate }}</button>
+              <button [class.is-active]="theme() === 'dark'" (click)="setTheme('dark')"><mat-icon svgIcon="knx:moon"></mat-icon>{{ 'settings.console' | translate }}</button>
             </div>
           </div>
           <div class="set-row">
             <div>
-              <div class="set-row-label">Grid density</div>
-              <div class="set-row-sub">Row height for Live View and History</div>
+              <div class="set-row-label">{{ 'settings.gridDensity' | translate }}</div>
+              <div class="set-row-sub">{{ 'settings.gridDensitySub' | translate }}</div>
             </div>
             <div class="knx-seg">
-              <button [class.is-active]="density() === 'compact'" (click)="setDensity('compact')">Compact</button>
-              <button [class.is-active]="density() === 'cozy'" (click)="setDensity('cozy')">Cozy</button>
+              <button [class.is-active]="density() === 'compact'" (click)="setDensity('compact')">{{ 'settings.compact' | translate }}</button>
+              <button [class.is-active]="density() === 'cozy'" (click)="setDensity('cozy')">{{ 'settings.cozy' | translate }}</button>
             </div>
           </div>
         </div>
@@ -40,50 +40,50 @@
       <div class="set-card">
         <div class="set-head">
           <span class="set-ic"><mat-icon svgIcon="knx:wifi"></mat-icon></span>
-          <div><h3>KNX Gateway</h3><p>Connection to the KNX interface</p></div>
+          <div><h3>{{ 'settings.gateway' | translate }}</h3><p>{{ 'settings.gatewaySub' | translate }}</p></div>
         </div>
         <div class="set-body">
           <div class="set-grid">
             <div class="set-field">
-              <label class="knx-label">IP address</label>
+              <label class="knx-label">{{ 'settings.ipAddress' | translate }}</label>
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:globe"></mat-icon>
                 <input class="knx-input" [(ngModel)]="knxConfig.ipAddress" placeholder="192.168.1.100">
               </div>
-              <span class="set-hint">IP address of your KNX interface</span>
+              <span class="set-hint">{{ 'settings.ipAddressHint' | translate }}</span>
             </div>
             <div class="set-field">
-              <label class="knx-label">Port</label>
+              <label class="knx-label">{{ 'settings.port' | translate }}</label>
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:swap"></mat-icon>
                 <input class="knx-input" type="number" [(ngModel)]="knxConfig.port" placeholder="3671">
               </div>
-              <span class="set-hint">Default: 3671 (KNXnet/IP)</span>
+              <span class="set-hint">{{ 'settings.portHint' | translate }}</span>
             </div>
             <div class="set-field span2">
-              <label class="knx-label">Physical address</label>
+              <label class="knx-label">{{ 'settings.physicalAddress' | translate }}</label>
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:plug"></mat-icon>
                 <input class="knx-input" [(ngModel)]="knxConfig.physicalAddress" placeholder="1.0.58">
               </div>
-              <span class="set-hint">Format: area.line.device (e.g. 1.0.58)</span>
+              <span class="set-hint">{{ 'settings.physicalAddressHint' | translate }}</span>
             </div>
           </div>
           <div class="info-line">
             <mat-icon svgIcon="knx:wifi"></mat-icon>
-            <div><b>Connection:</b> IP Tunneling (UDP) · <b>Protocol:</b> KNXnet/IP</div>
+            <div><b>{{ 'settings.connectionInfo' | translate }}</b> IP Tunneling (UDP) · <b>{{ 'settings.protocolInfo' | translate }}</b> KNXnet/IP</div>
           </div>
         </div>
         <div class="set-actions">
           <button class="knx-btn knx-btn--primary" (click)="saveSettings()" [disabled]="isSaving || !isFormValid()">
-            <mat-icon svgIcon="knx:save"></mat-icon>{{ isSaving ? 'Saving…' : 'Save' }}
+            <mat-icon svgIcon="knx:save"></mat-icon>{{ (isSaving ? 'settings.saving' : 'settings.save') | translate }}
           </button>
           <button class="knx-btn knx-btn--outline" (click)="testConnection()" [disabled]="isTesting || isSaving || !isFormValid()">
-            <mat-icon svgIcon="knx:link"></mat-icon>{{ isTesting ? 'Testing…' : 'Test connection' }}
+            <mat-icon svgIcon="knx:link"></mat-icon>{{ (isTesting ? 'settings.testing' : 'settings.testConnection') | translate }}
           </button>
           <span class="spacer"></span>
           <button class="knx-btn knx-btn--ghost" (click)="resetToDefaults()">
-            <mat-icon svgIcon="knx:refresh"></mat-icon>Reset
+            <mat-icon svgIcon="knx:refresh"></mat-icon>{{ 'settings.reset' | translate }}
           </button>
         </div>
       </div>
@@ -92,32 +92,32 @@
       <div class="set-card">
         <div class="set-head">
           <span class="set-ic"><mat-icon svgIcon="knx:database"></mat-icon></span>
-          <div><h3>Data recording</h3><p>Ring buffer and long-term archive</p></div>
+          <div><h3>{{ 'settings.dataRecording' | translate }}</h3><p>{{ 'settings.dataRecordingSub' | translate }}</p></div>
         </div>
         <div class="set-body">
           <div class="set-grid">
             <div class="set-field">
-              <label class="knx-label">Ring buffer size</label>
+              <label class="knx-label">{{ 'settings.ringBuffer' | translate }}</label>
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:cpu"></mat-icon>
                 <input class="knx-input" type="number" [(ngModel)]="recording.hotBufferMaxCount" min="1" step="1000">
               </div>
-              <span class="set-hint">Max telegrams in the live SQLite buffer</span>
+              <span class="set-hint">{{ 'settings.ringBufferHint' | translate }}</span>
             </div>
             <div class="set-field">
-              <label class="knx-label">Archive retention (days)</label>
+              <label class="knx-label">{{ 'settings.archiveRetention' | translate }}</label>
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:calendar"></mat-icon>
                 <input class="knx-input" type="number" [(ngModel)]="recording.archiveRetentionDays"
-                       [disabled]="!recording.archiveEnabled" min="1" placeholder="unlimited">
+                       [disabled]="!recording.archiveEnabled" min="1" [placeholder]="'settings.unlimited' | translate">
               </div>
-              <span class="set-hint">Empty = keep forever</span>
+              <span class="set-hint">{{ 'settings.archiveRetentionHint' | translate }}</span>
             </div>
           </div>
           <div class="set-row">
             <div>
-              <div class="set-row-label">Long-term archive (NDJSON + gzip)</div>
-              <div class="set-row-sub">Records <b>every</b> telegram in daily files under <code>data/archive/</code></div>
+              <div class="set-row-label">{{ 'settings.longTermArchive' | translate }}</div>
+              <div class="set-row-sub">{{ 'settings.archiveRecords' | translate }} <code>data/archive/</code></div>
             </div>
             <label class="knx-switch">
               <input type="checkbox" [(ngModel)]="recording.archiveEnabled">
@@ -128,7 +128,7 @@
         <div class="set-actions">
           <button class="knx-btn knx-btn--primary" (click)="saveRecordingSettings()"
                   [disabled]="isSavingRecording || !isRecordingFormValid()">
-            <mat-icon svgIcon="knx:save"></mat-icon>{{ isSavingRecording ? 'Saving…' : 'Save' }}
+            <mat-icon svgIcon="knx:save"></mat-icon>{{ (isSavingRecording ? 'settings.saving' : 'settings.save') | translate }}
           </button>
         </div>
       </div>

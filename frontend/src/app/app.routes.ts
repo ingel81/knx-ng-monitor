@@ -16,12 +16,35 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       {
+        path: 'monitor',
+        loadComponent: () => import('./features/monitor/monitor.component').then(m => m.MonitorComponent)
+      },
+      // Alte Pfade auf den vereinten Monitor umleiten (Lesezeichen/alte Links bleiben gültig).
+      {
         path: 'live-view',
-        loadComponent: () => import('./features/live-view/live-view.component').then(m => m.LiveViewComponent)
+        redirectTo: 'monitor',
+        pathMatch: 'full'
       },
       {
         path: 'history',
-        loadComponent: () => import('./features/history/history.component').then(m => m.HistoryComponent)
+        redirectTo: 'monitor',
+        pathMatch: 'full'
+      },
+      {
+        path: 'charts',
+        loadComponent: () => import('./features/charts/charts.component').then(m => m.ChartsComponent)
+      },
+      {
+        path: 'stats',
+        loadComponent: () => import('./features/stats/stats.component').then(m => m.StatsComponent)
+      },
+      {
+        path: 'topology',
+        loadComponent: () => import('./features/topology/topology.component').then(m => m.TopologyComponent)
+      },
+      {
+        path: 'group-addresses',
+        loadComponent: () => import('./features/group-addresses/group-addresses.component').then(m => m.GroupAddressesComponent)
       },
       {
         path: 'projects',
@@ -33,7 +56,7 @@ export const routes: Routes = [
       },
       {
         path: '',
-        redirectTo: 'live-view',
+        redirectTo: 'monitor',
         pathMatch: 'full'
       }
     ]

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Subject, Observable } from 'rxjs';
 import { AuthService } from './auth.service';
+import { LoggerService } from '../logging/logger.service';
 import { environment } from '../../../environments/environment.development';
 
 export interface KnxTelegram {
@@ -27,7 +28,7 @@ export class SignalrService {
 
   public telegram$ = this.telegramSubject.asObservable();
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private logger: LoggerService) {}
 
   public async startConnection(): Promise<void> {
     this.hubConnection = new signalR.HubConnectionBuilder()
@@ -42,14 +43,14 @@ export class SignalrService {
     });
 
     this.hubConnection.on('Connected', (message: string) => {
-      console.debug('[SignalR]', message);
+      this.logger.debug('[SignalR]', message);
     });
 
     try {
       await this.hubConnection.start();
-      console.debug('[SignalR] Connection started');
+      this.logger.debug('[SignalR] Connection started');
     } catch (err) {
-      console.error('[SignalR] Error starting connection:', err);
+      this.logger.error('[SignalR] Error starting connection:', err);
       setTimeout(() => this.startConnection(), 5000);
     }
   }
@@ -57,7 +58,7 @@ export class SignalrService {
   public async stopConnection(): Promise<void> {
     if (this.hubConnection) {
       await this.hubConnection.stop();
-      console.debug('[SignalR] Connection stopped');
+      this.logger.debug('[SignalR] Connection stopped');
     }
   }
 }

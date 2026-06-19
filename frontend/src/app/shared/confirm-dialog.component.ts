@@ -1,7 +1,8 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { TranslatePipe } from './../core/i18n/translate.pipe';
 
 export interface ConfirmDialogData {
   title: string;
@@ -19,7 +20,7 @@ export interface ConfirmDialogData {
 @Component({
   selector: 'app-confirm-dialog',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatDialogModule],
+  imports: [MatIconModule, MatButtonModule, MatDialogModule, TranslatePipe],
   template: `
     <div class="knx-confirm">
       <header class="cd-head" [class.danger]="data.danger">
@@ -31,9 +32,9 @@ export interface ConfirmDialogData {
         <p class="cd-warn">{{ data.warning }}</p>
       }
       <div class="cd-actions">
-        <button class="knx-btn knx-btn--ghost" (click)="close(false)">{{ data.cancelText || 'Cancel' }}</button>
+        <button class="knx-btn knx-btn--ghost" (click)="close(false)">{{ data.cancelText || ('common.cancel' | translate) }}</button>
         <button class="knx-btn" [class.knx-btn--danger]="data.danger" [class.knx-btn--primary]="!data.danger"
-                (click)="close(true)">{{ data.confirmText || 'Confirm' }}</button>
+                (click)="close(true)">{{ data.confirmText || ('common.confirm' | translate) }}</button>
       </div>
     </div>
   `,

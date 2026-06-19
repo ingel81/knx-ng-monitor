@@ -3,7 +3,7 @@
     @for (col of columns; track col.key) {
       <div class="knx-th" [class.sortable]="col.sortable" [class.active]="sortKey === col.key"
            [class.align-right]="col.align === 'right'" (click)="toggleSort(col)">
-        <span>{{ col.header }}</span>
+        <span>{{ col.header | translate }}</span>
         @if (col.sortable && sortKey === col.key) {
           <span class="sort-arrow">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
         }
@@ -26,7 +26,7 @@
             @case ('muted-mono') { <span class="mono muted" knxOverflowTitle>{{ val(row, col.key) || '–' }}</span> }
             @case ('name') {
               @if (room(row)) { <span class="room-tag">{{ room(row) }}</span> }
-              <span class="name-text" [class.empty]="!val(row, 'groupAddressName')" knxOverflowTitle>{{ val(row, 'groupAddressName') ? nameText(row) : '(unknown)' }}</span>
+              <span class="name-text" [class.empty]="!val(row, 'groupAddressName')" knxOverflowTitle>{{ val(row, 'groupAddressName') ? nameText(row) : ('detail.unknown' | translate) }}</span>
             }
             @case ('type') {
               @if (typeName(row)) {
@@ -45,9 +45,9 @@
     </div>
 
     @if (rows.length === 0 && !loading) {
-      <div class="knx-empty">{{ emptyText }}</div>
+      <div class="knx-empty">{{ emptyText | translate }}</div>
     }
   </cdk-virtual-scroll-viewport>
 
-  @if (loading) { <div class="knx-loading">Loading…</div> }
+  @if (loading) { <div class="knx-loading">{{ 'common.loading' | translate }}</div> }
 </div>

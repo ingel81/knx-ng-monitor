@@ -12,6 +12,11 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ProjectService, ProjectDto, ProjectDetailsDto } from '../../core/services/project.service';
 import { ImportWizardComponent } from './import-wizard/import-wizard.component';
 import { ImportJob, ImportStatus } from '../../shared/models/import-job.model';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/confirm-dialog.component';
+import { KeyringUploadDialogComponent, KeyringUploadResult } from './keyring-upload-dialog.component';
+import { LanguageService } from '../../core/i18n/language.service';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { LoggerService } from '../../core/logging/logger.service';
 
 @Component({
   selector: 'app-projects',
@@ -25,7 +30,8 @@ import { ImportJob, ImportStatus } from '../../shared/models/import-job.model';
     MatSnackBarModule,
     MatProgressSpinnerModule,
     MatExpansionModule,
-    MatDialogModule
+    MatDialogModule,
+    TranslatePipe
   ],
   templateUrl: './projects.component.html',
   styleUrl: './projects.component.scss'
@@ -34,15 +40,28 @@ export class ProjectsComponent implements OnInit {
   private projectService = inject(ProjectService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
+  private lang = inject(LanguageService);
+  private logger = inject(LoggerService);
+
+  private snack(message: string): void {
+    this.snackBar.open(message, this.lang.translate('common.close'), { duration: 3000 });
+  }
 
   projects: ProjectDto[] = [];
   expandedProject: ProjectDetailsDto | null = null;
   isLoading = false;
+  deletingId: number | null = null;
+  togglingId: number | null = null;
+
+  // Auto-connect state for the active project (governs automatic bus connect/reconnect).
+  autoConnect = true;
+  autoConnectBusy = false;
 
   displayedColumns: string[] = ['name', 'fileName', 'importDate', 'stats', 'isActive', 'actions'];
 
   ngOnInit() {
     this.loadProjects();
+    this.loadAutoConnect();
   }
 
   async loadProjects() {
@@ -50,10 +69,44 @@ export class ProjectsComponent implements OnInit {
       this.isLoading = true;
       this.projects = await this.projectService.getAllProjects().toPromise() || [];
     } catch (error) {
-      console.error('Failed to load projects:', error);
-      this.snackBar.open('Failed to load projects', 'Close', { duration: 3000 });
+      this.logger.error('Failed to load projects:', error);
+      this.snack(this.lang.translate('projects.loadFailed'));
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  get activeProject(): ProjectDto | null {
+    return this.projects.find(p => p.isActive) ?? null;
+  }
+
+  async loadAutoConnect() {
+    try {
+      const state = await this.projectService.getAutoConnect().toPromise();
+      if (state) {
+        this.autoConnect = state.enabled;
+      }
+    } catch (error) {
+      this.logger.error('Failed to load auto-connect state:', error);
+    }
+  }
+
+  async toggleAutoConnect() {
+    this.autoConnectBusy = true;
+    const next = !this.autoConnect;
+    try {
+      const state = await this.projectService.setAutoConnect(next).toPromise();
+      if (state) {
+        this.autoConnect = state.enabled;
+      }
+      this.snackBar.open(
+        this.lang.translate(this.autoConnect ? 'projects.autoConnectEnabled' : 'projects.autoConnectDisabled'),
+        this.lang.translate('common.close'), { duration: 2500 });
+    } catch (error) {
+      this.logger.error('Failed to set auto-connect:', error);
+      this.snack(this.lang.translate('projects.autoConnectChangeFailed'));
+    } finally {
+      this.autoConnectBusy = false;
     }
   }
 
@@ -66,8 +119,12 @@ export class ProjectsComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result: ImportJob | null) => {
       if (result && result.status === ImportStatus.Completed) {
         this.snackBar.open(
-          `Project "${result.projectName}" imported successfully! Found ${result.groupAddressCount} group addresses and ${result.deviceCount} devices.`,
-          'Close',
+          this.lang.translate('projects.imported', {
+            name: result.projectName ?? '',
+            gas: result.groupAddressCount ?? 0,
+            devices: result.deviceCount ?? 0
+          }),
+          this.lang.translate('common.close'),
           { duration: 5000 }
         );
         this.loadProjects();
@@ -76,30 +133,98 @@ export class ProjectsComponent implements OnInit {
   }
 
   async toggleActivation(project: ProjectDto) {
+    if (this.togglingId !== null) {
+      return;
+    }
+    this.togglingId = project.id;
     try {
-      if (!project.isActive) {
+      if (project.isActive) {
+        // Deactivating the active project severs the bus link (model: active ⇒ connected).
+        await this.projectService.deactivateProject(project.id).toPromise();
+        this.snack(this.lang.translate('projects.deactivated', { name: project.name }));
+      } else {
         await this.projectService.activateProject(project.id).toPromise();
-        this.snackBar.open(`Project "${project.name}" activated`, 'Close', { duration: 3000 });
-        await this.loadProjects();
+        this.snack(this.lang.translate('projects.activated', { name: project.name }));
       }
+      await this.loadProjects();
     } catch (error) {
-      console.error('Failed to activate project:', error);
-      this.snackBar.open('Failed to activate project', 'Close', { duration: 3000 });
+      this.logger.error('Failed to toggle project activation:', error);
+      this.snack(this.lang.translate('projects.activationFailed'));
+    } finally {
+      this.togglingId = null;
     }
   }
 
   async deleteProject(project: ProjectDto) {
-    if (!confirm(`Are you sure you want to delete project "${project.name}"?`)) {
+    // Fetch what the deletion affects so the confirmation can show real counts.
+    let preview;
+    try {
+      preview = await this.projectService.getDeletePreview(project.id).toPromise();
+    } catch (error) {
+      this.logger.error('Failed to load delete preview:', error);
+      this.snack(this.lang.translate('projects.deletePrepareFailed'));
       return;
     }
 
+    const data: ConfirmDialogData = {
+      title: this.lang.translate('projects.deleteTitle', { name: project.name }),
+      message: this.lang.translate('projects.deleteMsg', {
+        gas: preview?.groupAddressCount ?? 0,
+        devices: preview?.deviceCount ?? 0,
+        telegrams: preview?.telegramCount ?? 0
+      }),
+      warning: this.lang.translate('projects.deleteWarning'),
+      confirmText: this.lang.translate('projects.delete'),
+      danger: true
+    };
+
+    const confirmed = await this.dialog
+      .open(ConfirmDialogComponent, { data, width: '440px' })
+      .afterClosed()
+      .toPromise();
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.deletingId = project.id;
     try {
       await this.projectService.deleteProject(project.id).toPromise();
-      this.snackBar.open(`Project "${project.name}" deleted`, 'Close', { duration: 3000 });
+      this.snack(this.lang.translate('projects.deleted', { name: project.name }));
       await this.loadProjects();
     } catch (error) {
-      console.error('Failed to delete project:', error);
-      this.snackBar.open('Failed to delete project', 'Close', { duration: 3000 });
+      this.logger.error('Failed to delete project:', error);
+      this.snack(this.lang.translate('projects.deleteFailed'));
+    } finally {
+      this.deletingId = null;
+    }
+  }
+
+  uploadingKeyringId: number | null = null;
+
+  async uploadKeyring(project: ProjectDto) {
+    const result = await this.dialog
+      .open(KeyringUploadDialogComponent, { width: '440px', autoFocus: false })
+      .afterClosed()
+      .toPromise() as KeyringUploadResult | null | undefined;
+
+    if (!result) {
+      return;
+    }
+
+    this.uploadingKeyringId = project.id;
+    try {
+      const res = await this.projectService.uploadKeyring(project.id, result.file, result.password).toPromise();
+      this.snack(this.lang.translate('projects.keyringSuccess', {
+        total: res?.totalKeys ?? 0,
+        gas: res?.groupAddressKeys ?? 0,
+        tool: res?.toolKeys ?? 0
+      }));
+    } catch (error) {
+      this.logger.error('Failed to upload keyring:', error);
+      this.snack(this.lang.translate('projects.keyringFailed'));
+    } finally {
+      this.uploadingKeyringId = null;
     }
   }
 
@@ -107,8 +232,8 @@ export class ProjectsComponent implements OnInit {
     try {
       this.expandedProject = await this.projectService.getProjectDetails(project.id).toPromise() || null;
     } catch (error) {
-      console.error('Failed to load project details:', error);
-      this.snackBar.open('Failed to load project details', 'Close', { duration: 3000 });
+      this.logger.error('Failed to load project details:', error);
+      this.snack(this.lang.translate('projects.detailsFailed'));
     }
   }
 

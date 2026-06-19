@@ -4,6 +4,7 @@ import { Observable, timer, Subject, BehaviorSubject } from 'rxjs';
 import { switchMap, takeUntil, takeWhile, tap, catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment.development';
 import { ImportJob, ImportStatus } from '../../shared/models/import-job.model';
+import { LoggerService } from '../logging/logger.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,7 +13,7 @@ export class ImportPollingService {
   private stopPolling$ = new Subject<void>();
   private currentJob$ = new BehaviorSubject<ImportJob | null>(null);
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private logger: LoggerService) {}
 
   startPolling(jobId: string, intervalMs: number = 500): Observable<ImportJob> {
     this.stopPolling();
@@ -23,7 +24,7 @@ export class ImportPollingService {
       takeWhile(job => this.shouldContinuePolling(job), true),
       takeUntil(this.stopPolling$),
       catchError((error) => {
-        console.error('Polling error:', error);
+        this.logger.error('Polling error:', error);
         this.stopPolling();
         throw error;
       })

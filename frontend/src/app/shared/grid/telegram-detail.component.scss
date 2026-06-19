@@ -5,6 +5,15 @@
   background: var(--surface);
   color: var(--ink);
   font-family: var(--font-ui);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.knx-sheet::-webkit-scrollbar { width: 10px; }
+.knx-sheet::-webkit-scrollbar-track { background: transparent; }
+.knx-sheet::-webkit-scrollbar-thumb {
+  background: var(--line-strong); border-radius: var(--r-full);
+  border: 3px solid transparent; background-clip: padding-box;
 }
 
 .knx-sheet-head {
@@ -12,7 +21,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-3);
-  padding: var(--sp-5) var(--sp-5) var(--sp-3);
+  padding: var(--sp-5) var(--sp-5) var(--sp-4);
   border-bottom: 1px solid var(--line);
 
   .knx-sheet-title {
@@ -23,11 +32,12 @@
     .name {
       font-size: var(--fs-lg);
       font-weight: var(--fw-semi);
+      line-height: 1.25;
       &.empty { color: var(--ink-3); font-weight: var(--fw-normal); }
     }
   }
 
-  button { color: var(--ink-2); }
+  button { color: var(--ink-2); flex: none; }
 }
 
 .knx-type {
@@ -43,23 +53,33 @@
   &.knx-type--groupread { color: var(--groupread); .knx-type-dot { background: var(--groupread); } }
 }
 
+// Hero value block
 .knx-sheet-value {
   padding: var(--sp-6) var(--sp-5);
   border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+
+  .value-hero {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
 
   .big {
     font-size: var(--fs-3xl);
     font-weight: var(--fw-semi);
     color: var(--val-num);
-    line-height: 1.1;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
     word-break: break-word;
   }
 
   .big-unit {
-    margin-left: 8px;
     font-size: var(--fs-xl);
     color: var(--ink-3);
     font-family: var(--font-ui);
+    font-weight: var(--fw-medium);
   }
 }
 
@@ -68,24 +88,25 @@
   font-feature-settings: 'tnum' 1;
 }
 
+// Label / value definition list
 .knx-sheet-grid {
   margin: 0;
-  padding: var(--sp-4) var(--sp-5);
+  padding: var(--sp-5);
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--sp-4) var(--sp-5);
-  overflow-y: auto;
 
   .field {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
     min-width: 0;
 
     dt {
       font-size: var(--fs-2xs);
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      font-weight: var(--fw-medium);
       color: var(--ink-3);
     }
     dd {
@@ -94,9 +115,85 @@
       color: var(--ink);
       word-break: break-word;
     }
+    dd.mono { color: var(--ink); }
   }
 }
 
 @media (max-width: 767px) {
   .knx-sheet-grid { grid-template-columns: 1fr; }
 }
+
+// ---- Shared block treatment for delimited sections -------------------------
+.knx-sheet-actions,
+.knx-sheet-usedby {
+  margin: 0 var(--sp-5) var(--sp-5);
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.knx-sheet-actions { margin-top: var(--sp-2); }
+
+.actions-head,
+.usedby-head {
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: var(--fw-semi);
+  color: var(--ink-3);
+}
+
+// Bus actions
+.knx-sheet-actions {
+  .actions-row { display: flex; gap: var(--sp-2); align-items: center; }
+  .write-row .knx-input { flex: 1; min-width: 0; }
+  .actions-hint { margin: 0; font-size: var(--fs-xs); color: var(--ink-3); line-height: 1.4; }
+}
+
+// "Used by" — device communication objects (mirrors project-detail rows)
+.knx-sheet-usedby {
+  .usedby-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+  .usedby-item {
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: var(--sp-3);
+    background: var(--surface);
+  }
+  .usedby-line {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
+  .usedby-dev {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--ink);
+  }
+  .usedby-num { font-size: var(--fs-xs); color: var(--ink-3); }
+  .usedby-flags {
+    margin-left: auto;
+    font-size: var(--fs-xs);
+    color: var(--ink-2);
+  }
+  .usedby-name {
+    margin-top: 3px;
+    font-size: var(--fs-sm);
+    color: var(--ink-2);
+    word-break: break-word;
+  }
+}
+
+// Device-name annotations behind physical addresses (#6)
+.dd-extra { color: var(--ink-2); font-family: inherit; }
+.usedby-devname { color: var(--ink-2); font-size: var(--fs-xs); }

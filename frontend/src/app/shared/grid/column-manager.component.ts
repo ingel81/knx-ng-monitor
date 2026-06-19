@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 export interface ColumnOption { key: string; header: string; }
 
@@ -16,18 +17,18 @@ export interface ColumnOption { key: string; header: string; }
 @Component({
   selector: 'app-column-manager',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatMenuModule, MatCheckboxModule, MatTooltipModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatMenuModule, MatCheckboxModule, MatTooltipModule, TranslatePipe],
   template: `
-    <button class="knx-btn knx-btn--ghost" [matMenuTriggerFor]="menu" matTooltip="Show/hide columns">
+    <button class="knx-btn knx-btn--ghost" [matMenuTriggerFor]="menu" [matTooltip]="'columns.toggle' | translate">
       <mat-icon svgIcon="knx:columns"></mat-icon>
-      Columns
+      {{ 'columns.label' | translate }}
     </button>
     <mat-menu #menu="matMenu">
       @for (c of columns; track c.key) {
         <div class="col-item" (click)="$event.stopPropagation()">
           <mat-checkbox [checked]="!hidden.has(c.key)" [disabled]="locked.includes(c.key)"
                         (change)="toggle(c.key, $event.checked)">
-            {{ c.header }}
+            {{ c.header | translate }}
           </mat-checkbox>
         </div>
       }

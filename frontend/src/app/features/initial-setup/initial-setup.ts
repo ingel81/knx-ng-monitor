@@ -11,6 +11,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { InitialSetupRequest } from '../../core/models/auth.models';
+import { LanguageService } from '../../core/i18n/language.service';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
 @Component({
   selector: 'app-initial-setup',
@@ -22,7 +24,8 @@ import { InitialSetupRequest } from '../../core/models/auth.models';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    TranslatePipe
   ],
   templateUrl: './initial-setup.html',
   styleUrl: './initial-setup.scss'
@@ -31,6 +34,7 @@ export class InitialSetup {
   private authService = inject(AuthService);
   private router = inject(Router);
   private toast = inject(ToastService);
+  private lang = inject(LanguageService);
 
   credentials: InitialSetupRequest = {
     username: '',
@@ -47,17 +51,17 @@ export class InitialSetup {
     this.errorMessage = '';
 
     if (!this.credentials.username || !this.credentials.password) {
-      this.errorMessage = 'Please enter username and password';
+      this.errorMessage = this.lang.translate('setup.enterCredentials');
       return;
     }
 
     if (this.credentials.password.length < 8) {
-      this.errorMessage = 'Password must be at least 8 characters long';
+      this.errorMessage = this.lang.translate('setup.passwordTooShort');
       return;
     }
 
     if (this.credentials.password !== this.confirmPassword) {
-      this.errorMessage = 'Passwords do not match';
+      this.errorMessage = this.lang.translate('setup.passwordsMismatch');
       return;
     }
 
@@ -65,12 +69,12 @@ export class InitialSetup {
 
     this.authService.initialSetup(this.credentials).subscribe({
       next: () => {
-        this.toast.success('Admin account created successfully!');
+        this.toast.success(this.lang.translate('setup.success'));
         this.router.navigate(['/live-view']);
       },
       error: (error) => {
         this.isLoading = false;
-        const message = error.error?.message || 'Setup failed. Please try again.';
+        const message = error.error?.message || this.lang.translate('setup.failed');
         this.errorMessage = message;
         this.toast.error(message);
       }

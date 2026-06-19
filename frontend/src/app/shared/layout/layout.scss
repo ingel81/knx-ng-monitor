@@ -96,6 +96,36 @@
   }
 }
 
+.lang-seg {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  height: 28px;
+
+  button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--header-ink-2);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semi);
+    letter-spacing: 0.02em;
+    padding: 0 var(--sp-2);
+    height: 100%;
+    cursor: pointer;
+    transition: color var(--t-fast), background var(--t-fast);
+
+    &:hover { color: var(--header-ink); }
+
+    &.is-active {
+      background: rgba(24, 168, 154, 0.22);
+      color: #fff;
+    }
+  }
+}
+
 .user-info {
   display: flex;
   align-items: center;

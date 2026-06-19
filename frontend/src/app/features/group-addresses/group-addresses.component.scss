@@ -1,0 +1,248 @@
+.ga-container {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+
+  .tb-left,
+  .tb-right {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
+
+  .page-title {
+    margin: 0;
+    font-size: var(--fs-lg, 16px);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .ga-filter {
+    min-width: 200px;
+  }
+}
+
+.ga-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--sp-5);
+  overflow-y: auto;
+}
+
+.empty-state {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  color: var(--ink-3);
+  text-align: center;
+  padding: var(--sp-6);
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    opacity: 0.4;
+  }
+
+  p {
+    margin: 0;
+    color: var(--ink-2);
+  }
+
+  .spin {
+    animation: ga-spin 1s linear infinite;
+  }
+}
+
+@keyframes ga-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ga-tree,
+.ga-leaves {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ga-tree .ga-tree,
+.ga-tree .ga-leaves {
+  margin-left: var(--sp-4);
+  padding-left: var(--sp-3);
+  border-left: 1px solid var(--line-2, var(--line));
+}
+
+.ga-node > details {
+  margin: 2px 0;
+}
+
+.ga-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md, 6px);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+
+  &::-webkit-details-marker { display: none; }
+
+  &:hover { background: var(--surface-2, var(--surface)); }
+
+  .ga-icon {
+    flex: none;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--brand, var(--ink-2));
+  }
+
+  .ga-num {
+    font-weight: var(--fw-medium, 500);
+    color: var(--ink);
+  }
+
+  .ga-range-name {
+    color: var(--ink-2);
+    font-weight: var(--fw-medium, 500);
+  }
+}
+
+.ga-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--fs-xs, 11px);
+  color: var(--ink-2);
+  background: var(--surface-2, var(--brand-tint, var(--surface)));
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 18px;
+
+  mat-icon {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+  }
+}
+
+.ga-leaf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md, 6px);
+
+  &:hover { background: var(--surface-2, var(--surface)); }
+}
+
+.leaf-info {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+
+  .leaf-addr {
+    color: var(--ink);
+    font-weight: var(--fw-medium, 500);
+  }
+
+  .leaf-name {
+    color: var(--ink-2);
+  }
+
+  .leaf-dpt {
+    font-size: var(--fs-xs, 11px);
+    color: var(--ink-3);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm, 4px);
+    padding: 1px 6px;
+  }
+}
+
+// Fixed-width slots so every leaf row reserves the same width for
+// [Read] [Write-input + Write] [Chart]. The Chart slot keeps its width even
+// when the GA is not chartable, preventing horizontal jitter between rows.
+.leaf-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+
+  .slot {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex: none;
+  }
+
+  // Fixed slot widths keep the action columns aligned row-to-row; the buttons
+  // inside fill their slot so text-length differences (Read / Write / Diagramm)
+  // no longer make the columns ragged.
+  .slot-read {
+    width: 96px;
+  }
+
+  .slot-write {
+    width: 220px;
+    justify-content: flex-start;
+  }
+
+  .slot-chart {
+    width: 96px;
+    justify-content: flex-start;
+  }
+
+  // Read + Chart buttons each fill their whole slot for a flush left/right edge.
+  .slot-read .knx-btn,
+  .slot-chart .knx-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  // Inside the write slot: the input takes the remaining space, the Write
+  // button is a consistent fixed width across all rows.
+  .slot-write .knx-input--sm {
+    height: 32px;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+
+  .slot-write .knx-btn {
+    flex: none;
+    width: 96px;
+    justify-content: center;
+  }
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' 1;
+}

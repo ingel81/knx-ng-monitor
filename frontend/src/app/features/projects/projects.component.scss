@@ -21,10 +21,13 @@
 }
 
 .details-card {
+  display: flex;
+  flex-direction: column;
   width: 90%;
   max-width: 1100px;
-  max-height: 90vh;
-  overflow: auto;
+  max-height: min(86vh, 900px);
+  overflow: hidden;            // header fixed, body is the single scroll region
+  padding: 0;
   background: var(--surface);
   color: var(--ink);
   border: 1px solid var(--line-2);
@@ -32,19 +35,46 @@
   box-shadow: var(--sh-pop);
 
   mat-card-header {
+    flex: none;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: $spacing-lg;
+    gap: var(--sp-3);
+    margin: 0;
+    padding: var(--sp-5) var(--sp-5);
+    border-bottom: 1px solid var(--line);
 
-    mat-card-title { color: var(--ink); }
-    button { color: var(--ink-2); }
+    mat-card-title { color: var(--ink); margin: 0; font-size: var(--fs-lg); font-weight: var(--fw-semi); }
+    button { color: var(--ink-2); flex: none; }
+  }
+
+  mat-card-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    margin: 0;
+    padding: var(--sp-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+
+    &::-webkit-scrollbar { width: 10px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb {
+      background: var(--line-strong); border-radius: var(--r-full);
+      border: 3px solid transparent; background-clip: padding-box;
+    }
   }
 
   mat-expansion-panel {
-    margin-bottom: $spacing-lg;
+    margin: 0;
     background: var(--surface-2);
     color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: none;
 
     mat-expansion-panel-header { background: var(--surface-3); }
     mat-panel-title {
@@ -54,6 +84,25 @@
       gap: $spacing-sm;
       mat-icon { color: var(--brand); }
     }
+
+    // Each panel body scrolls its own table cleanly.
+    ::ng-deep .mat-expansion-panel-body { padding: 0; }
+  }
+}
+
+// Per-table scroll region with sticky header.
+.details-table-wrap {
+  max-height: 46vh;
+  overflow: auto;
+  border-top: 1px solid var(--line);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+
+  &::-webkit-scrollbar { width: 10px; height: 10px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: var(--line-strong); border-radius: var(--r-full);
+    border: 3px solid transparent; background-clip: padding-box;
   }
 }
 
@@ -61,6 +110,35 @@
   width: 100%;
   background: var(--surface);
 
-  th { color: var(--ink-2); background: var(--paper-sunk); font-weight: $font-weight-medium; }
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    color: var(--ink-2);
+    background: var(--paper-sunk);
+    font-weight: $font-weight-medium;
+    border-color: var(--line);
+  }
   td { color: var(--ink); border-color: var(--line); }
 }
+
+// Active cell: activation switch + auto-connect (active row only).
+// Both rows are [track][label], left-aligned in a column so the switch tracks
+// line up vertically and the labels share one left edge.
+.proj-active-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: flex-start;
+
+  .knx-switch {
+    gap: var(--sp-2);
+    font-size: var(--fs-sm);
+  }
+  .sw-label { user-select: none; color: var(--ink-2); }
+}
+
+.knx-autoconnect {
+  &.is-busy { opacity: 0.55; cursor: progress; }
+}
+.proj-actions mat-spinner { display: inline-block; }

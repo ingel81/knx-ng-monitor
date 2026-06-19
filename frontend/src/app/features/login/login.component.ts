@@ -11,6 +11,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { LoginRequest } from '../../core/models/auth.models';
+import { LanguageService } from '../../core/i18n/language.service';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { LoggerService } from '../../core/logging/logger.service';
 
 @Component({
   selector: 'app-login',
@@ -22,7 +25,8 @@ import { LoginRequest } from '../../core/models/auth.models';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    TranslatePipe
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
@@ -31,6 +35,8 @@ export class LoginComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
   private toast = inject(ToastService);
+  private lang = inject(LanguageService);
+  private logger = inject(LoggerService);
 
   credentials: LoginRequest = {
     username: '',
@@ -50,14 +56,14 @@ export class LoginComponent implements OnInit {
         }
       },
       error: (error) => {
-        console.error('Failed to check setup status:', error);
+        this.logger.error('Failed to check setup status:', error);
       }
     });
   }
 
   onSubmit(): void {
     if (!this.credentials.username || !this.credentials.password) {
-      this.errorMessage = 'Please enter username and password';
+      this.errorMessage = this.lang.translate('login.enterCredentials');
       return;
     }
 
@@ -66,12 +72,12 @@ export class LoginComponent implements OnInit {
 
     this.authService.login(this.credentials).subscribe({
       next: () => {
-        this.toast.success('Login successful!');
+        this.toast.success(this.lang.translate('login.success'));
         this.router.navigate(['/live-view']);
       },
       error: (error) => {
         this.isLoading = false;
-        const message = error.error?.message || 'Login failed. Please try again.';
+        const message = error.error?.message || this.lang.translate('login.failed');
         this.errorMessage = message;
         this.toast.error(message);
       }

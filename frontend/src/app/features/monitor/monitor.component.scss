@@ -1,7 +1,7 @@
 // Import mixins (forwards variables, so we get both)
 @use '../../../styles/mixins' as *;
 
-.live-view-container {
+.monitor-container {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -9,10 +9,19 @@
   background-color: var(--paper);
   overflow: hidden;
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
+
+  // Segmented Live/Archive toggle: active button highlighted like a primary.
+  .knx-segmented {
+    display: inline-flex;
+    gap: var(--sp-1, 4px);
+
+    .knx-btn.is-active {
+      background: var(--brand-tint);
+      border-color: var(--brand);
+      color: var(--brand);
+    }
+  }
 
   // Grid Container - takes all remaining space
   .grid-container {
@@ -26,12 +35,27 @@
     display: flex;
     flex-direction: column;
 
+    knx-table,
+    app-telegram-cards {
+      flex: 1;
+      min-height: 0;
+      display: block;
+      width: 100%;
+    }
+
+    .mobile-wrap {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+
+      app-telegram-cards { flex: 1; min-height: 0; display: block; }
+      .load-more { flex: none; margin: var(--sp-2); align-self: center; }
+    }
+
     .no-telegrams-overlay {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      inset: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -168,20 +192,49 @@
         }
       }
     }
+  }
 
-    knx-table,
-    app-telegram-cards {
-      flex: 1;
-      min-height: 0;
-      display: block;
-      width: 100%;
+  // Archiv-Leiste (Token-Chips)
+  .archive-bar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-5);
+    background: var(--paper-sunk);
+    border-top: 1px solid var(--line);
+
+    .archive-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: var(--fs-2xs);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink-3);
+      margin-right: var(--sp-2);
+
+      mat-icon { width: 15px; height: 15px; font-size: 15px; }
+    }
+
+    .knx-chip {
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      mat-icon { width: 14px; height: 14px; font-size: 14px; }
     }
   }
 }
 
+// Danger menu item (Clear history) inside the "more actions" kebab menu.
+.cd-danger-item:not([disabled]) {
+  color: var(--err);
+  mat-icon { color: var(--err); }
+}
+
 // Responsive adjustments
 @media (max-width: $breakpoint-sm) {
-  .live-view-container {
+  .monitor-container {
     .page-header {
       padding: $spacing-md $spacing-lg;
 
@@ -200,3 +253,11 @@
     }
   }
 }
+
+// Live-Rate / Bus-Last Badge
+.knx-rate {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+.knx-rate--busy { color: var(--warn, #d08700); font-weight: var(--fw-semi); }
