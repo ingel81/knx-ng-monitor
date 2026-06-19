@@ -382,8 +382,8 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.5.0 (clear-history action; hotfix v0.4.1: DPT decoding in single-file/Docker builds): Falcon-based DPT decoding (full catalog, sub-types, units, enum names, English labels), always-on recording via auto-connect/reconnect worker with a status-only toolbar, singleton live buffer (History↔Live keeps state, Pause without telegram loss), fully English UI, grid polish (column widths, right-aligned numbers, truncation tooltips), non-destructive connection test, and `THIRD-PARTY-NOTICES` for the proprietary Falcon SDK.
-**Next** — Language switcher (i18n) and merging Live + History into one view; telegram-time decryption using stored tool keys; live-values dashboard, time-series charts and bus-load statistics.
+**Current** — v0.6.0: unified Monitor view (Live/Archive toggle), time-series charts + statistics, building topology and a group-address tree, runtime DE/EN language switch, GA write/read from the UI, KNX Secure runtime decryption (Data Secure) plus optional IP-Secure tunnel, parser extensions (locations, communication objects, group-range names, real manufacturer names, keyring upload after import), and project-lifecycle improvements (deactivate, fast transactional delete, auto-connect toggle).
+**Next** — Topology/room live dashboard with current values; runtime Secure on-hardware acceptance; notifications (mail/webhook/MQTT); device detail view.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.
 
