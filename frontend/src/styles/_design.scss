@@ -126,6 +126,20 @@
 .fb-label { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); }
 .fb-room { display: inline-flex; align-items: center; gap: var(--sp-2); }
 
+/* Mobile: drop the desktop vertical separators (they orphan on wrap) and let each
+   chip group / input row span the full width instead of breaking raggedly. */
+@media (max-width: 767px) {
+  .filterbar { padding: var(--sp-3) var(--sp-4); }
+  .fb-sep { display: none; }
+  .fb-quick { width: 100%; }
+  .fb-room { width: 100%; }
+  .fb-room select.knx-input { flex: 1; width: auto !important; }
+  .filterbar-main > input.knx-input { width: auto !important; min-width: 0; }
+  .filterbar-main > input.knx-input[type="datetime-local"] { flex: 1 1 100%; }
+  .filterbar-main > input.knx-input:not([type="datetime-local"]) { flex: 1 1 calc(50% - var(--sp-2)); }
+  .filterbar-main > .knx-btn { flex: 1 1 100%; justify-content: center; }
+}
+
 /* ---------------- grid host / empty ---------------- */
 .grid-host { flex: 1; min-height: 0; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
 .knx-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2);
@@ -170,6 +184,21 @@
 .set-row .set-row-label { font-weight: var(--fw-medium); color: var(--ink); }
 .set-row .set-row-sub { font-size: var(--fs-sm); color: var(--ink-3); margin-top: 2px; }
 
+/* Mobile: single-column fields, stacked label/control rows, wrapping action bar
+   (the flex:1 spacer would otherwise pin the buttons onto one overflowing line). */
+@media (max-width: 767px) {
+  .settings-col { padding: var(--sp-4) var(--sp-4) var(--sp-10); gap: var(--sp-4); }
+  .set-body { padding: var(--sp-4); }
+  .set-head { padding: var(--sp-4) var(--sp-4) 0; }
+  .set-grid { grid-template-columns: 1fr; }
+  .set-actions { flex-wrap: wrap; padding: var(--sp-4); }
+  .set-actions .spacer { display: none; }
+  .set-actions .knx-btn { flex: 1 1 auto; justify-content: center; }
+  .set-row { flex-direction: column; align-items: stretch; }
+  .set-row .knx-seg { width: 100%; }
+  .set-row .knx-seg button { flex: 1; }
+}
+
 /* ============================================================================
    PROJECTS
    ============================================================================ */
@@ -191,6 +220,27 @@
 .proj-stat b { font-family: var(--font-mono); color: var(--ink); font-weight: var(--fw-semi); }
 .proj-actions { display: flex; gap: 4px; justify-content: flex-end; }
 
+/* Mobile: the 6-column table overflows 375px, so collapse each row into a
+   stacked card (header row hidden, cells become full-width blocks). */
+@media (max-width: 767px) {
+  .projects-body { padding: var(--sp-3); }
+  .proj-table { border: none; background: transparent; border-radius: 0; overflow: visible; }
+  .proj-table thead { display: none; }
+  .proj-table tr {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    margin-bottom: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+  }
+  .proj-table tr:last-child td { border-bottom: none; }
+  .proj-table td { display: block; padding: var(--sp-1) 0; border: none; overflow-wrap: anywhere; }
+  .proj-name { font-size: var(--fs-lg); }
+  .proj-stats { flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-1); }
+  .proj-actions { justify-content: flex-start; margin-top: var(--sp-2); }
+}
+
 /* ---------------- placeholder / empty page ---------------- */
 .placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: var(--sp-2); color: var(--ink-3); text-align: center; padding: var(--sp-12) var(--sp-6); }
@@ -199,3 +249,77 @@
 .placeholder > mat-icon { color: var(--line-strong); width: 48px; height: 48px; font-size: 48px; }
 .placeholder h2 { margin: var(--sp-3) 0 0; color: var(--ink); font-weight: var(--fw-semi); }
 .placeholder p { max-width: 42ch; font-size: var(--fs-md); margin: var(--sp-1) 0 var(--sp-4); }
+
+/* mat-select dropdown panel: replace the chunky native scrollbar with the
+   app's thin token-coloured one (panel renders in an overlay → global rule). */
+.mat-mdc-select-panel {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+
+  &::-webkit-scrollbar { width: 10px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: var(--r-full);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+/* ============================================================================
+   USER MENU (header account dropdown — renders in an overlay, so styled globally)
+   ============================================================================ */
+.user-menu {
+  min-width: 220px;
+
+  .um-head {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-4) var(--sp-3);
+    margin-bottom: var(--sp-1);
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    font-weight: var(--fw-semi);
+
+    mat-icon { width: 20px; height: 20px; font-size: 20px; color: var(--ink-2); flex: none; }
+  }
+
+  .um-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-2) var(--sp-4) var(--sp-3);
+  }
+  .um-label { font-size: var(--fs-sm); color: var(--ink-2); }
+
+  .lang-seg {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+
+    button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--ink-2);
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-semi);
+      letter-spacing: 0.02em;
+      padding: 0 var(--sp-3);
+      height: 100%;
+      cursor: pointer;
+      transition: color var(--t-fast), background var(--t-fast);
+
+      & + button { border-left: 1px solid var(--line-strong); }
+      &:hover { color: var(--ink); background: var(--surface-2); }
+      &.is-active { background: var(--brand-tint); color: var(--brand); }
+
+      mat-icon { width: 16px; height: 16px; font-size: 16px; display: block; }
+    }
+  }
+}

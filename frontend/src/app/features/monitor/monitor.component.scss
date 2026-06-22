@@ -23,6 +23,23 @@
     }
   }
 
+  // Filters toggle button: mobile-only (desktop always shows the filter bar).
+  .filter-toggle {
+    display: none;
+    position: relative;
+
+    .filter-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--brand);
+      flex: none;
+    }
+  }
+
+  // Visibility helpers: actions that move into the mobile kebab menu.
+  .only-mobile { display: none; }
+
   // Grid Container - takes all remaining space
   .grid-container {
     flex: 1;
@@ -41,6 +58,34 @@
       min-height: 0;
       display: block;
       width: 100%;
+    }
+
+    // Scroll-to-top FAB — hidden until the live body is scrolled down.
+    .scroll-top {
+      position: absolute;
+      right: var(--sp-5);
+      bottom: var(--sp-5);
+      z-index: 20;
+      width: 44px;
+      height: 44px;
+      border-radius: var(--r-full);
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--brand);
+      box-shadow: var(--sh-2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity var(--t-fast), transform var(--t-fast), background var(--t-fast);
+
+      mat-icon { width: 24px; height: 24px; font-size: 24px; }
+
+      &:hover { background: var(--brand-tint); }
+      &.is-visible { opacity: 1; transform: none; pointer-events: auto; }
     }
 
     .mobile-wrap {
@@ -191,6 +236,73 @@
           }
         }
       }
+    }
+  }
+
+  // Mobile: the top toolbar (mode toggle + pause + autoscroll on the left,
+  // status/badges + search + action buttons on the right) is a single flex row
+  // that overflows 375px and gets clipped. Let both halves span the full width
+  // and wrap their controls instead of running off-screen.
+  @media (max-width: 767px) {
+    .toolbar { padding: var(--sp-3) var(--sp-4); }
+
+    .tb-left,
+    .tb-right {
+      width: 100%;
+      flex-wrap: wrap;
+      margin-left: 0;
+      gap: var(--sp-2);
+    }
+
+    // tb-left row: segmented Live/Archive grows to fill, Pause is a compact
+    // icon button beside it (archive has no Pause → segmented fills alone).
+    .knx-segmented { flex: 1 1 auto; }
+    .knx-segmented .knx-btn { flex: 1; justify-content: center; }
+    .pause-btn {
+      flex: 0 0 auto;
+      .lbl { display: none; }
+    }
+
+    // tb-right: badges + kebab share the top row (kebab pushed to the right),
+    // search drops to its own full-width row below via flex-basis + order.
+    .tb-right .knx-status,
+    .tb-right .knx-badge,
+    .tb-right .knx-rate { order: 1; }
+    .tb-right .filter-toggle { order: 2; }
+    .tb-right > .knx-btn--icon { order: 2; margin-left: auto; }
+    .tb-right .knx-field {
+      order: 3;
+      width: auto !important;
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
+    // Orphan vertical divider would dangle on wrap.
+    .tb-right .tb-divider { display: none; }
+
+    // Swap desktop toolbar actions for the compact kebab menu.
+    .only-desktop { display: none !important; }
+    .only-mobile { display: inline-flex !important; }
+
+    // Filters toggle: icon-only (label hidden, active dot as a corner badge).
+    .filter-toggle {
+      display: inline-flex;
+      flex: 0 0 auto;
+
+      .lbl { display: none; }
+      .filter-dot { position: absolute; top: 4px; right: 4px; }
+    }
+
+    // Archive filter bar would otherwise eat the whole screen and leave one
+    // result row — collapse it by default, reveal via the Filters toggle.
+    .filterbar { display: none; }
+    .filterbar.is-open { display: block; }
+
+    // Empty-state "connected" hint: stack icon over text so the check icon
+    // isn't clipped when the inline row is wider than the narrow viewport.
+    .no-telegrams-overlay .hint.connected {
+      flex-direction: column;
+      text-align: center;
     }
   }
 

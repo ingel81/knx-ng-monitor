@@ -27,6 +27,8 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'nav.settings': 'Settings',
     'nav.logout': 'Logout',
     'nav.language': 'Language',
+    'nav.account': 'Account',
+    'nav.theme': 'Theme',
     'nav.topology': 'Topology',
     'nav.groupAddresses': 'Group addresses',
     'nav.mainNav': 'Main navigation',
@@ -85,6 +87,7 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'monitor.exporting': 'Exporting…',
     'monitor.exportCsvTooltip': 'Export the filtered range as CSV',
     'monitor.moreActions': 'More actions',
+    'monitor.scrollTop': 'Scroll to top',
     'monitor.clearHistory': 'Clear history',
     'monitor.clearing': 'Clearing…',
 
@@ -122,6 +125,7 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'monitor.filter.roomAll': 'All rooms',
     'monitor.filter.roomEmpty': 'No locations in the active project.',
     'monitor.filter.roomNoGa': '(no group addresses)',
+    'monitor.filter.title': 'Filters',
 
     // --- Monitor: grid / empty states --------------------------------------
     'monitor.emptyLive': 'Connected – waiting for KNX telegrams…',
@@ -415,6 +419,8 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'nav.settings': 'Einstellungen',
     'nav.logout': 'Abmelden',
     'nav.language': 'Sprache',
+    'nav.account': 'Konto',
+    'nav.theme': 'Design',
     'nav.topology': 'Topologie',
     'nav.groupAddresses': 'Gruppenadressen',
     'nav.mainNav': 'Hauptnavigation',
@@ -473,6 +479,7 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'monitor.exporting': 'Exportiert…',
     'monitor.exportCsvTooltip': 'Gefilterten Bereich als CSV exportieren',
     'monitor.moreActions': 'Weitere Aktionen',
+    'monitor.scrollTop': 'Nach oben',
     'monitor.clearHistory': 'Verlauf löschen',
     'monitor.clearing': 'Wird gelöscht…',
 
@@ -510,6 +517,7 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'monitor.filter.roomAll': 'Alle Räume',
     'monitor.filter.roomEmpty': 'Keine Standorte im aktiven Projekt.',
     'monitor.filter.roomNoGa': '(keine Gruppenadressen)',
+    'monitor.filter.title': 'Filter',
 
     // --- Monitor: grid / empty states --------------------------------------
     'monitor.emptyLive': 'Verbunden – warte auf KNX-Telegramme…',

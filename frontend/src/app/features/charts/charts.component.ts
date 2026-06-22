@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,8 +14,11 @@ import { ChartsService, ChartSeries, extractNumeric } from '../../core/services/
 import { ProjectService, GroupAddressDto } from '../../core/services/project.service';
 import { SignalrService, KnxTelegram } from '../../core/services/signalr.service';
 import { LanguageService } from '../../core/i18n/language.service';
+import { localeTag } from '../../core/i18n/locale.util';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { ThemeService } from '../../core/services/theme.service';
 import { RangePreset, resolveRange } from './time-range.util';
+import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom, styleLineSeries } from './chart-skin';
 
 /** DPT main numbers we treat as chartable (numeric) — plus DPT1 (boolean step lines). */
 const NUMERIC_DPT_MAINS = new Set([5, 6, 7, 8, 9, 12, 13, 14]);
@@ -43,6 +46,15 @@ export class ChartsComponent implements OnInit, OnDestroy {
   private signalr = inject(SignalrService);
   private lang = inject(LanguageService);
   private route = inject(ActivatedRoute);
+  private theme = inject(ThemeService);
+
+  constructor() {
+    // Rebuild with re-read tokens whenever the theme toggles (canvas can't use CSS vars).
+    effect(() => {
+      this.theme.theme();
+      if (this.series.length) this.rebuildChart();
+    });
+  }
 
   /** GA to preselect once the GA list has loaded (from the `ga` query param). */
   private preselectGa: string | null = null;
@@ -240,33 +252,35 @@ export class ChartsComponent implements OnInit, OnDestroy {
     const unitToAxis = new Map<string, number>();
     units.forEach((u, i) => unitToAxis.set(u, Math.min(i, axisUnits.length - 1)));
 
-    const yAxis = axisUnits.map((u, i) => ({
-      type: 'value' as const,
+    const skin = readSkin();
+    const singleSeries = this.series.length === 1;
+
+    const yAxis = axisUnits.map((u, i) => valueAxis(skin, {
       name: u || undefined,
-      position: i === 0 ? ('left' as const) : ('right' as const),
+      position: i === 0 ? 'left' : 'right',
       offset: i >= 2 ? 60 : 0,
-      splitLine: { show: i === 0 }
+      splitLine: { show: i === 0, lineStyle: { color: skin.line } }
     }));
 
-    const echartsSeries = this.series.map((s) => ({
+    const echartsSeries = this.series.map((s, i) => styleLineSeries({
       name: s.name,
       type: 'line' as const,
       yAxisIndex: unitToAxis.get(s.unit) ?? 0,
       showSymbol: false,
       step: s.isBool ? ('end' as const) : undefined,
       data: s.data
-    }));
+    }, skin.palette[i % skin.palette.length], singleSeries && !s.isBool));
+
+    const unitByName: Record<string, string> = {};
+    for (const s of this.series) unitByName[s.name] = s.unit;
 
     this.chartOption = {
-      tooltip: { trigger: 'axis' },
-      legend: { type: 'scroll', top: 0, data: this.series.map((s) => s.name) },
+      tooltip: tooltipCfg(skin, unitByName, localeTag(this.lang.lang())),
+      legend: { type: 'scroll', top: 0, textStyle: { color: skin.ink2 }, data: this.series.map((s) => s.name) },
       grid: { left: 56, right: axisUnits.length > 1 ? 72 : 24, top: 40, bottom: 64 },
-      xAxis: { type: 'time' },
+      xAxis: timeAxis(skin),
       yAxis,
-      dataZoom: [
-        { type: 'inside' },
-        { type: 'slider', bottom: 8 }
-      ],
+      dataZoom: dataZoom(skin),
       series: echartsSeries
     };
   }

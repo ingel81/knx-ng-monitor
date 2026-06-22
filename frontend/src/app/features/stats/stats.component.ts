@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,8 +7,11 @@ import type { EChartsCoreOption } from 'echarts/core';
 
 import { ChartsService, StatsResponse } from '../../core/services/charts.service';
 import { LanguageService } from '../../core/i18n/language.service';
+import { localeTag } from '../../core/i18n/locale.util';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { ThemeService } from '../../core/services/theme.service';
 import { RangePreset, resolveRange } from '../charts/time-range.util';
+import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom } from '../charts/chart-skin';
 
 @Component({
   selector: 'app-stats',
@@ -19,6 +22,17 @@ import { RangePreset, resolveRange } from '../charts/time-range.util';
 export class StatsComponent implements OnInit {
   private chartsService = inject(ChartsService);
   private lang = inject(LanguageService);
+  private theme = inject(ThemeService);
+
+  /** Last bucket data, kept so the chart can be rebuilt on a theme toggle. */
+  private lastData: [number, number][] | null = null;
+
+  constructor() {
+    effect(() => {
+      this.theme.theme();
+      if (this.lastData) this.buildChart(this.lastData);
+    });
+  }
 
   // --- Time range ------------------------------------------------------------
   preset: RangePreset = '24h';
@@ -73,17 +87,24 @@ export class StatsComponent implements OnInit {
     this.hasData = res.total > 0;
 
     const data = res.counts.map((b) => [new Date(b.t).getTime(), b.count] as [number, number]);
+    this.lastData = data;
+    this.buildChart(data);
+  }
+
+  private buildChart(data: [number, number][]): void {
+    const skin = readSkin();
     this.chartOption = {
-      tooltip: { trigger: 'axis' },
+      tooltip: tooltipCfg(skin, {}, localeTag(this.lang.lang())),
       grid: { left: 56, right: 24, top: 24, bottom: 56 },
-      xAxis: { type: 'time' },
-      yAxis: { type: 'value', name: this.lang.translate('stats.bucketCount') },
-      dataZoom: [{ type: 'inside' }, { type: 'slider', bottom: 8 }],
+      xAxis: timeAxis(skin),
+      yAxis: valueAxis(skin, { min: 0, name: this.lang.translate('stats.bucketCount') }),
+      dataZoom: dataZoom(skin),
       series: [
         {
           name: this.lang.translate('stats.overTime'),
           type: 'bar',
           barWidth: '70%',
+          itemStyle: { color: skin.series },
           data
         }
       ]

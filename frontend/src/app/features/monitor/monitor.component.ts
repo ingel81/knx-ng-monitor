@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ElementRef, NgZone, inject, ViewChild, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -54,8 +54,9 @@ type MonitorMode = 'live' | 'archive';
   templateUrl: './monitor.component.html',
   styleUrl: './monitor.component.scss'
 })
-export class MonitorComponent implements OnInit, OnDestroy {
+export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   private buffer = inject(LiveBufferService);
+  private zone = inject(NgZone);
   private historyService = inject(TelegramHistoryService);
   private http = inject(HttpClient);
   private router = inject(Router);
@@ -69,10 +70,19 @@ export class MonitorComponent implements OnInit, OnDestroy {
   private subscription?: Subscription;
 
   @ViewChild(KnxTableComponent) table?: KnxTableComponent;
+  @ViewChild('gridScroll') gridScrollRef?: ElementRef<HTMLElement>;
+
+  /** "Scroll to top" FAB — visible once the active scroll body is scrolled down. */
+  showScrollTop = false;
+  private scrollEl?: HTMLElement;
 
   mode: MonitorMode = 'live';
 
   isMobile = window.innerWidth < 768;
+
+  /** Archive filter bar collapsed by default on mobile (it would otherwise eat
+   *  the whole screen); toggled via the toolbar Filters button. */
+  filtersExpanded = false;
 
   // --- Shared quick-search (gilt in beiden Modi) -----------------------------
   quickFilterText = '';
@@ -204,12 +214,34 @@ export class MonitorComponent implements OnInit, OnDestroy {
     this.resetArchive();
   }
 
+  ngAfterViewInit(): void {
+    const host = this.gridScrollRef?.nativeElement;
+    if (!host) return;
+    // scroll doesn't bubble — listen in the capture phase so we catch whichever
+    // inner body is active (.knx-vp grid viewport / .knx-mcards card list).
+    this.zone.runOutsideAngular(() => host.addEventListener('scroll', this.onCaptureScroll, true));
+  }
+
+  private onCaptureScroll = (e: Event): void => {
+    const el = e.target as HTMLElement;
+    if (!el?.classList || !(el.classList.contains('knx-vp') || el.classList.contains('knx-mcards'))) return;
+    this.scrollEl = el;
+    const visible = el.scrollTop > 320;
+    if (visible !== this.showScrollTop) this.zone.run(() => (this.showScrollTop = visible));
+  };
+
+  scrollToTop(): void {
+    this.scrollEl?.scrollTo({ top: 0, behavior: 'smooth' });
+    this.showScrollTop = false;
+  }
+
   ngOnDestroy(): void {
     // NUR die View-Subscription lösen — Connection + Buffer leben im Singleton weiter,
     // damit die Live-Ansicht beim Zurückwechseln nicht leer ist.
     this.subscription?.unsubscribe();
     this.rateSub?.unsubscribe();
     if (this.statusPoll) clearInterval(this.statusPoll);
+    this.gridScrollRef?.nativeElement.removeEventListener('scroll', this.onCaptureScroll, true);
   }
 
   // --- Mode toggle -----------------------------------------------------------

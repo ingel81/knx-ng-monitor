@@ -193,3 +193,20 @@
   font-family: var(--font-mono);
   font-feature-settings: 'tnum' 1;
 }
+
+// Mobile: full-width toolbar buttons, wrapping summary (long names + pills no
+// longer overflow), and tighter tree indent so deep nodes stay on screen.
+@media (max-width: 767px) {
+  .toolbar { padding: var(--sp-3) var(--sp-4); }
+  .tb-left, .tb-right { width: 100%; }
+  .tb-right .knx-btn { flex: 1 1 calc(50% - var(--sp-2)); justify-content: center; }
+
+  .topology-body { padding: var(--sp-3); }
+  .loc-tree .loc-tree { margin-left: var(--sp-2); padding-left: var(--sp-2); }
+  .loc-detail { padding-left: var(--sp-3); }
+
+  .loc-summary {
+    flex-wrap: wrap;
+    .loc-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
+}

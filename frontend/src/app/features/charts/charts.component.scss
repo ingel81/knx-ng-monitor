@@ -215,3 +215,23 @@
     transform: rotate(360deg);
   }
 }
+
+// Mobile: stack the toolbar cleanly — no orphan dividers, full-width controls.
+@media (max-width: 767px) {
+  .toolbar { padding: var(--sp-3) var(--sp-4); }
+  .tb-left, .tb-right { width: 100%; }
+  .tb-divider { display: none; }
+  .ga-picker { width: 100%; }
+  .ga-select { width: 100%; min-width: 0; }
+
+  .tb-right {
+    flex-direction: column;
+    align-items: stretch;
+
+    .knx-seg { width: 100%; }
+    .knx-seg button { flex: 1; }
+    .range-field { width: 100%; }
+    .range-field .knx-input { flex: 1; width: 100%; }
+    > .knx-btn { width: 100%; justify-content: center; }
+  }
+}

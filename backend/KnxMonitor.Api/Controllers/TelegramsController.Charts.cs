@@ -77,7 +77,11 @@ public partial class TelegramsController
                 }
                 points.Add(new ChartPoint
                 {
-                    T = t.Timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+                    // Timestamps come back from SQLite as Kind=Unspecified but hold the UTC wall
+                    // time (telegrams are saved with DateTime.UtcNow). ToUniversalTime() would
+                    // then wrongly subtract the local offset; tag as UTC instead so the "O" format
+                    // emits a correct trailing 'Z' and the client plots it at the right instant.
+                    T = DateTime.SpecifyKind(t.Timestamp, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture),
                     V = value
                 });
             }

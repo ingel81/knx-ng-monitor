@@ -147,7 +147,10 @@ public partial class TelegramsController : ControllerBase
     private static TelegramDto ToDto(KnxTelegram t) => new()
     {
         Id = t.Id,
-        Timestamp = t.Timestamp,
+        // SQLite returns Kind=Unspecified though the value is UTC (saved via DateTime.UtcNow).
+        // Tag it UTC so JSON serializes with a trailing 'Z' and the client renders local time
+        // correctly (otherwise the archive grid sits an offset behind the live view).
+        Timestamp = DateTime.SpecifyKind(t.Timestamp, DateTimeKind.Utc),
         SourceAddress = t.SourceAddress,
         DestinationAddress = t.DestinationAddress,
         GroupAddressName = t.GroupAddress?.Name,

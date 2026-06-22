@@ -93,67 +93,41 @@
     background: rgba(24, 168, 154, 0.16);
     color: #fff;
     box-shadow: inset 0 -2px 0 var(--live);
-  }
-}
-
-.lang-seg {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: var(--r-sm);
-  overflow: hidden;
-  height: 28px;
-
-  button {
-    appearance: none;
-    border: 0;
-    background: transparent;
-    color: var(--header-ink-2);
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-semi);
-    letter-spacing: 0.02em;
-    padding: 0 var(--sp-2);
-    height: 100%;
-    cursor: pointer;
-    transition: color var(--t-fast), background var(--t-fast);
-
-    &:hover { color: var(--header-ink); }
-
-    &.is-active {
-      background: rgba(24, 168, 154, 0.22);
-      color: #fff;
-    }
+    // Tab-Look: oben gerundet, unten eckig, damit der Unterstrich bündig sitzt
+    // (Design-System; vorher rundeten alle vier Ecken den Underline ab).
+    border-radius: var(--r-sm) var(--r-sm) 0 0;
   }
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
   flex-shrink: 0;
-  color: var(--header-ink);
+}
 
-  mat-icon {
-    font-size: 22px;
-    width: 22px;
-    height: 22px;
-    opacity: 0.85;
-  }
+// Single account trigger → opens the user menu (name, language, logout).
+// Borderless/ghost like the nav links so it doesn't stand out as a pill.
+.user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 36px;
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--header-ink-2);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  transition: color var(--t-fast), background var(--t-fast);
 
-  .username {
-    font-size: var(--fs-md);
-    font-weight: var(--fw-medium);
-    opacity: 0.9;
-    white-space: nowrap;
-  }
+  &:hover { color: var(--header-ink); background: rgba(255, 255, 255, 0.06); }
 
-  button {
-    color: var(--header-ink);
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-  }
+  mat-icon { width: 20px; height: 20px; font-size: 20px; flex: none; }
+  .username { white-space: nowrap; }
+  .caret { width: 18px; height: 18px; font-size: 18px; opacity: 0.7; }
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +164,8 @@
   // Top-Nav + User-Text auf Mobil ausblenden
   .main-nav { display: none; }
   .user-info .username { display: none; }
+  // Trigger schrumpft auf reines Avatar-Icon.
+  .user-trigger { padding: 0 var(--sp-2); .caret { display: none; } }
 
   .header-content { padding: 0 var(--sp-4); }
 
@@ -202,27 +178,40 @@
     z-index: 1000;
 
     .bottom-link {
-      flex: 1;
+      flex: 1 1 0;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 2px;
+      gap: 3px;
       min-height: 56px;
-      padding: 6px 0;
+      padding: 6px 2px;
       text-decoration: none;
       color: var(--ink-3);
       transition: color var(--t-fast);
 
       mat-icon {
-        font-size: 21px;
-        width: 21px;
-        height: 21px;
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
       }
 
+      // 7 tabs at 375px: wrap labels to max 2 lines inside their own slot
+      // instead of letting them bleed into neighbours. EN wraps on the space
+      // ("Group addresses"); long German compounds break mid-word but stay
+      // contained.
       span {
-        font-size: var(--fs-2xs);
+        width: 100%;
+        font-size: 9px;
+        line-height: 1.12;
         font-weight: var(--fw-medium);
+        text-align: center;
+        overflow-wrap: anywhere;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
       }
 
       &.active {

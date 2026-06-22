@@ -18,7 +18,6 @@
   width: 100%;
   text-align: left;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--line-2);
   border-radius: var(--r-md);
   background: var(--surface);
   padding: var(--sp-3) var(--sp-4);
@@ -28,9 +27,6 @@
   transition: background-color var(--t-fast);
 
   &:hover { background: var(--brand-tint); }
-  &.msg-write { border-left-color: var(--write); }
-  &.msg-read { border-left-color: var(--read); }
-  &.msg-response { border-left-color: var(--response); }
 
   .mc-top {
     display: flex;

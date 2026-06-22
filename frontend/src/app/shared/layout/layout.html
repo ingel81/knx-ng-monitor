@@ -38,16 +38,42 @@
       </nav>
 
       <div class="user-info">
-        <div class="lang-seg" role="group" [attr.aria-label]="'nav.language' | translate">
-          <button type="button" [class.is-active]="lang() === 'en'" (click)="setLang('en')">EN</button>
-          <button type="button" [class.is-active]="lang() === 'de'" (click)="setLang('de')">DE</button>
-        </div>
         @if (currentUser$ | async; as username) {
-          <mat-icon svgIcon="knx:user"></mat-icon>
-          <span class="username">{{ username }}</span>
-          <button mat-icon-button (click)="logout()" [matTooltip]="'nav.logout' | translate" [attr.aria-label]="'nav.logout' | translate">
-            <mat-icon svgIcon="knx:logout"></mat-icon>
+          <button class="user-trigger" [matMenuTriggerFor]="userMenu" [attr.aria-label]="'nav.account' | translate">
+            <mat-icon svgIcon="knx:user"></mat-icon>
+            <span class="username">{{ username }}</span>
+            <mat-icon class="caret">expand_more</mat-icon>
           </button>
+
+          <mat-menu #userMenu="matMenu" class="user-menu" xPosition="before">
+            <div class="um-head" (click)="$event.stopPropagation()">
+              <mat-icon svgIcon="knx:user"></mat-icon>
+              <span>{{ username }}</span>
+            </div>
+
+            <div class="um-row" (click)="$event.stopPropagation()">
+              <span class="um-label">{{ 'nav.theme' | translate }}</span>
+              <div class="lang-seg" role="group" [attr.aria-label]="'nav.theme' | translate">
+                <button type="button" [class.is-active]="theme() === 'light'" (click)="setTheme('light')"
+                        [matTooltip]="'settings.light' | translate"><mat-icon svgIcon="knx:sun"></mat-icon></button>
+                <button type="button" [class.is-active]="theme() === 'dark'" (click)="setTheme('dark')"
+                        [matTooltip]="'settings.console' | translate"><mat-icon svgIcon="knx:moon"></mat-icon></button>
+              </div>
+            </div>
+
+            <div class="um-row" (click)="$event.stopPropagation()">
+              <span class="um-label">{{ 'nav.language' | translate }}</span>
+              <div class="lang-seg" role="group" [attr.aria-label]="'nav.language' | translate">
+                <button type="button" [class.is-active]="lang() === 'en'" (click)="setLang('en')">EN</button>
+                <button type="button" [class.is-active]="lang() === 'de'" (click)="setLang('de')">DE</button>
+              </div>
+            </div>
+
+            <button mat-menu-item (click)="logout()">
+              <mat-icon svgIcon="knx:logout"></mat-icon>
+              <span>{{ 'nav.logout' | translate }}</span>
+            </button>
+          </mat-menu>
         }
       </div>
     </div>
