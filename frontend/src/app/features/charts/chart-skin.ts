@@ -162,8 +162,8 @@ export function dataZoom(skin: ChartSkin): Array<Record<string, unknown>> {
     { type: 'inside' },
     {
       type: 'slider',
-      bottom: 8,
-      height: 18,
+      bottom: 40,
+      height: 28,
       borderColor: skin.teal200,
       fillerColor: withAlpha(skin.series, 0.16),
       dataBackground: { lineStyle: { color: skin.line2 }, areaStyle: { color: withAlpha(skin.series, 0.16) } },

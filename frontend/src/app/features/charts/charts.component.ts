@@ -64,6 +64,8 @@ export class ChartsComponent implements OnInit, OnDestroy {
 
   // --- GA picker -------------------------------------------------------------
   availableGas: GroupAddressDto[] = [];
+  /** Dropdown order — selected GAs floated to the top; frozen while the panel is open. */
+  displayGas: GroupAddressDto[] = [];
   selectedAddresses: string[] = [];
   hasActiveProject = false;
 
@@ -112,6 +114,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
             this.availableGas = details.groupAddresses
               .filter((ga) => this.isChartable(ga.datapointType))
               .sort((a, b) => a.address.localeCompare(b.address, undefined, { numeric: true }));
+            this.displayGas = this.availableGas;
             this.applyPreselect();
           },
           error: () => (this.availableGas = [])
@@ -145,6 +148,23 @@ export class ChartsComponent implements OnInit, OnDestroy {
     if (!dpt) return false;
     const m = dpt.match(/(\d+)/);
     return !!m && Number(m[1]) === 1;
+  }
+
+  // --- Dropdown ordering -----------------------------------------------------
+  /** Freeze the option order when the panel opens: selected GAs first (so the
+   *  current selection sits at the top), each group keeping its address order.
+   *  Frozen while open so toggling a checkbox doesn't make rows jump. */
+  onPanelToggle(opened: boolean): void {
+    if (opened) this.displayGas = this.orderedGas();
+  }
+
+  private orderedGas(): GroupAddressDto[] {
+    const sel = new Set(this.selectedAddresses);
+    return [...this.availableGas].sort((a, b) => {
+      const da = sel.has(a.address) ? 0 : 1;
+      const db = sel.has(b.address) ? 0 : 1;
+      return da - db || a.address.localeCompare(b.address, undefined, { numeric: true });
+    });
   }
 
   // --- Selection -------------------------------------------------------------
@@ -277,7 +297,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
     this.chartOption = {
       tooltip: tooltipCfg(skin, unitByName, localeTag(this.lang.lang())),
       legend: { type: 'scroll', top: 0, textStyle: { color: skin.ink2 }, data: this.series.map((s) => s.name) },
-      grid: { left: 56, right: axisUnits.length > 1 ? 72 : 24, top: 40, bottom: 64 },
+      grid: { left: 56, right: axisUnits.length > 1 ? 72 : 24, top: 40, bottom: 92 },
       xAxis: timeAxis(skin),
       yAxis,
       dataZoom: dataZoom(skin),

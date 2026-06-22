@@ -95,7 +95,7 @@ export class StatsComponent implements OnInit {
     const skin = readSkin();
     this.chartOption = {
       tooltip: tooltipCfg(skin, {}, localeTag(this.lang.lang())),
-      grid: { left: 56, right: 24, top: 24, bottom: 56 },
+      grid: { left: 56, right: 24, top: 24, bottom: 92 },
       xAxis: timeAxis(skin),
       yAxis: valueAxis(skin, { min: 0, name: this.lang.translate('stats.bucketCount') }),
       dataZoom: dataZoom(skin),

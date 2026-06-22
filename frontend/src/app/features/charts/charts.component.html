@@ -7,10 +7,11 @@
             multiple
             [ngModel]="selectedAddresses"
             (ngModelChange)="onSelectionChange($event)"
+            (openedChange)="onPanelToggle($event)"
             [placeholder]="'charts.pickGroupAddresses' | translate"
             [disabled]="!hasActiveProject || availableGas.length === 0"
           >
-            @for (ga of availableGas; track ga.id) {
+            @for (ga of displayGas; track ga.id) {
               <mat-option
                 [value]="ga.address"
                 [disabled]="
