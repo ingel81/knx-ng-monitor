@@ -358,7 +358,20 @@ OpenAPI (Scalar) is exposed in `Development` at `http://localhost:8080/scalar/v1
 
 Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds 6 platform binaries, pushes a Docker image to `ingel81/knx-ng-monitor`, and creates a GitHub Release with auto-generated notes. See [`docs/ai/RELEASE_PLAN.md`](docs/ai/RELEASE_PLAN.md) for the full pipeline.
 
-### v0.6.0 (latest)
+### v0.7.0 (latest)
+
+- **GA network graph (Alpha)** — new **Graph** view: a force-directed map of the installation laid out **Building → Floor → Room → group address**. Floors are pinned to angular sectors (no crossing links), rooms bloom organically, and each GA is coloured by **function** (group-range) and clustered with its peers. GA→room is resolved **by name** ("OG Schlafzimmer …" → Schlafzimmer, floor-disambiguated), falling back to device location with central-hub-device exclusion. Live telegrams make the matching GA **glow with its current value** and emit a particle along its edge; click a GA to jump to its chart. Marked **Alpha** in the nav
+- **Activity heatmap** — the **Statistics** view gains a **weekday × hour** heatmap of bus activity (timezone-aware backend aggregation), surfacing daily/weekly routines at a glance
+- **Mobile-responsive overhaul** — every page reflows on phones: stacked toolbars/filters, tables → cards, a bottom navigation bar, the Monitor's secondary actions collapse into a kebab menu, a filter toggle for the archive, and a **scroll-to-top** button
+- **Account menu** — language, theme (Light/Console) and logout moved into a single header **account dropdown**; the header is decluttered, the active nav tab restyled
+- **Charts & tooltip polish** — chart tooltip now shows series name, **unit** and a locale-formatted timestamp; selected group addresses sort to the top of the picker; the dataZoom slider is no longer clipped
+- **Fix: UTC timestamps** — historized telegrams are now tagged UTC end-to-end, so charts and the archive no longer render an hour offset versus the live view
+
+```bash
+docker pull ingel81/knx-ng-monitor:v0.7.0
+```
+
+### v0.6.0
 
 - **Unified Monitor view** — the separate *Live View* and *History* pages are merged into one **Monitor** view with a **Live / Archive** toggle (default Live). A single shared quick-search applies in both modes; the live buffer keeps recording in the background while you browse the archive. Archive keeps keyset pagination + infinite scroll
 - **Runtime DE / EN language switch** — full English/German UI, switchable **without a reload** (signal-backed translation, ~250 keys); default English, choice persisted in `localStorage`
@@ -495,7 +508,7 @@ docker pull ingel81/knx-ng-monitor:v0.1.0
 
 ## Project status
 
-**Current** — v0.6.0: unified Monitor view (Live/Archive toggle), time-series charts + statistics, building topology and a group-address tree, runtime DE/EN language switch, GA write/read from the UI, KNX Secure runtime decryption (Data Secure) plus optional IP-Secure tunnel, parser extensions (locations, communication objects, group-range names, real manufacturer names, keyring upload after import), and project-lifecycle improvements (deactivate, fast transactional delete, auto-connect toggle).
+**Current** — v0.7.0: GA network graph (Alpha) — force-directed Building→Floor→Room→GA map with name-based room attribution and live activity; weekday×hour activity heatmap; mobile-responsive overhaul (cards, bottom-nav, kebab actions, scroll-to-top); account menu (theme/language/logout); charts & tooltip polish; UTC-timestamp fix. Builds on v0.6.0: unified Monitor (Live/Archive), time-series charts + statistics, building topology, group-address tree, runtime DE/EN switch, GA write/read, KNX Secure runtime decryption + optional IP-Secure tunnel, parser extensions, project-lifecycle improvements.
 **Next** — Topology/room live dashboard with current values; runtime Secure on-hardware acceptance; notifications (mail/webhook/MQTT); device detail view.
 
 See [`docs/ai/PROJECT_PLAN.md`](docs/ai/PROJECT_PLAN.md) for the full implementation history.
