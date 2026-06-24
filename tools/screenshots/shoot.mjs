@@ -317,7 +317,7 @@ async function shootHero(browser) {
   // animated frames — live rows stream in as telegrams arrive
   rmSync(TMP, { recursive: true, force: true });
   mkdirSync(TMP, { recursive: true });
-  const FRAMES = 18;
+  const FRAMES = 44;   // ~20 s of live capture → ~17 s loop at 2.5 fps
   for (let i = 0; i < FRAMES; i++) {
     const buf = await page.screenshot({ type: 'png' });
     // downscale frames to keep encode fast / output small
@@ -354,6 +354,7 @@ async function main() {
 
   const browser = await chromium.launch();
   try {
+    if (ARGV['hero-only']) { await shootHero(browser); return; }
     if (wantProfile('desktop')) await shootProfile(browser, 'desktop', pick(SHOTS));
     // Mobile: only the cleanly-rendering key masks (tablet dropped — app header
     // overflows below the desktop layout at ~834px).
