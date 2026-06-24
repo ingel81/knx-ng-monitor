@@ -19,10 +19,6 @@
           <mat-icon>bar_chart</mat-icon>
           <span>{{ 'nav.stats' | translate }}</span>
         </a>
-        <a routerLink="/graph" routerLinkActive="active" class="nav-link">
-          <mat-icon>hub</mat-icon>
-          <span>{{ 'nav.graph' | translate }}</span>
-        </a>
         <a routerLink="/projects" routerLinkActive="active" class="nav-link">
           <mat-icon svgIcon="knx:folder"></mat-icon>
           <span>{{ 'nav.projects' | translate }}</span>
@@ -34,6 +30,11 @@
         <a routerLink="/group-addresses" routerLinkActive="active" class="nav-link">
           <mat-icon>lan</mat-icon>
           <span>{{ 'nav.groupAddresses' | translate }}</span>
+        </a>
+        <a routerLink="/graph" routerLinkActive="active" class="nav-link">
+          <mat-icon>hub</mat-icon>
+          <span>{{ 'nav.graph' | translate }}</span>
+          <span class="nav-alpha">ALPHA</span>
         </a>
         <a routerLink="/settings" routerLinkActive="active" class="nav-link">
           <mat-icon svgIcon="knx:settings"></mat-icon>
@@ -102,10 +103,6 @@
       <mat-icon>bar_chart</mat-icon>
       <span>{{ 'nav.stats' | translate }}</span>
     </a>
-    <a routerLink="/graph" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.graph' | translate">
-      <mat-icon>hub</mat-icon>
-      <span>{{ 'nav.graph' | translate }}</span>
-    </a>
     <a routerLink="/projects" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.projects' | translate">
       <mat-icon svgIcon="knx:folder"></mat-icon>
       <span>{{ 'nav.projects' | translate }}</span>
@@ -117,6 +114,11 @@
     <a routerLink="/group-addresses" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.groupAddresses' | translate">
       <mat-icon>lan</mat-icon>
       <span>{{ 'nav.groupAddresses' | translate }}</span>
+    </a>
+    <a routerLink="/graph" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.graph' | translate">
+      <mat-icon>hub</mat-icon>
+      <span>{{ 'nav.graph' | translate }}</span>
+      <span class="nav-alpha">α</span>
     </a>
     <a routerLink="/settings" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.settings' | translate">
       <mat-icon svgIcon="knx:settings"></mat-icon>

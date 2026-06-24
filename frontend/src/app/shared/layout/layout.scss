@@ -97,6 +97,18 @@
     // (Design-System; vorher rundeten alle vier Ecken den Underline ab).
     border-radius: var(--r-sm) var(--r-sm) 0 0;
   }
+
+  .nav-alpha {
+    font-size: 8px;
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.06em;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: var(--r-full);
+    background: var(--live);
+    color: var(--header-bg);
+    text-transform: uppercase;
+  }
 }
 
 .user-info {
@@ -178,6 +190,7 @@
     z-index: 1000;
 
     .bottom-link {
+      position: relative;
       flex: 1 1 0;
       min-width: 0;
       display: flex;
@@ -186,6 +199,17 @@
       justify-content: center;
       gap: 3px;
       min-height: 56px;
+
+      .nav-alpha {
+        position: absolute;
+        top: 4px;
+        left: 50%;
+        margin-left: 6px;
+        font-size: 9px;
+        font-weight: var(--fw-bold);
+        color: var(--brand);
+        line-height: 1;
+      }
       padding: 6px 2px;
       text-decoration: none;
       color: var(--ink-3);
