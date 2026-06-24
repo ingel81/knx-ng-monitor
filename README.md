@@ -6,6 +6,119 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 [![Docker](https://img.shields.io/docker/v/ingel81/knx-ng-monitor?label=docker)](https://hub.docker.com/r/ingel81/knx-ng-monitor)
 [![License](https://img.shields.io/github/license/ingel81/knx-ng-monitor)](LICENSE)
 
+<!-- SCREENSHOTS:START -->
+## Screenshots
+
+<div align="center">
+
+<a href="docs/screenshots/hero.webm"><img src="docs/screenshots/hero.gif" alt="KNX-NG-Monitor — live bus monitoring" width="900"></a>
+
+</div>
+
+<sub>Click any thumbnail for the full-resolution image.</sub>
+
+### Desktop
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/login.webp"><img src="docs/screenshots/thumbs/login.webp" alt="Login" width="420"></a><br>
+      <sub><b>Login</b><br>JWT auth, dark/light aware</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/monitor-live.webp"><img src="docs/screenshots/thumbs/monitor-live.webp" alt="Monitor — Live" width="420"></a><br>
+      <sub><b>Monitor — Live</b><br>Real-time KNX telegrams off the bus</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/monitor-detail.webp"><img src="docs/screenshots/thumbs/monitor-detail.webp" alt="Telegram detail" width="420"></a><br>
+      <sub><b>Telegram detail</b><br>Value, bus actions, used-by, chart jump</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/monitor-archive.webp"><img src="docs/screenshots/thumbs/monitor-archive.webp" alt="Monitor — Archive" width="420"></a><br>
+      <sub><b>Monitor — Archive</b><br>Historized traffic, structured filters</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/charts.webp"><img src="docs/screenshots/thumbs/charts.webp" alt="Charts — power" width="420"></a><br>
+      <sub><b>Charts — power</b><br>Live value trends per group address</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/charts-temp.webp"><img src="docs/screenshots/thumbs/charts-temp.webp" alt="Charts — temperature" width="420"></a><br>
+      <sub><b>Charts — temperature</b><br>Sensor curve over time</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/stats.webp"><img src="docs/screenshots/thumbs/stats.webp" alt="Statistics" width="420"></a><br>
+      <sub><b>Statistics</b><br>Totals, msg/s, telegrams over time</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/stats-heatmap.webp"><img src="docs/screenshots/thumbs/stats-heatmap.webp" alt="Activity heatmap" width="420"></a><br>
+      <sub><b>Activity heatmap</b><br>Telegrams by weekday × hour</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/topology.webp"><img src="docs/screenshots/thumbs/topology.webp" alt="Topology" width="420"></a><br>
+      <sub><b>Topology</b><br>Building tree with devices</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/group-addresses.webp"><img src="docs/screenshots/thumbs/group-addresses.webp" alt="Group addresses" width="420"></a><br>
+      <sub><b>Group addresses</b><br>3-level tree, read / write / chart</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/projects.webp"><img src="docs/screenshots/thumbs/projects.webp" alt="Projects" width="420"></a><br>
+      <sub><b>Projects</b><br>ETS import, active project, auto-connect</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/settings.webp"><img src="docs/screenshots/thumbs/settings.webp" alt="Settings" width="420"></a><br>
+      <sub><b>Settings</b><br>KNX interface, recording, theme & density</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/graph.webp"><img src="docs/screenshots/thumbs/graph.webp" alt="GA network — Alpha" width="420"></a><br>
+      <sub><b>GA network — Alpha</b><br>Force-directed building map, live activity</sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/projects-import.webp"><img src="docs/screenshots/thumbs/projects-import.webp" alt="Import wizard" width="420"></a><br>
+      <sub><b>Import wizard</b><br>Two-stage ETS import with password / keyring</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/projects-detail.webp"><img src="docs/screenshots/thumbs/projects-detail.webp" alt="Project detail" width="420"></a><br>
+      <sub><b>Project detail</b><br>Group addresses & devices</sub>
+    </td>
+  </tr>
+</table>
+
+### Mobile
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/monitor-live-mobile.webp"><img src="docs/screenshots/thumbs/monitor-live-mobile.webp" alt="Monitor — Live mobile" height="420"></a><br>
+      <sub><b>Monitor — Live</b></sub>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/charts-mobile.webp"><img src="docs/screenshots/thumbs/charts-mobile.webp" alt="Charts — power mobile" height="420"></a><br>
+      <sub><b>Charts — power</b></sub>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/stats-mobile.webp"><img src="docs/screenshots/thumbs/stats-mobile.webp" alt="Statistics mobile" height="420"></a><br>
+      <sub><b>Statistics</b></sub>
+    </td>
+  </tr>
+</table>
+
+<!-- SCREENSHOTS:END -->
+
 ## Features
 
 - **Real-time KNX monitoring** — live view of bus telegrams via SignalR, **always-on**: auto-connects on startup and reconnects after gateway/network/container interruptions

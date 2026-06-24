@@ -1,0 +1,150 @@
+{
+  "keyNames": [
+    "login",
+    "monitor-live",
+    "charts",
+    "stats",
+    "topology",
+    "group-addresses",
+    "projects",
+    "settings",
+    "graph"
+  ],
+  "shots": [
+    {
+      "name": "login",
+      "caption": {
+        "title": "Login",
+        "desc": "JWT auth, dark/light aware"
+      },
+      "key": true,
+      "optional": false
+    },
+    {
+      "name": "monitor-live",
+      "caption": {
+        "title": "Monitor — Live",
+        "desc": "Real-time KNX telegrams off the bus"
+      },
+      "key": true,
+      "optional": false
+    },
+    {
+      "name": "monitor-detail",
+      "caption": {
+        "title": "Telegram detail",
+        "desc": "Value, bus actions, used-by, chart jump"
+      },
+      "key": false,
+      "optional": false
+    },
+    {
+      "name": "monitor-archive",
+      "caption": {
+        "title": "Monitor — Archive",
+        "desc": "Historized traffic, structured filters"
+      },
+      "key": false,
+      "optional": false
+    },
+    {
+      "name": "charts",
+      "caption": {
+        "title": "Charts — power",
+        "desc": "Live value trends per group address"
+      },
+      "key": true,
+      "optional": false
+    },
+    {
+      "name": "charts-temp",
+      "caption": {
+        "title": "Charts — temperature",
+        "desc": "Sensor curve over time"
+      },
+      "key": false,
+      "optional": false
+    },
+    {
+      "name": "stats",
+      "caption": {
+        "title": "Statistics",
+        "desc": "Totals, msg/s, telegrams over time"
+      },
+      "key": true,
+      "optional": false
+    },
+    {
+      "name": "stats-heatmap",
+      "caption": {
+        "title": "Activity heatmap",
+        "desc": "Telegrams by weekday × hour"
+      },
+      "key": false,
+      "optional": false
+    },
+    {
+      "name": "topology",
+      "caption": {
+        "title": "Topology",
+        "desc": "Building tree with devices"
+      },
+      "key": true,
+      "optional": false
+    },
+    {
+      "name": "group-addresses",
+      "caption": {
+        "title": "Group addresses",
+        "desc": "3-level tree, read / write / chart"
+      },
+      "key": true,
+      "optional": false
+    },
+    {
+      "name": "projects",
+      "caption": {
+        "title": "Projects",
+        "desc": "ETS import, active project, auto-connect"
+      },
+      "key": true,
+      "optional": false
+    },
+    {
+      "name": "settings",
+      "caption": {
+        "title": "Settings",
+        "desc": "KNX interface, recording, theme & density"
+      },
+      "key": true,
+      "optional": false
+    },
+    {
+      "name": "graph",
+      "caption": {
+        "title": "GA network — Alpha",
+        "desc": "Force-directed building map, live activity"
+      },
+      "key": true,
+      "optional": false
+    },
+    {
+      "name": "projects-import",
+      "caption": {
+        "title": "Import wizard",
+        "desc": "Two-stage ETS import with password / keyring"
+      },
+      "key": false,
+      "optional": true
+    },
+    {
+      "name": "projects-detail",
+      "caption": {
+        "title": "Project detail",
+        "desc": "Group addresses & devices"
+      },
+      "key": false,
+      "optional": true
+    }
+  ]
+}

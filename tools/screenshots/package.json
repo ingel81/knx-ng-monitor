@@ -1,0 +1,15 @@
+{
+  "name": "knx-screenshots",
+  "private": true,
+  "type": "module",
+  "description": "Headless Playwright screenshot generator for the knx-ng-monitor README gallery.",
+  "scripts": {
+    "shoot": "node shoot.mjs",
+    "readme": "node gen-readme.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "playwright": "^1.49.0",
+    "sharp": "^0.33.5"
+  }
+}
