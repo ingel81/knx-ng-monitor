@@ -37,6 +37,7 @@
     "@fontsource/roboto": "^5.2.8",
     "@microsoft/signalr": "^9.0.6",
     "echarts": "^6.1.0",
+    "force-graph": "^1.51.4",
     "ngx-echarts": "^20.0.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

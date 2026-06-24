@@ -19,6 +19,10 @@
           <mat-icon>bar_chart</mat-icon>
           <span>{{ 'nav.stats' | translate }}</span>
         </a>
+        <a routerLink="/graph" routerLinkActive="active" class="nav-link">
+          <mat-icon>hub</mat-icon>
+          <span>{{ 'nav.graph' | translate }}</span>
+        </a>
         <a routerLink="/projects" routerLinkActive="active" class="nav-link">
           <mat-icon svgIcon="knx:folder"></mat-icon>
           <span>{{ 'nav.projects' | translate }}</span>
@@ -97,6 +101,10 @@
     <a routerLink="/stats" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.stats' | translate">
       <mat-icon>bar_chart</mat-icon>
       <span>{{ 'nav.stats' | translate }}</span>
+    </a>
+    <a routerLink="/graph" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.graph' | translate">
+      <mat-icon>hub</mat-icon>
+      <span>{{ 'nav.graph' | translate }}</span>
     </a>
     <a routerLink="/projects" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.projects' | translate">
       <mat-icon svgIcon="knx:folder"></mat-icon>

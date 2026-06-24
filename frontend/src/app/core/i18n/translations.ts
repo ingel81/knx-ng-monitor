@@ -338,6 +338,27 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- Navigation (charts / stats) ---------------------------------------
     'nav.charts': 'Charts',
     'nav.stats': 'Statistics',
+    'nav.graph': 'Graph',
+
+    // --- Graph (force-directed GA network) ---------------------------------
+    'graph.title': 'GA Network',
+    'graph.nodes': 'nodes',
+    'graph.edges': 'edges',
+    'graph.viewGroup': 'View',
+    'graph.viewTopology': 'Topology',
+    'graph.viewCausality': 'Behaviour',
+    'graph.minOccur': 'Min. occurrences',
+    'graph.minOccurHint': 'Only show A→B links observed at least this often',
+    'graph.seeding': 'learning from history…',
+    'graph.causeStrong': 'frequent A→B',
+    'graph.causeWeak': 'rare A→B',
+    'graph.causeEmpty': 'No patterns yet — waiting for telegram sequences (live + last 24 h).',
+    'graph.noTopology': 'No locations in the active project.',
+    'graph.fit': 'Fit to view',
+    'graph.loading': 'Building graph…',
+    'graph.emptyNoProject': 'No active project — import and activate a project first.',
+    'graph.mainGroup': 'Main group',
+    'graph.line': 'Line',
 
     // --- Charts -------------------------------------------------------------
     'charts.title': 'Charts',
@@ -361,6 +382,8 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'stats.total': 'Total telegrams',
     'stats.avgRate': 'Average msg/s',
     'stats.overTime': 'Telegrams over time',
+    'stats.rhythm': 'Activity by weekday & hour',
+    'stats.telegrams': 'telegrams',
     'stats.loading': 'Loading statistics…',
     'stats.emptyNoData': 'No telegrams in the selected range.',
     'stats.loadFailed': 'Failed to load statistics',
@@ -730,6 +753,27 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // --- Navigation (Charts / Statistik) -----------------------------------
     'nav.charts': 'Diagramme',
     'nav.stats': 'Statistik',
+    'nav.graph': 'Graph',
+
+    // --- Graph (Force-Graph GA-Netzwerk) -----------------------------------
+    'graph.title': 'GA-Netzwerk',
+    'graph.nodes': 'Knoten',
+    'graph.edges': 'Kanten',
+    'graph.viewGroup': 'Sicht',
+    'graph.viewTopology': 'Topologie',
+    'graph.viewCausality': 'Verhalten',
+    'graph.minOccur': 'Min. Vorkommen',
+    'graph.minOccurHint': 'Nur A→B-Verbindungen zeigen, die mindestens so oft beobachtet wurden',
+    'graph.seeding': 'lerne aus Historie…',
+    'graph.causeStrong': 'häufig A→B',
+    'graph.causeWeak': 'selten A→B',
+    'graph.causeEmpty': 'Noch keine Muster — warte auf Telegramm-Folgen (live + letzte 24 h).',
+    'graph.noTopology': 'Keine Standorte im aktiven Projekt.',
+    'graph.fit': 'Einpassen',
+    'graph.loading': 'Graph wird aufgebaut…',
+    'graph.emptyNoProject': 'Kein aktives Projekt — zuerst ein Projekt importieren und aktivieren.',
+    'graph.mainGroup': 'Hauptgruppe',
+    'graph.line': 'Linie',
 
     // --- Charts -------------------------------------------------------------
     'charts.title': 'Diagramme',
@@ -753,6 +797,8 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'stats.total': 'Telegramme gesamt',
     'stats.avgRate': 'Durchschnitt Nachr./s',
     'stats.overTime': 'Telegramme über Zeit',
+    'stats.rhythm': 'Aktivität nach Wochentag & Stunde',
+    'stats.telegrams': 'Telegramme',
     'stats.loading': 'Statistik wird geladen…',
     'stats.emptyNoData': 'Keine Telegramme im gewählten Zeitraum.',
     'stats.loadFailed': 'Statistik konnte nicht geladen werden',

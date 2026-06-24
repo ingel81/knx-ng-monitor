@@ -43,6 +43,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/topology/topology.component').then(m => m.TopologyComponent)
       },
       {
+        path: 'graph',
+        loadComponent: () => import('./features/graph/graph.component').then(m => m.GraphComponent)
+      },
+      {
         path: 'group-addresses',
         loadComponent: () => import('./features/group-addresses/group-addresses.component').then(m => m.GroupAddressesComponent)
       },

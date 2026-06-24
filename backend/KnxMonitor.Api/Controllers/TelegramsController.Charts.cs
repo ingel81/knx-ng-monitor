@@ -159,6 +159,35 @@ public partial class TelegramsController
         });
     }
 
+    /// <summary>
+    /// Activity heatmap: telegram counts bucketed by (weekday, hour-of-day) over [from,to].
+    /// Binning is done in the caller's local time via <paramref name="tz"/> (minutes the local
+    /// zone is behind UTC, i.e. JS getTimezoneOffset()), so "18:00 Monday" means the user's 18:00.
+    /// </summary>
+    [HttpGet("heatmap")]
+    public async Task<IActionResult> GetHeatmap(
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int tz = 0)
+    {
+        var (rangeFrom, rangeTo) = ResolveRange(from, to);
+        var ct = HttpContext.RequestAborted;
+
+        var grid = new long[7][];
+        for (var d = 0; d < 7; d++) grid[d] = new long[24];
+        long total = 0;
+
+        await foreach (var ts in _repository.StreamTimestampsInRangeAsync(rangeFrom, rangeTo, ct))
+        {
+            // ts holds the UTC wall time (Kind=Unspecified from SQLite); shift into local zone.
+            var local = DateTime.SpecifyKind(ts, DateTimeKind.Utc).AddMinutes(-tz);
+            grid[(int)local.DayOfWeek][local.Hour]++;
+            total++;
+        }
+
+        return Ok(new HeatmapResponse { Total = total, Grid = grid });
+    }
+
     private static (DateTime From, DateTime To) ResolveRange(DateTime? from, DateTime? to)
     {
         var rangeTo = (to ?? DateTime.UtcNow).ToUniversalTime();
@@ -295,4 +324,11 @@ public class StatsBucket
 {
     public string T { get; set; } = string.Empty;
     public long Count { get; set; }
+}
+
+public class HeatmapResponse
+{
+    public long Total { get; set; }
+    /// <summary>Grid[weekday 0=Sun..6=Sat][hour 0..23] = telegram count.</summary>
+    public long[][] Grid { get; set; } = System.Array.Empty<long[]>();
 }

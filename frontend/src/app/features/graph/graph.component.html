@@ -1,0 +1,42 @@
+<div class="graph-container">
+  <div class="toolbar">
+    <div class="tb-left">
+      <h2 class="page-title">{{ 'graph.title' | translate }}</h2>
+      @if (hasActiveProject && nodeCount > 0) {
+        <span class="graph-stats">{{ nodeCount }} {{ 'graph.nodes' | translate }} · {{ linkCount }} {{ 'graph.edges' | translate }}</span>
+      }
+    </div>
+
+    <div class="tb-right">
+      <button class="knx-btn knx-btn--outline" (click)="zoomToFit()" [matTooltip]="'graph.fit' | translate">
+        <mat-icon>fit_screen</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="graph-body">
+    @if (loading) {
+      <div class="empty-state">
+        <mat-icon class="spin">progress_activity</mat-icon>
+        <p>{{ 'graph.loading' | translate }}</p>
+      </div>
+    } @else if (!hasActiveProject) {
+      <div class="empty-state">
+        <mat-icon>hub</mat-icon>
+        <p>{{ 'graph.emptyNoProject' | translate }}</p>
+      </div>
+    }
+
+    <div #host class="graph-host" [class.hidden]="loading || !hasActiveProject"></div>
+
+    @if (legend.length && !loading && hasActiveProject) {
+      <div class="graph-legend">
+        @for (item of legend; track item.label) {
+          <div class="legend-item">
+            <span class="legend-dot" [style.background]="item.color"></span>{{ item.label }}
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

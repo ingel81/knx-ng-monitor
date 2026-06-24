@@ -32,6 +32,11 @@ export interface StatsResponse {
   counts: StatsBucket[];
 }
 
+export interface HeatmapResponse {
+  total: number;
+  grid: number[][];   // grid[weekday 0=Sun..6=Sat][hour 0..23]
+}
+
 /**
  * Client for the charts / statistics endpoints on the telegram route family.
  * Mirrors GET /api/telegrams/series and /api/telegrams/stats.
@@ -60,6 +65,14 @@ export class ChartsService {
     if (from) params = params.set('from', from);
     if (to) params = params.set('to', to);
     return this.http.get<StatsResponse>(`${this.apiUrl}/stats`, { params });
+  }
+
+  /** Activity heatmap (weekday × hour). `tz` = local offset in minutes (getTimezoneOffset()). */
+  getHeatmap(from?: string, to?: string, tz = 0): Observable<HeatmapResponse> {
+    let params = new HttpParams().set('tz', String(tz));
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    return this.http.get<HeatmapResponse>(`${this.apiUrl}/heatmap`, { params });
   }
 }
 
