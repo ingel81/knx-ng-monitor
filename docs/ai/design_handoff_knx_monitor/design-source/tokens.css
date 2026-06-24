@@ -66,6 +66,10 @@
   --val-num:      #16201D;
   --val-text:     #0F766E;
 
+  /* ---- Chart data series ---- */
+  --series:       #4F63D6;
+  --series-soft:  rgba(79, 99, 214, 0.16);
+
   /* ---- Typography ---- */
   --font-ui:   'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;

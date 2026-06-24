@@ -142,7 +142,7 @@ select.knx-input { appearance: none; padding-right: 30px;
   position: sticky; top: 0; z-index: 2; height: 40px; background: var(--paper-sunk);
   color: var(--ink-2); font-weight: var(--fw-semi); font-size: var(--fs-xs);
   letter-spacing: .04em; text-transform: uppercase; border-bottom: 1px solid var(--line-2);
-  white-space: nowrap; cursor: pointer; user-select: none;
+  white-space: nowrap; cursor: pointer; user-select: none; box-shadow: 0 2px 5px -3px rgba(16,32,29,.2);
 }
 .knx-grid thead th .th-inner { display:inline-flex; align-items:center; gap:5px; }
 .knx-grid thead th .sort-ind { color: var(--brand); width:13px; height:13px; }
