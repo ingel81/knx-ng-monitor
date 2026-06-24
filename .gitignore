@@ -125,3 +125,6 @@ backend/KnxMonitor.ProjectParser.Tests/TestData/
 
 # Coverage report scratch directory
 /coverage-tmp/
+
+# Local design-handoff archive (binary, not versioned)
+docs/ai/knx-ng-monitor.zip
