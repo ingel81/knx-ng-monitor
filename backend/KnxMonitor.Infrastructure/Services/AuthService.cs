@@ -45,12 +45,12 @@ public class AuthService : IAuthService
 
         // Generate tokens
         var accessToken = GenerateAccessToken(user);
-        var refreshToken = await GenerateRefreshTokenAsync(user.Id);
+        var (refreshRaw, _) = await GenerateRefreshTokenAsync(user.Id);
 
         return new LoginResponse
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken.Token,
+            RefreshToken = refreshRaw,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
             Username = user.Username
         };
@@ -58,23 +58,36 @@ public class AuthService : IAuthService
 
     public async Task<RefreshTokenResponse?> RefreshTokenAsync(RefreshTokenRequest request)
     {
+        var tokenHash = HashToken(request.RefreshToken);
         var refreshToken = await _context.RefreshTokens
             .Include(rt => rt.User)
-            .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken);
+            .FirstOrDefaultAsync(rt => rt.Token == tokenHash);
 
-        if (refreshToken == null ||
-            refreshToken.IsRevoked ||
-            refreshToken.ExpiresAt < DateTime.UtcNow)
+        if (refreshToken == null)
+        {
+            return null;
+        }
+
+        // Reuse detection: a token that was already rotated (revoked) being presented again
+        // signals theft → revoke the whole family for that user.
+        if (refreshToken.IsRevoked)
+        {
+            await RevokeAllTokensAsync(refreshToken.UserId);
+            return null;
+        }
+
+        if (refreshToken.ExpiresAt < DateTime.UtcNow)
         {
             return null;
         }
 
         // Atomic rotation: revoke old + add new in single SaveChanges so
         // a failure mid-way cannot leave the user with no usable refresh token.
+        var newRaw = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         var newRefreshToken = new RefreshToken
         {
             UserId = refreshToken.UserId,
-            Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            Token = HashToken(newRaw),
             ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
             CreatedAt = DateTime.UtcNow,
             IsRevoked = false
@@ -89,15 +102,16 @@ public class AuthService : IAuthService
         return new RefreshTokenResponse
         {
             AccessToken = accessToken,
-            RefreshToken = newRefreshToken.Token,
+            RefreshToken = newRaw,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes)
         };
     }
 
     public async Task<bool> LogoutAsync(string refreshToken)
     {
+        var tokenHash = HashToken(refreshToken);
         var token = await _context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            .FirstOrDefaultAsync(rt => rt.Token == tokenHash);
 
         if (token == null)
         {
@@ -148,12 +162,15 @@ public class AuthService : IAuthService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private async Task<RefreshToken> GenerateRefreshTokenAsync(int userId)
+    // Returns the RAW token to hand to the client; only its SHA-256 hash is persisted,
+    // so a DB read cannot yield usable refresh tokens.
+    private async Task<(string Raw, DateTime ExpiresAt)> GenerateRefreshTokenAsync(int userId)
     {
+        var raw = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         var refreshToken = new RefreshToken
         {
             UserId = userId,
-            Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            Token = HashToken(raw),
             ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
             CreatedAt = DateTime.UtcNow,
             IsRevoked = false
@@ -162,7 +179,13 @@ public class AuthService : IAuthService
         _context.RefreshTokens.Add(refreshToken);
         await _context.SaveChangesAsync();
 
-        return refreshToken;
+        return (raw, refreshToken.ExpiresAt);
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        return Convert.ToBase64String(bytes);
     }
 
     public async Task<bool> NeedsInitialSetupAsync()
@@ -198,12 +221,12 @@ public class AuthService : IAuthService
 
         // Generate tokens
         var accessToken = GenerateAccessToken(user);
-        var refreshToken = await GenerateRefreshTokenAsync(user.Id);
+        var (refreshRaw, _) = await GenerateRefreshTokenAsync(user.Id);
 
         return new LoginResponse
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken.Token,
+            RefreshToken = refreshRaw,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
             Username = user.Username
         };

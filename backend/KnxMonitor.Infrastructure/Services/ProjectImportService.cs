@@ -263,39 +263,80 @@ public class ProjectImportService
                 }
             };
 
-            var project = new Project
-            {
-                Name = Path.GetFileNameWithoutExtension(fileName),
-                FileName = fileName,
-                ImportDate = DateTime.UtcNow,
-                IsActive = false
-            };
-
-            await projectRepository.AddAsync(project);
+            // Match a re-import to an existing project by the stable ETS project id (the inner
+            // "P-XXXX" folder id, constant across edits), so historical telegrams keep their
+            // group-address association instead of orphaning under a new project row.
+            var innerZip = context.DetectedFeatures?.InnerZipFileName;
+            var etsProjectId = string.IsNullOrEmpty(innerZip) ? null : Path.GetFileNameWithoutExtension(innerZip);
+            var existingProject = !string.IsNullOrEmpty(etsProjectId)
+                ? await projectRepository.GetByEtsProjectIdAsync(etsProjectId)
+                : null;
 
             using var fileStream = new MemoryStream(fileData);
-            var parsed = await parserService.ParseProjectFileAsync(fileStream, project.Id, context);
-            _logger.LogInformation("Job {JobId}: parser produced {Addresses} addresses, {Devices} devices, {Locations} locations, {ComObjects} com objects",
-                jobId, parsed.GroupAddresses.Count, parsed.Devices.Count, parsed.Locations.Count, parsed.CommunicationObjects.Count);
+            Project project;
+            int importedGaCount = 0;
+            int importedDeviceCount = 0;
 
-            _jobManager.UpdateStep(jobId, ImportStepType.Save, "in-progress", 0);
-
-            project.GroupAddresses = parsed.GroupAddresses;
-            project.Devices = parsed.Devices;
-            project.Locations = parsed.Locations;
-            project.CommunicationObjects = parsed.CommunicationObjects;
-            project.GroupRanges = parsed.GroupRanges;
-            project.KeyringKeys = parsed.KeyringKeys;
-
-            // Auto-activate when no other project is active yet (first import).
-            var existingActive = await projectRepository.GetActiveProjectAsync();
-            if (existingActive == null)
+            if (existingProject != null)
             {
-                project.IsActive = true;
-                _logger.LogInformation("Job {JobId}: no active project, auto-activating {ProjectId}", jobId, project.Id);
-            }
+                // RE-IMPORT: update the existing project in place (preserves history).
+                project = existingProject;
+                _logger.LogInformation("Job {JobId}: re-import detected (EtsProjectId {EtsId}) -> updating existing project {ProjectId}",
+                    jobId, etsProjectId, project.Id);
 
-            await projectRepository.UpdateAsync(project);
+                var parsed = await parserService.ParseProjectFileAsync(fileStream, project.Id, context);
+                _logger.LogInformation("Job {JobId}: parser produced {Addresses} addresses, {Devices} devices, {Locations} locations, {ComObjects} com objects",
+                    jobId, parsed.GroupAddresses.Count, parsed.Devices.Count, parsed.Locations.Count, parsed.CommunicationObjects.Count);
+
+                _jobManager.UpdateStep(jobId, ImportStepType.Save, "in-progress", 0);
+
+                importedGaCount = parsed.GroupAddresses.Count;
+                importedDeviceCount = parsed.Devices.Count;
+                await projectRepository.MergeReimportAsync(project.Id, fileName,
+                    parsed.GroupAddresses, parsed.Devices, parsed.Locations,
+                    parsed.CommunicationObjects, parsed.GroupRanges);
+                await projectRepository.ReplaceKeyringKeysAsync(project.Id, parsed.KeyringKeys);
+                // IsActive is left as-is for a re-import.
+            }
+            else
+            {
+                // FRESH IMPORT: create a new project row.
+                project = new Project
+                {
+                    Name = Path.GetFileNameWithoutExtension(fileName),
+                    FileName = fileName,
+                    ImportDate = DateTime.UtcNow,
+                    IsActive = false,
+                    EtsProjectId = etsProjectId
+                };
+
+                await projectRepository.AddAsync(project);
+
+                var parsed = await parserService.ParseProjectFileAsync(fileStream, project.Id, context);
+                _logger.LogInformation("Job {JobId}: parser produced {Addresses} addresses, {Devices} devices, {Locations} locations, {ComObjects} com objects",
+                    jobId, parsed.GroupAddresses.Count, parsed.Devices.Count, parsed.Locations.Count, parsed.CommunicationObjects.Count);
+
+                _jobManager.UpdateStep(jobId, ImportStepType.Save, "in-progress", 0);
+
+                importedGaCount = parsed.GroupAddresses.Count;
+                importedDeviceCount = parsed.Devices.Count;
+                project.GroupAddresses = parsed.GroupAddresses;
+                project.Devices = parsed.Devices;
+                project.Locations = parsed.Locations;
+                project.CommunicationObjects = parsed.CommunicationObjects;
+                project.GroupRanges = parsed.GroupRanges;
+                project.KeyringKeys = parsed.KeyringKeys;
+
+                // Auto-activate when no other project is active yet (first import).
+                var existingActive = await projectRepository.GetActiveProjectAsync();
+                if (existingActive == null)
+                {
+                    project.IsActive = true;
+                    _logger.LogInformation("Job {JobId}: no active project, auto-activating {ProjectId}", jobId, project.Id);
+                }
+
+                await projectRepository.UpdateAsync(project);
+            }
 
             // If a keyring was supplied during import, persist the RAW .knxkeys bytes + password so
             // KNX Data Secure can Load() them at connect time. The decrypted per-GA keys stored above
@@ -338,8 +379,8 @@ public class ProjectImportService
                 jobId,
                 project.Id,
                 project.Name,
-                parsed.GroupAddresses.Count,
-                parsed.Devices.Count,
+                importedGaCount,
+                importedDeviceCount,
                 etsVersion,
                 hasKnxSecure
             );

@@ -4,6 +4,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Default version for local/dev builds; CI overrides via -p:Version=<tag> at publish. -->
+    <Version>0.7.0</Version>
     <!--
       Single-file publish must self-extract ALL content (managed assemblies) to disk,
       not just native libs. The Knx.Falcon ApplicationData master-data loader derives its
@@ -25,6 +27,7 @@
     </PackageReference>
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>

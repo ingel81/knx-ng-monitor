@@ -51,6 +51,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/group-addresses/group-addresses.component').then(m => m.GroupAddressesComponent)
       },
       {
+        path: 'logs',
+        loadComponent: () => import('./features/logs/logs.component').then(m => m.LogsComponent)
+      },
+      {
         path: 'projects',
         loadComponent: () => import('./features/projects/projects.component').then(m => m.ProjectsComponent)
       },

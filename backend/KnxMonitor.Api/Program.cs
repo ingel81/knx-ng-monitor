@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -10,8 +12,11 @@ using KnxMonitor.Core.Services;
 using KnxMonitor.Infrastructure.Repositories;
 using KnxMonitor.Infrastructure.Services;
 using KnxMonitor.Infrastructure.KnxConnection;
+using KnxMonitor.Infrastructure;
+using KnxMonitor.Infrastructure.Logging;
 using KnxMonitor.Api.Hubs;
 using KnxMonitor.Api.Services;
+using KnxMonitor.Api.Logging;
 using Serilog;
 
 // Pin the process culture to English so Falcon's DPT enum labels (On/Off, Open/Close,
@@ -23,14 +28,32 @@ CultureInfo.DefaultThreadCurrentUICulture = enCulture;
 CultureInfo.CurrentCulture = enCulture;
 CultureInfo.CurrentUICulture = enCulture;
 
-// Configure Serilog
+// Resolve the data directory relative to the executable (not the cwd), then ensure it exists.
+AppPaths.EnsureDirectories();
+
+// Log level controllable at runtime via KNX_LOG_LEVEL (Verbose/Debug/Information/Warning/Error/Fatal).
+var logLevelSwitch = new Serilog.Core.LoggingLevelSwitch(ParseLogLevel(Environment.GetEnvironmentVariable("KNX_LOG_LEVEL")));
+
+// In-memory ring buffer feeding the live in-app log viewer (also registered in DI below).
+var logBuffer = new LogBuffer();
+
+// Configure Serilog: console + rolling file (./data/logs) + in-app buffer sink.
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
+    .MinimumLevel.ControlledBy(logLevelSwitch)
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(
+        Path.Combine(AppPaths.LogsDir, "knxmonitor-.log"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 14,
+        fileSizeLimitBytes: 50_000_000,
+        rollOnFileSizeLimit: true,
+        shared: true,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+    .WriteTo.Sink(new BufferSink(logBuffer))
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,12 +61,39 @@ var builder = WebApplication.CreateBuilder(args);
 // Use Serilog for logging
 builder.Host.UseSerilog();
 
-// Generate or load JWT secret
-var jwtSecret = KnxMonitor.Infrastructure.Services.JwtSecretManager.GetOrGenerateSecret();
+// Generate or load JWT secret (stored next to the executable under ./data).
+var jwtSecret = KnxMonitor.Infrastructure.Services.JwtSecretManager.GetOrGenerateSecret(AppPaths.DataDir);
 Log.Information("JWT secret loaded/generated successfully");
 
 // Override JWT Secret in configuration
 builder.Configuration["Jwt:Secret"] = jwtSecret;
+
+// Anchor the SQLite DB to the executable-relative data dir (not the cwd) so the portable
+// binary always opens the same database regardless of launch directory.
+builder.Configuration["ConnectionStrings:DefaultConnection"] = $"Data Source={AppPaths.DbPath}";
+
+// In-app log viewer buffer (fed by the Serilog BufferSink configured above).
+builder.Services.AddSingleton(logBuffer);
+
+// Bound request body size (project uploads) to avoid memory exhaustion.
+const long MaxUploadBytes = 200L * 1024 * 1024; // 200 MB
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = MaxUploadBytes;
+});
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = MaxUploadBytes);
+
+// Rate limiting — throttle the anonymous auth endpoints against brute force.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("auth", o =>
+    {
+        o.PermitLimit = 10;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueLimit = 0;
+    });
+});
 
 // Add services to the container.
 // Database
@@ -174,6 +224,9 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramPersistenc
 
 builder.Services.AddHostedService<TelegramBroadcastService>();
 
+// Pushes log entries from the buffer to the LogHub for the live in-app viewer.
+builder.Services.AddHostedService<LogBroadcastWorker>();
+
 // Cold-tier archive: tees off the same telegram event, writes NDJSON+gzip day-files (opt-in).
 builder.Services.AddSingleton<TelegramArchiveService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramArchiveService>());
@@ -181,6 +234,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramArchiveSer
 // Import Services
 builder.Services.AddSingleton<IImportJobManager, ImportJobManager>();
 builder.Services.AddHostedService<ImportJobCleanupService>();
+builder.Services.AddHostedService<RefreshTokenCleanupService>();
 builder.Services.AddScoped<IProjectFeatureDetector, ProjectFeatureDetector>();
 builder.Services.AddScoped<ProjectImportService>();
 
@@ -224,7 +278,9 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred during initialization.");
+        logger.LogCritical(ex, "Fatal error during initialization — aborting startup.");
+        // Fail fast: do NOT start serving with a broken/unmigrated database.
+        throw;
     }
 }
 
@@ -253,13 +309,21 @@ if (app.Environment.IsDevelopment())
     app.UseCors("AllowFrontend");
 }
 
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/healthz", () => Results.Ok("ok")).AllowAnonymous();
+// Health check that actually probes the database (so a broken DB reports unhealthy).
+app.MapGet("/healthz", async (ApplicationDbContext db) =>
+    await db.Database.CanConnectAsync()
+        ? Results.Ok("ok")
+        : Results.StatusCode(StatusCodes.Status503ServiceUnavailable))
+    .AllowAnonymous();
 
 app.MapControllers();
 app.MapHub<TelegramHub>("/hubs/telegram");
+app.MapHub<LogHub>("/hubs/logs");
 
 // Fallback to index.html for Angular routing (SPA) in Production
 if (app.Environment.IsProduction())
@@ -327,6 +391,11 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+static Serilog.Events.LogEventLevel ParseLogLevel(string? value) =>
+    Enum.TryParse<Serilog.Events.LogEventLevel>(value, ignoreCase: true, out var level)
+        ? level
+        : Serilog.Events.LogEventLevel.Information;
 
 static bool ShouldOpenBrowser(IWebHostEnvironment environment)
 {

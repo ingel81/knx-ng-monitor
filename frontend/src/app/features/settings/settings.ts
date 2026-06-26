@@ -13,6 +13,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/confirm-
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LoggerService } from '../../core/logging/logger.service';
+import { DiagnosticsService } from '../../core/services/diagnostics.service';
 
 interface KnxConfiguration {
   id: number;
@@ -41,6 +42,9 @@ export class Settings implements OnInit {
   private themeService = inject(ThemeService);
   private lang = inject(LanguageService);
   private logger = inject(LoggerService);
+  private diagnostics = inject(DiagnosticsService);
+
+  isDownloadingDiagnostics = false;
 
   // Erscheinungsbild (Theme + Dichte), aus ThemeService gespiegelt
   readonly theme = this.themeService.theme;
@@ -260,6 +264,35 @@ export class Settings implements OnInit {
       physicalAddress: '1.0.58'
     };
     this.saveSettings();
+  }
+
+  downloadDiagnostics(): void {
+    if (this.isDownloadingDiagnostics) return;
+    this.isDownloadingDiagnostics = true;
+    this.diagnostics.downloadDiagnostics().subscribe({
+      next: blob => {
+        const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `knx-diagnostics-${ts}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        this.isDownloadingDiagnostics = false;
+      },
+      error: err => {
+        this.logger.error('Diagnostics download failed:', err);
+        this.snackBar.open(this.lang.translate('logs.downloadFailed'), this.lang.translate('common.close'), {
+          duration: 4000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['error-snackbar']
+        });
+        this.isDownloadingDiagnostics = false;
+      }
+    });
   }
 
   isFormValid(): boolean {

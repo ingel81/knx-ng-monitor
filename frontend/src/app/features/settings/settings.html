@@ -133,6 +133,25 @@
         </div>
       </div>
 
+      <!-- Diagnostics -->
+      <div class="set-card">
+        <div class="set-head">
+          <span class="set-ic"><mat-icon>bug_report</mat-icon></span>
+          <div><h3>{{ 'settings.diagnostics' | translate }}</h3><p>{{ 'settings.diagnosticsSub' | translate }}</p></div>
+        </div>
+        <div class="set-body">
+          <div class="set-row">
+            <div>
+              <div class="set-row-label">{{ 'settings.downloadDiagnostics' | translate }}</div>
+              <div class="set-row-sub">{{ 'settings.downloadDiagnosticsHint' | translate }}</div>
+            </div>
+            <button class="knx-btn knx-btn--outline" (click)="downloadDiagnostics()" [disabled]="isDownloadingDiagnostics">
+              <mat-icon>download</mat-icon>{{ (isDownloadingDiagnostics ? 'logs.downloading' : 'settings.downloadDiagnostics') | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>

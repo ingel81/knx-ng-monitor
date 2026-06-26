@@ -34,7 +34,7 @@ knx-ng-monitor/
 │   ├── KnxMonitor.Core/                  # Domain layer (Entities, Interfaces, DTOs, Enums)
 │   ├── KnxMonitor.Infrastructure/        # EF Core, repositories, KNX bus, project import, adapter to ProjectParser
 │   ├── KnxMonitor.ProjectParser/         # Standalone parser library (ETS 4/5/6 loaders, FeatureDetector, KeyringReader, ZipHandler)
-│   ├── KnxMonitor.ProjectParser.Tests/   # xUnit tests (187, ~99 % line cov), uses Xunit.SkippableFact for proprietary fixtures
+│   ├── KnxMonitor.ProjectParser.Tests/   # xUnit tests (206, ~99 % line cov), uses Xunit.SkippableFact for proprietary fixtures
 │   └── KnxMonitor.ParserTool/            # CLI: `parse` / `detect` with --password / --keyring / --keyring-password
 ├── frontend/
 │   └── src/app/

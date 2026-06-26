@@ -51,4 +51,23 @@ public interface IProjectRepository : IRepository<Project>
 
     /// <summary>Returns the stored keyring blob for a project, or null if none exists.</summary>
     Task<ProjectKeyringBlob?> GetKeyringBlobAsync(int projectId);
+
+    /// <summary>Finds an existing project by its stable ETS project id (P-XXXX), or null.</summary>
+    Task<Project?> GetByEtsProjectIdAsync(string etsProjectId);
+
+    /// <summary>
+    /// Re-import into an EXISTING project, preserving telegram history. Group addresses are
+    /// merged by Address (matched rows are updated in place so their Id — and thus every
+    /// telegram pointing at it — survives; new addresses are inserted, vanished ones removed).
+    /// Devices/Locations/CommObjects/GroupRanges are replaced wholesale (no telegram dependency).
+    /// Updates project metadata (Name, FileName, ImportDate). Runs in one transaction.
+    /// </summary>
+    Task MergeReimportAsync(
+        int projectId,
+        string fileName,
+        IEnumerable<GroupAddress> groupAddresses,
+        IEnumerable<Device> devices,
+        IEnumerable<Location> locations,
+        IEnumerable<CommunicationObject> commObjects,
+        IEnumerable<GroupRange> groupRanges);
 }

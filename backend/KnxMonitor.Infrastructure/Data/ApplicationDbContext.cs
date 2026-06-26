@@ -61,6 +61,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.FileName).IsRequired().HasMaxLength(500);
             entity.Property(e => e.ImportDate).IsRequired();
+            entity.Property(e => e.EtsProjectId).HasMaxLength(100);
+            entity.HasIndex(e => e.EtsProjectId);
         });
 
         // GroupAddress entity configuration

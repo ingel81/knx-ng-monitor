@@ -15,6 +15,9 @@ RUN npm run build -- --configuration production
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS backend-build
 
 ARG TARGETARCH
+# Release version forwarded from CI (build-arg). Empty by default, in which case
+# dotnet falls back to the csproj <Version>.
+ARG VERSION=
 
 WORKDIR /app
 
@@ -32,6 +35,9 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
         RID="linux-x64"; \
     fi && \
     echo "Building for RID: $RID" && \
+    # Only override the version when VERSION is non-empty; otherwise let the
+    # csproj <Version> apply (avoids publishing an empty/blank version).
+    if [ -n "$VERSION" ]; then VERSION_ARG="-p:Version=$VERSION"; else VERSION_ARG=""; fi && \
     dotnet publish KnxMonitor.Api/KnxMonitor.Api.csproj \
         -c Release \
         -r $RID \
@@ -39,6 +45,7 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
         -p:PublishSingleFile=true \
         -p:IncludeNativeLibrariesForSelfExtract=true \
         -p:EnableCompressionInSingleFile=true \
+        $VERSION_ARG \
         -o /app/publish
 
 # Stage 3: Debian Slim Runtime (glibc compatible)

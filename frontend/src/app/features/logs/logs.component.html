@@ -1,0 +1,78 @@
+<div class="logs-container">
+  <div class="toolbar">
+    <div class="tb-left">
+      <h2 class="page-title">{{ 'logs.title' | translate }}</h2>
+    </div>
+
+    <div class="tb-right">
+      <div class="knx-seg" role="group" [attr.aria-label]="'logs.level' | translate">
+        @for (l of levels; track l) {
+          <button type="button" [class.is-active]="level === l" (click)="setLevel(l)">
+            {{ 'logs.level.' + l | translate }}
+          </button>
+        }
+      </div>
+
+      <span class="tb-divider"></span>
+
+      <div class="field-prefix search-field">
+        <mat-icon class="pfx">search</mat-icon>
+        <input class="knx-input" type="text" [(ngModel)]="search" (ngModelChange)="onSearchInput()"
+               [placeholder]="'logs.searchPlaceholder' | translate"
+               [attr.aria-label]="'logs.search' | translate" />
+      </div>
+
+      <button class="knx-btn knx-btn--outline" (click)="togglePause()"
+              [matTooltip]="(paused ? 'logs.resume' : 'logs.pause') | translate">
+        <mat-icon>{{ paused ? 'play_arrow' : 'pause' }}</mat-icon>
+        <span>{{ (paused ? 'logs.resume' : 'logs.pause') | translate }}</span>
+        @if (paused && pendingCount) {
+          <span class="pending-badge">{{ pendingCount }}</span>
+        }
+      </button>
+
+      <button class="knx-btn knx-btn--ghost" (click)="clear()" [matTooltip]="'logs.clear' | translate">
+        <mat-icon>delete_sweep</mat-icon>
+      </button>
+
+      <button class="knx-btn knx-btn--primary" (click)="download()" [disabled]="downloading"
+              [matTooltip]="'logs.download' | translate">
+        <mat-icon>download</mat-icon>
+        <span>{{ (downloading ? 'logs.downloading' : 'logs.download') | translate }}</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="logs-body">
+    @if (loading) {
+      <div class="empty-state">
+        <mat-icon class="spin">progress_activity</mat-icon>
+        <p>{{ 'logs.loading' | translate }}</p>
+      </div>
+    } @else if (error) {
+      <div class="empty-state">
+        <mat-icon>error_outline</mat-icon>
+        <p>{{ 'logs.loadFailed' | translate }}</p>
+      </div>
+    } @else if (!filtered.length) {
+      <div class="empty-state">
+        <mat-icon>subject</mat-icon>
+        <p>{{ 'logs.empty' | translate }}</p>
+      </div>
+    } @else {
+      <cdk-virtual-scroll-viewport itemSize="44" class="log-viewport">
+        <div *cdkVirtualFor="let e of filtered; trackBy: trackEntry" class="log-row" [ngClass]="levelClass(e.level)">
+          <span class="col-time">{{ e.timestamp | date:'yyyy-MM-dd HH:mm:ss.SSS' }}</span>
+          <span class="col-level"><span class="level-pill">{{ e.level }}</span></span>
+          <span class="col-source" [matTooltip]="e.source || ''">{{ e.source || '—' }}</span>
+          <span class="col-msg">
+            {{ e.message }}
+            @if (e.exception) {
+              <span class="exc">{{ e.exception }}</span>
+            }
+          </span>
+        </div>
+      </cdk-virtual-scroll-viewport>
+    }
+  </div>
+</div>

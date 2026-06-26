@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using KnxMonitor.Core.DTOs;
 using KnxMonitor.Core.Interfaces;
 
@@ -20,6 +21,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
@@ -41,6 +43,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
@@ -77,6 +80,22 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("User logged out successfully");
         return Ok(new { message = "Logged out successfully" });
+    }
+
+    [HttpPost("logout-all")]
+    [Authorize]
+    public async Task<IActionResult> LogoutAll()
+    {
+        var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                  ?? User.FindFirst("sub")?.Value;
+        if (!int.TryParse(sub, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        await _authService.RevokeAllTokensAsync(userId);
+        _logger.LogInformation("All sessions revoked for user {UserId}", userId);
+        return Ok(new { message = "All sessions revoked" });
     }
 
     [HttpGet("needs-setup")]

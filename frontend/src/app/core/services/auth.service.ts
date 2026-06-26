@@ -43,6 +43,25 @@ export class AuthService {
       );
   }
 
+  /** Revoke every active session for the current user (all devices). */
+  logoutAll(): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/auth/logout-all`, {})
+      .pipe(
+        tap(() => this.clearSession())
+      );
+  }
+
+  /**
+   * Clears stored tokens and flips the auth state to unauthenticated, without
+   * any server round-trip. Used by the interceptor when a refresh fails so no
+   * stale tokens linger before the redirect to /login.
+   */
+  clearSession(): void {
+    this.clearTokens();
+    this.currentUserSubject.next(null);
+    this.isAuthenticatedSubject.next(false);
+  }
+
   refreshToken(): Observable<RefreshTokenResponse> {
     if (this.refreshInFlight$) {
       return this.refreshInFlight$;

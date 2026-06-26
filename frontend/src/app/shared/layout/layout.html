@@ -36,6 +36,10 @@
           <span>{{ 'nav.graph' | translate }}</span>
           <span class="nav-alpha">ALPHA</span>
         </a>
+        <a routerLink="/logs" routerLinkActive="active" class="nav-link">
+          <mat-icon>subject</mat-icon>
+          <span>{{ 'nav.logs' | translate }}</span>
+        </a>
         <a routerLink="/settings" routerLinkActive="active" class="nav-link">
           <mat-icon svgIcon="knx:settings"></mat-icon>
           <span>{{ 'nav.settings' | translate }}</span>
@@ -78,6 +82,11 @@
               <mat-icon svgIcon="knx:logout"></mat-icon>
               <span>{{ 'nav.logout' | translate }}</span>
             </button>
+
+            <button mat-menu-item (click)="logoutEverywhere()">
+              <mat-icon>devices</mat-icon>
+              <span>{{ 'nav.logoutAll' | translate }}</span>
+            </button>
           </mat-menu>
         }
       </div>
@@ -119,6 +128,10 @@
       <mat-icon>hub</mat-icon>
       <span>{{ 'nav.graph' | translate }}</span>
       <span class="nav-alpha">α</span>
+    </a>
+    <a routerLink="/logs" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.logs' | translate">
+      <mat-icon>subject</mat-icon>
+      <span>{{ 'nav.logs' | translate }}</span>
     </a>
     <a routerLink="/settings" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.settings' | translate">
       <mat-icon svgIcon="knx:settings"></mat-icon>

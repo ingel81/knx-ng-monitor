@@ -52,4 +52,24 @@ export class Layout {
       }
     });
   }
+
+  /** Revoke every active session (all devices) and return to the login screen. */
+  async logoutEverywhere(): Promise<void> {
+    try {
+      await this.signalr.stopConnection();
+    } catch {
+      // ignore — proceed anyway
+    }
+
+    this.authService.logoutAll().subscribe({
+      next: () => {
+        this.toast.info(this.language.translate('auth.loggedOut'));
+        this.router.navigate(['/login']);
+      },
+      error: () => {
+        this.toast.warning(this.language.translate('auth.logoutFailed'));
+        this.router.navigate(['/login']);
+      }
+    });
+  }
 }

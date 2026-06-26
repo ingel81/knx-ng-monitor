@@ -163,4 +163,90 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(b => b.ProjectId == projectId);
     }
+
+    public async Task<Project?> GetByEtsProjectIdAsync(string etsProjectId)
+    {
+        return await _dbSet
+            .Include(p => p.GroupAddresses)
+            .FirstOrDefaultAsync(p => p.EtsProjectId == etsProjectId);
+    }
+
+    public async Task MergeReimportAsync(
+        int projectId,
+        string fileName,
+        IEnumerable<GroupAddress> groupAddresses,
+        IEnumerable<Device> devices,
+        IEnumerable<Location> locations,
+        IEnumerable<CommunicationObject> commObjects,
+        IEnumerable<GroupRange> groupRanges)
+    {
+        var newGas = groupAddresses.ToList();
+
+        await using var tx = await _context.Database.BeginTransactionAsync();
+
+        var project = await _dbSet
+            .Include(p => p.GroupAddresses)
+            .FirstAsync(p => p.Id == projectId);
+
+        // Metadata
+        project.Name = Path.GetFileNameWithoutExtension(fileName);
+        project.FileName = fileName;
+        project.ImportDate = DateTime.UtcNow;
+
+        // --- Group addresses: merge by Address (preserve Id of matched rows) ---
+        var existingByAddr = project.GroupAddresses
+            .GroupBy(g => g.Address)
+            .ToDictionary(g => g.Key, g => g.First());
+        var newAddrs = new HashSet<string>(newGas.Select(g => g.Address));
+
+        foreach (var ng in newGas)
+        {
+            if (existingByAddr.TryGetValue(ng.Address, out var existing))
+            {
+                // Update in place — keeps existing.Id so telegrams stay linked.
+                existing.Name = ng.Name;
+                existing.Description = ng.Description;
+                existing.DatapointType = ng.DatapointType;
+            }
+            else
+            {
+                ng.Id = 0;
+                ng.ProjectId = projectId;
+                _context.GroupAddresses.Add(ng);
+            }
+        }
+
+        // Group addresses that vanished from the project — remove (their telegrams keep the row
+        // until FK SetNull on save; raw address stays queryable).
+        var removed = project.GroupAddresses.Where(g => !newAddrs.Contains(g.Address)).ToList();
+        if (removed.Count > 0)
+        {
+            _context.GroupAddresses.RemoveRange(removed);
+        }
+
+        // --- Replace the rest wholesale (no telegram dependency) ---
+        await _context.Devices.Where(d => d.ProjectId == projectId).ExecuteDeleteAsync();
+        await _context.Locations.Where(l => l.ProjectId == projectId).ExecuteDeleteAsync();
+        await _context.CommunicationObjects.Where(c => c.ProjectId == projectId).ExecuteDeleteAsync();
+        await _context.GroupRanges.Where(r => r.ProjectId == projectId).ExecuteDeleteAsync();
+
+        var deviceList = devices.ToList();
+        foreach (var d in deviceList) { d.Id = 0; d.ProjectId = projectId; }
+        await _context.Devices.AddRangeAsync(deviceList);
+
+        var locationList = locations.ToList();
+        foreach (var l in locationList) { l.Id = 0; l.ProjectId = projectId; }
+        await _context.Locations.AddRangeAsync(locationList);
+
+        var comList = commObjects.ToList();
+        foreach (var c in comList) { c.Id = 0; c.ProjectId = projectId; }
+        await _context.CommunicationObjects.AddRangeAsync(comList);
+
+        var rangeList = groupRanges.ToList();
+        foreach (var r in rangeList) { r.Id = 0; r.ProjectId = projectId; }
+        await _context.GroupRanges.AddRangeAsync(rangeList);
+
+        await _context.SaveChangesAsync();
+        await tx.CommitAsync();
+    }
 }

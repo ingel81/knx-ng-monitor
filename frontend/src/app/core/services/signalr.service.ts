@@ -31,6 +31,12 @@ export class SignalrService {
   constructor(private authService: AuthService, private logger: LoggerService) {}
 
   public async startConnection(): Promise<void> {
+    // On a retry, stop the previous connection first so we never leak a stale
+    // HubConnection by building a new one on top of it.
+    if (this.hubConnection) {
+      try { await this.hubConnection.stop(); } catch { /* ignore */ }
+    }
+
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(`${environment.hubUrl}/telegram`, {
         accessTokenFactory: () => this.authService.getAccessToken() ?? ''

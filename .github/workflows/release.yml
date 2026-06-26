@@ -78,6 +78,11 @@ jobs:
       - name: Publish self-contained binary
         shell: bash
         run: |
+          # Derive the assembly version from the git tag: refs/tags/v0.7.0 -> 0.7.0.
+          # -p:Version overrides the csproj <Version> so the published binary
+          # reports the real release version instead of the default 1.0.0.0.
+          VERSION="${GITHUB_REF#refs/tags/}"
+          CLEAN="${VERSION#v}"
           dotnet publish KnxMonitor.Api/KnxMonitor.Api.csproj \
             -c Release \
             -r ${{ matrix.rid }} \
@@ -85,6 +90,7 @@ jobs:
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -p:EnableCompressionInSingleFile=true \
+            -p:Version=$CLEAN \
             -o ./publish/${{ matrix.rid }}
         working-directory: backend
 
@@ -114,6 +120,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      # QEMU provides the cross-arch emulation that lets the amd64 runner
+      # build the linux/arm64 image layers (needed for Raspberry Pi pulls).
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -127,12 +138,23 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
+      # CLEAN strips the leading "v" so the in-image dotnet publish embeds a
+      # plain SemVer (0.7.0) rather than "v0.7.0".
+      - name: Derive clean version
+        id: clean_version
+        run: echo "CLEAN=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
           context: .
-          platforms: linux/amd64
+          # Multi-arch manifest: buildx + QEMU produce both arch images and push
+          # them under one tag so amd64 and arm64 hosts pull the right variant.
+          platforms: linux/amd64,linux/arm64
           push: true
+          # Forward the version into the Dockerfile ARG VERSION -> dotnet publish.
+          build-args: |
+            VERSION=${{ steps.clean_version.outputs.CLEAN }}
           tags: |
             ingel81/knx-ng-monitor:latest
             ingel81/knx-ng-monitor:${{ steps.version.outputs.VERSION }}
@@ -168,6 +190,17 @@ jobs:
       - name: Extract version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      # Each artifact downloads into its own subdir (artifacts/<name>/<name>),
+      # so flatten the archives and write one SHA256SUMS with bare filenames
+      # (sha256sum -c friendly) covering every release archive.
+      - name: Generate SHA256SUMS
+        run: |
+          mkdir -p staging
+          find artifacts -type f \( -name '*.tar.gz' -o -name '*.zip' \) -exec cp -f {} staging/ \;
+          cd staging
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Generate release notes
         id: release_notes
@@ -244,6 +277,7 @@ jobs:
             artifacts/knx-ng-monitor-win-arm64.zip/*
             artifacts/knx-ng-monitor-osx-x64.tar.gz/*
             artifacts/knx-ng-monitor-osx-arm64.tar.gz/*
+            staging/SHA256SUMS
           draft: false
           prerelease: false
         env:

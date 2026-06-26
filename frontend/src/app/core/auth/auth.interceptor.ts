@@ -40,7 +40,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
             return next(retryReq);
           }),
           catchError(refreshError => {
-            // Refresh failed, redirect to login
+            // Refresh failed: clear stale tokens and flip auth state to
+            // unauthenticated BEFORE redirecting, so nothing lingers.
+            authService.clearSession();
             router.navigate(['/login']);
             return throwError(() => refreshError);
           })
