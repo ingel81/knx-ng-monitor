@@ -1,0 +1,9 @@
+# Generierte/abgeleitete Assets + schwere Medien — reproduzierbar via
+# generate_assets.py (cards), build.py (segments/final), shot.mjs (screenshots).
+cards/
+segments/
+qa/*.png
+*.mp4
+*.mp3
+*_new.png
+*.orig
