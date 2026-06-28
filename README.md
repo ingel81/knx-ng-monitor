@@ -6,10 +6,10 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 [![Docker](https://img.shields.io/docker/v/ingel81/knx-ng-monitor?label=docker)](https://hub.docker.com/r/ingel81/knx-ng-monitor)
 [![License](https://img.shields.io/github/license/ingel81/knx-ng-monitor)](./LICENSE)
 
-> **Beta** — this is an actively developed beta. It is stable enough for daily
+> **Beta** - this is an actively developed beta. It is stable enough for daily
 > monitoring, but expect rough edges. If you run KNX, please give it a spin and
 > [open an issue](https://github.com/ingel81/knx-ng-monitor/issues) with bugs,
-> ideas or wishes — feedback from the KNX / smart-home community is exactly what
+> ideas or wishes - feedback from the KNX / smart-home community is exactly what
 > shapes the next releases. See [Beta & feedback](#beta--feedback) below.
 
 <!-- SCREENSHOTS:START -->
@@ -17,7 +17,7 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 
 <div align="center">
 
-<a href="docs/screenshots/hero.webm"><img src="docs/screenshots/hero.gif" alt="KNX-NG-Monitor — live bus monitoring" width="900"></a>
+<a href="docs/screenshots/hero.webm"><img src="docs/screenshots/hero.gif" alt="KNX-NG-Monitor - live bus monitoring" width="900"></a>
 
 </div>
 
@@ -32,8 +32,8 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
       <sub><b>Login</b><br>JWT auth, dark/light aware</sub>
     </td>
     <td align="center" width="50%">
-      <a href="docs/screenshots/monitor-live.webp"><img src="docs/screenshots/thumbs/monitor-live.webp" alt="Monitor — Live" width="420"></a><br>
-      <sub><b>Monitor — Live</b><br>Real-time KNX telegrams off the bus</sub>
+      <a href="docs/screenshots/monitor-live.webp"><img src="docs/screenshots/thumbs/monitor-live.webp" alt="Monitor - Live" width="420"></a><br>
+      <sub><b>Monitor - Live</b><br>Real-time KNX telegrams off the bus</sub>
     </td>
   </tr>
   <tr>
@@ -42,18 +42,18 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
       <sub><b>Telegram detail</b><br>Value, bus actions, used-by, chart jump</sub>
     </td>
     <td align="center" width="50%">
-      <a href="docs/screenshots/monitor-archive.webp"><img src="docs/screenshots/thumbs/monitor-archive.webp" alt="Monitor — Archive" width="420"></a><br>
-      <sub><b>Monitor — Archive</b><br>Historized traffic, structured filters</sub>
+      <a href="docs/screenshots/monitor-archive.webp"><img src="docs/screenshots/thumbs/monitor-archive.webp" alt="Monitor - Archive" width="420"></a><br>
+      <sub><b>Monitor - Archive</b><br>Historized traffic, structured filters</sub>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <a href="docs/screenshots/charts.webp"><img src="docs/screenshots/thumbs/charts.webp" alt="Charts — power" width="420"></a><br>
-      <sub><b>Charts — power</b><br>Live value trends per group address</sub>
+      <a href="docs/screenshots/charts.webp"><img src="docs/screenshots/thumbs/charts.webp" alt="Charts - power" width="420"></a><br>
+      <sub><b>Charts - power</b><br>Live value trends per group address</sub>
     </td>
     <td align="center" width="50%">
-      <a href="docs/screenshots/charts-temp.webp"><img src="docs/screenshots/thumbs/charts-temp.webp" alt="Charts — temperature" width="420"></a><br>
-      <sub><b>Charts — temperature</b><br>Sensor curve over time</sub>
+      <a href="docs/screenshots/charts-temp.webp"><img src="docs/screenshots/thumbs/charts-temp.webp" alt="Charts - temperature" width="420"></a><br>
+      <sub><b>Charts - temperature</b><br>Sensor curve over time</sub>
     </td>
   </tr>
   <tr>
@@ -88,8 +88,8 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
   </tr>
   <tr>
     <td align="center" width="50%">
-      <a href="docs/screenshots/graph.webp"><img src="docs/screenshots/thumbs/graph.webp" alt="GA network — Alpha" width="420"></a><br>
-      <sub><b>GA network — Alpha</b><br>Force-directed building map, live activity</sub>
+      <a href="docs/screenshots/graph.webp"><img src="docs/screenshots/thumbs/graph.webp" alt="GA network - Alpha" width="420"></a><br>
+      <sub><b>GA network - Alpha</b><br>Force-directed building map, live activity</sub>
     </td>
     <td align="center" width="50%">
       <a href="docs/screenshots/projects-import.webp"><img src="docs/screenshots/thumbs/projects-import.webp" alt="Import wizard" width="420"></a><br>
@@ -113,12 +113,12 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 <table>
   <tr>
     <td align="center">
-      <a href="docs/screenshots/monitor-live-mobile.webp"><img src="docs/screenshots/thumbs/monitor-live-mobile.webp" alt="Monitor — Live mobile" height="420"></a><br>
-      <sub><b>Monitor — Live</b></sub>
+      <a href="docs/screenshots/monitor-live-mobile.webp"><img src="docs/screenshots/thumbs/monitor-live-mobile.webp" alt="Monitor - Live mobile" height="420"></a><br>
+      <sub><b>Monitor - Live</b></sub>
     </td>
     <td align="center">
-      <a href="docs/screenshots/charts-mobile.webp"><img src="docs/screenshots/thumbs/charts-mobile.webp" alt="Charts — power mobile" height="420"></a><br>
-      <sub><b>Charts — power</b></sub>
+      <a href="docs/screenshots/charts-mobile.webp"><img src="docs/screenshots/thumbs/charts-mobile.webp" alt="Charts - power mobile" height="420"></a><br>
+      <sub><b>Charts - power</b></sub>
     </td>
     <td align="center">
       <a href="docs/screenshots/stats-mobile.webp"><img src="docs/screenshots/thumbs/stats-mobile.webp" alt="Statistics mobile" height="420"></a><br>
@@ -131,18 +131,18 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 
 ## Features
 
-- **Real-time KNX monitoring** — live view of bus telegrams via SignalR, **always-on**: auto-connects on startup and reconnects after gateway/network/container interruptions
-- **DPT decoding** — via the Falcon datapoint catalog: full DPT range, sub-type aware, with units and enumeration names (English labels, locale-invariant numbers)
-- **ETS project import** — ETS 4 / 5 / 6 `.knxproj` files, three- / two-level / free addressing
-- **KNX Secure** — password-protected projects (incl. ETS6 PBKDF2/AES wrapping) and `.knxkeys` keyring decryption; **Data Secure** group telegrams decrypted at runtime, optional opt-in IP-Secure tunnel
-- **Unified Monitor view** — one view with a **Live / Archive** toggle and a shared filter; custom virtual-scroll grid with color-coding (Read / Write / Response), value semantics + DPST units, live bus-load badge (msg/s + %), pause (no telegram loss), auto-scroll, free-text + room filter
-- **Charts & statistics** — time-series charts for numeric DPTs (separate Y-axes per unit, live append), a statistics view (total, average msg/s, telegrams over time) and a weekday × hour activity heatmap
-- **Topology & group-address tree** — Locations (building → floor → room) and com-objects parsed across ETS 4/5/6, a Topology tree view, a 3-level group-address tree, a room filter and a "used by" device list; plus a force-directed **GA network graph (Alpha)**
-- **Write / read from the UI** — send a GroupValueRead or write a DPT-typed value to the live bus from the detail drawer, behind a confirmation dialog
-- **Data recording** — two-tier, fully self-contained: count-based SQLite hot-tier ring buffer (bounded size) plus an opt-in NDJSON+gzip long-term archive; keyset-paginated query API and server-streamed CSV export
-- **Runtime DE / EN** — full bilingual UI, switchable without a reload
-- **JWT auth** — access tokens (15 min) + refresh tokens (7 days), secret auto-generated on first start
-- **Single-port deployment** — backend serves the Angular frontend in production
+- **Real-time KNX monitoring** - live view of bus telegrams via SignalR, **always-on**: auto-connects on startup and reconnects after gateway/network/container interruptions
+- **DPT decoding** - via the Falcon datapoint catalog: full DPT range, sub-type aware, with units and enumeration names (English labels, locale-invariant numbers)
+- **ETS project import** - ETS 4 / 5 / 6 `.knxproj` files, three- / two-level / free addressing
+- **KNX Secure** - password-protected projects (incl. ETS6 PBKDF2/AES wrapping) and `.knxkeys` keyring decryption; **Data Secure** group telegrams decrypted at runtime, optional opt-in IP-Secure tunnel
+- **Unified Monitor view** - one view with a **Live / Archive** toggle and a shared filter; custom virtual-scroll grid with color-coding (Read / Write / Response), value semantics + DPST units, live bus-load badge (msg/s + %), pause (no telegram loss), auto-scroll, free-text + room filter
+- **Charts & statistics** - time-series charts for numeric DPTs (separate Y-axes per unit, live append), a statistics view (total, average msg/s, telegrams over time) and a weekday × hour activity heatmap
+- **Topology & group-address tree** - Locations (building → floor → room) and com-objects parsed across ETS 4/5/6, a Topology tree view, a 3-level group-address tree, a room filter and a "used by" device list; plus a force-directed **GA network graph (Alpha)**
+- **Write / read from the UI** - send a GroupValueRead or write a DPT-typed value to the live bus from the detail drawer, behind a confirmation dialog
+- **Data recording** - two-tier, fully self-contained: count-based SQLite hot-tier ring buffer (bounded size) plus an opt-in NDJSON+gzip long-term archive; keyset-paginated query API and server-streamed CSV export
+- **Runtime DE / EN** - full bilingual UI, switchable without a reload
+- **JWT auth** - access tokens (15 min) + refresh tokens (7 days), secret auto-generated on first start
+- **Single-port deployment** - backend serves the Angular frontend in production
 
 ## Platform coverage
 
@@ -158,7 +158,7 @@ every release:
 The **Docker image** is multi-arch (`amd64` + `arm64`).
 
 > **64-bit OS required.** There is no 32-bit ARM build (so 32-bit Raspberry Pi
-> OS is not supported — use the 64-bit image) and no Alpine/musl build (the
+> OS is not supported - use the 64-bit image) and no Alpine/musl build (the
 > binaries are glibc-based; the Docker image is `debian:12-slim`).
 
 ## Quick Start
@@ -205,7 +205,7 @@ run `KnxMonitor.Api.exe`.
 
 1. Open `http://localhost:8080`
 2. The initial-setup wizard creates the admin user
-3. (optional) Import a `.knxproj` — see [ETS project import](#ets-project-import) below
+3. (optional) Import a `.knxproj` - see [ETS project import](#ets-project-import) below
 4. Configure the KNX IP interface in **Settings** (IP, port, tunneling/routing)
 5. Open the **Monitor** view and start watching the bus
 
@@ -214,13 +214,13 @@ run `KnxMonitor.Api.exe`.
 Importing your ETS project enriches every telegram with group-address names, DPT
 types and room/building context. The two-stage wizard walks through:
 
-1. **File selection** — pick the `.knxproj`
-2. **Analyzing** — a fast pre-scan determines ETS version, password protection and addressing style
-3. **Project password** — prompted if the inner archive is encrypted (ETS 4 / 5 / 6)
-4. **Re-detect after unlock** — once the password is in, the server decrypts and re-scans for KNX Secure indicators
-5. **Keyring (optional)** — if KNX Secure is detected, the wizard offers a `.knxkeys` upload + keyring password. Skip is always possible — tool keys / backbone key are only needed for runtime telegram **decoding**, not for parsing. You can also upload a keyring later, per project, without re-importing
-6. **Import** — group addresses, devices, locations and communication objects
-7. **Auto-activate** — if no other project is active yet, the new project is activated immediately
+1. **File selection** - pick the `.knxproj`
+2. **Analyzing** - a fast pre-scan determines ETS version, password protection and addressing style
+3. **Project password** - prompted if the inner archive is encrypted (ETS 4 / 5 / 6)
+4. **Re-detect after unlock** - once the password is in, the server decrypts and re-scans for KNX Secure indicators
+5. **Keyring (optional)** - if KNX Secure is detected, the wizard offers a `.knxkeys` upload + keyring password. Skip is always possible - tool keys / backbone key are only needed for runtime telegram **decoding**, not for parsing. You can also upload a keyring later, per project, without re-importing
+6. **Import** - group addresses, devices, locations and communication objects
+7. **Auto-activate** - if no other project is active yet, the new project is activated immediately
 
 ## Configuration
 
@@ -229,17 +229,17 @@ types and room/building context. The two-stage wizard walks through:
 | Variable | Default | Purpose |
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | `Production` | `Development` enables CORS for `:4200`, the separate dev server and the scalar/v1 API docs |
-| `ASPNETCORE_URLS` | `http://+:8080` | Listen URL — change to use a different port |
+| `ASPNETCORE_URLS` | `http://+:8080` | Listen URL - change to use a different port |
 | `KNX_LOG_LEVEL` | `Information` | Log verbosity: `Verbose`, `Debug`, `Information`, `Warning`, `Error`, `Fatal` (see [Logging & diagnostics](#logging--diagnostics)) |
 
 ### Data directory
 
 Everything stateful lives under `./data/`:
 
-- `.jwt-secret` — the JWT signing key, auto-generated on first start (file mode 600 on Unix). **Do not delete it** or all sessions become invalid; never commit it.
-- `knxmonitor.db` (+ `-wal` / `-shm`) — the SQLite database
-- `archive/` — optional NDJSON+gzip long-term telegram archive
-- `logs/` — rolling log files (see below)
+- `.jwt-secret` - the JWT signing key, auto-generated on first start (file mode 600 on Unix). **Do not delete it** or all sessions become invalid; never commit it.
+- `knxmonitor.db` (+ `-wal` / `-shm`) - the SQLite database
+- `archive/` - optional NDJSON+gzip long-term telegram archive
+- `logs/` - rolling log files (see below)
 
 With Docker this is the mounted `/app/data` volume. The self-contained binary
 writes `./data` next to the executable (not the current working directory), so
@@ -256,16 +256,16 @@ Configured on the **Settings** page in the UI:
 
 ## Troubleshooting & logs
 
-If something misbehaves, there are three ways to see what's going on — and one
+If something misbehaves, there are three ways to see what's going on - and one
 button that packages it all up for a bug report.
 
-- **In-app Logs viewer** — a **Logs** page in the UI streams the backend log live
+- **In-app Logs viewer** - a **Logs** page in the UI streams the backend log live
   (filter by level, free-text search). Quickest way to spot a connection or
   import error without leaving the browser.
-- **Log files on disk** — full rolling logs are written to `./data/logs/`
+- **Log files on disk** - full rolling logs are written to `./data/logs/`
   (`knxmonitor-YYYYMMDD.log`). With Docker they live on your mounted `./data`
   volume, so they survive container restarts and can be read from the host.
-- **Download diagnostics** — a **Download diagnostics** button produces a single
+- **Download diagnostics** - a **Download diagnostics** button produces a single
   `.zip` containing the recent logs and a `system-info.json` (version, OS,
   architecture, runtime, configured log level, DB size). Attach it to a
   [GitHub issue](https://github.com/ingel81/knx-ng-monitor/issues) so the bug can
@@ -277,9 +277,9 @@ Log verbosity is controlled by the `KNX_LOG_LEVEL` environment variable:
 
 | Value | Use |
 |---|---|
-| `Verbose` | Everything, very chatty — deep debugging only |
+| `Verbose` | Everything, very chatty - deep debugging only |
 | `Debug` | Detailed flow, handy when filing a bug |
-| `Information` | **Default** — normal operational messages |
+| `Information` | **Default** - normal operational messages |
 | `Warning` | Only warnings and above |
 | `Error` | Only errors and above |
 | `Fatal` | Only fatal, process-ending failures |
@@ -302,14 +302,14 @@ KNX-NG-Monitor is a beta and it improves fastest with real installations behind
 it. If you run KNX at home or at work:
 
 - **Try it** against your own bus and ETS project.
-- **Report bugs and ideas** on [GitHub issues](https://github.com/ingel81/knx-ng-monitor/issues) — include a [diagnostics zip](#troubleshooting--logs) where relevant.
+- **Report bugs and ideas** on [GitHub issues](https://github.com/ingel81/knx-ng-monitor/issues) - include a [diagnostics zip](#troubleshooting--logs) where relevant.
 - **Spread the word** in your KNX / smart-home forum or community; more eyes mean better coverage of real-world devices and DPTs.
 
 Thanks for testing!
 
 ## Project status
 
-**Current — v0.7.0:** GA network graph (Alpha), weekday × hour activity heatmap,
+**Current - v0.7.0:** GA network graph (Alpha), weekday × hour activity heatmap,
 mobile-responsive overhaul, account menu, charts & tooltip polish, UTC-timestamp
 fix. Builds on v0.6.0: unified Monitor (Live/Archive), time-series charts +
 statistics, building topology, group-address tree, runtime DE/EN switch, GA
@@ -323,16 +323,16 @@ Full version history: [CHANGELOG.md](CHANGELOG.md) ·
 
 ## Documentation
 
-- **[CHANGELOG.md](CHANGELOG.md)** — full version history
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** — build from source, tests, CLI parser tool, EF migrations, architecture, API, contributing & release process
-- **[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)** — bundled third-party components and their licenses
+- **[CHANGELOG.md](CHANGELOG.md)** - full version history
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - build from source, tests, CLI parser tool, EF migrations, architecture, API, contributing & release process
+- **[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)** - bundled third-party components and their licenses
 
 ## License
 
-This project's own source code is licensed under the **MIT** license — see
+This project's own source code is licensed under the **MIT** license - see
 [`LICENSE`](./LICENSE).
 
-It bundles third-party components that remain under their own licenses — most
+It bundles third-party components that remain under their own licenses - most
 notably the **KNX Falcon SDK**, which is **proprietary** (KNX Tools Software
 License Agreement, free of fees, redistribution to end-users permitted). The MIT
 license does **not** cover the Falcon SDK. See
