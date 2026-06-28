@@ -128,3 +128,7 @@ backend/KnxMonitor.ProjectParser.Tests/TestData/
 
 # Local design-handoff archive (binary, not versioned)
 docs/ai/knx-ng-monitor.zip
+
+# Video pipeline: raw screen recordings + pre-blur originals (not versioned)
+docs/screenshots/*.mp4
+docs/screenshots/*.webp.orig

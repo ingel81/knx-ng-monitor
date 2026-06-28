@@ -2,7 +2,9 @@
 # generate_assets.py (cards), build.py (segments/final), shot.mjs (screenshots).
 cards/
 segments/
-qa/*.png
+qa/
+verify/
+vo/
 *.mp4
 *.mp3
 *_new.png

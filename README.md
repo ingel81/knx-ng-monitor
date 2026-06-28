@@ -101,6 +101,10 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
       <a href="docs/screenshots/projects-detail.webp"><img src="docs/screenshots/thumbs/projects-detail.webp" alt="Project detail" width="420"></a><br>
       <sub><b>Project detail</b><br>Group addresses & devices</sub>
     </td>
+    <td align="center" width="50%">
+      <a href="docs/screenshots/logs.webp"><img src="docs/screenshots/thumbs/logs.webp" alt="Log viewer" width="420"></a><br>
+      <sub><b>Log viewer</b><br>Live, filterable & searchable · diagnostics download</sub>
+    </td>
   </tr>
 </table>
 

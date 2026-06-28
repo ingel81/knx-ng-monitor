@@ -54,3 +54,21 @@
 - Statische Beats komprimieren stark → final.mp4 ~16.7 MB.
 **Output:** `final.mp4` (124.5s, ~16.7 MB) + Kopie auf G:.
 **Outstanding:** Abnahme. Backend (dotnet run :8080) + ng serve (:4200) laufen noch; `demo`/`demo12345`. Falls Karten-Bewegung unerwünscht → cards ebenfalls statisch (1 Zeile).
+
+## Session 5 — 2026-06-28 (Voice-Over + komplette Screen-Neuerstellung)
+
+- **DB-Recovery:** gelieferte Prod-DB war malformed → via `.dump`→rebuild recovered (237.288 Telegramme). Siehe `docs/ai/SESSION_HANDOVER.md`.
+- **Alle README/GitHub-Screenshots neu** aus recovered DB via `gallery.mjs` (Playwright). Live-Screens per passivem `POST /api/knx/read`-Burst befüllt. Neu: `logs.webp` + README-Galerie-Zelle. Promote PNG→webp + Thumbs (1040w).
+- **Voice-Over** eingebaut: ElevenLabs Stimme `dpsgxAAQscpwOkeRSVZr`, multilingual_v2, ausführliches DE-Skript (`tts_vo.mjs` → `vo/s00..s16.mp3`). build.py VO-Modus: Beat-Dauer aus VO-Länge, Video-Clips geloopt, Musik (track03) Sidechain-geduckt. Pegel nach „zu laut": `MUSVOL=0.13`, ducking threshold 0.04/ratio 14. Gesamt **239 s**.
+- Texte: Archiv „Historie ohne Limit"; Label-BG dunkler.
+- **Vollständiger Handover:** `docs/ai/SESSION_HANDOVER.md` (für Session-Reset).
+- Scratchpad-Scripts ins Repo gesichert: `edit/{gallery,tts_vo,shot,logshot}.mjs`.
+- Status: Video auf G: abgelegt. Screenshots + Video-Pipeline-Änderungen **uncommitted**.
+
+## Session 6 — 2026-06-28 (Korrekturschleife: Musik, VO-Text, Datenschutz-Blur)
+
+- **Musik deutlich leiser + langsamer:** build.py `MUSVOL` 0.13→**0.06**, neuer `MUSTEMPO=0.80` (pitch-erhaltendes `atempo` im Musik-Chain, Zeile `[mus]`). Gesamt-Audio mean ~-34.9 dB.
+- **„Schaltschranklook" raus:** VO s13 (tts_vo.mjs) umformuliert → „…ein dunkles für abgedunkelte Räume." Nur `s13.mp3` neu via ElevenLabs (one-off Script, gleiche Voice/Settings). Dauer 9.66→8.73 s.
+- **Datenschutz-Blur (in-place, betrifft auch README/GitHub):** Name **Ingelfinger** + Adresse **Kilianstraße 7** in 5 webp mosaik-geblurrt (PIL, `scratchpad/blur.py`, Boxen in Original-3840-Koords): `topology` (2 Boxen), `graph` (2 Node-Labels mittig), `projects-import` (NAME+FILE), `projects` (NAME+FILE), `projects-detail` (Dialog-Titel + Hintergrund-Zeile). Thumbs (1040×585) mit-regeneriert. Übrige Screens (monitor/charts/stats/group-addresses/settings) enthielten den Namen nicht. Originale gesichert in `scratchpad/preblur/`.
+- Rebuild **238.5 s**, ~25 MB, Kopie auf G:. Alle 3 Video-Beats (topology/graph/import) per Frame-Extract auf Blur geprüft = sauber.
+- **Nachtrag (gleiche Session):** Musik-Track gewechselt `track03`→**`track04.mp3`** + `MUSVOL` 0.06→**0.04** (noch leiser). atempo 0.80 + Sidechain bleiben. Dann „zu leise" → `MUSVOL` 0.04→**0.10** (track04 lauter), Gesamt-Audio mean -32.5 dB. Rebuild + G:-Kopie.

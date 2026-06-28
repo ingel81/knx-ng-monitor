@@ -213,11 +213,11 @@ def label(name, title, subtitle, tag=None):
     LW, LH = 1920, 1080
     img = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    grad_h = 360
+    grad_h = 460
     for i in range(grad_h):
-        a = int(205 * (i / grad_h) ** 1.5)
+        a = int(242 * (i / grad_h) ** 1.25)
         y = LH - grad_h + i
-        d.line([(0, y), (LW, y)], fill=(4, 10, 9, a))
+        d.line([(0, y), (LW, y)], fill=(3, 8, 7, a))
     x0, base = 96, LH - 158
     ft = Fsb(52); fs = Fr(31); ftag = Fsb(24)
     tb = d.textbbox((0, 0), title, font=ft); titleh = tb[3] - tb[1]
@@ -261,7 +261,7 @@ bullet_card("secure.png", "KNX Secure", [
 ])
 
 label("monitor", "Live-Monitor",        "Telegramme in Echtzeit vom Bus · always-on, auto-reconnect · DPT-decodiert mit Einheiten")
-label("archive", "Live & Archiv",       "Lückenlos historisiert · Volltextsuche · umfangreich filterbar · bis 1 Mio. Telegramme (konfigurierbar) · CSV-Export")
+label("archive", "Live & Archiv",       "Lückenlos historisiert · Volltextsuche · umfangreich filterbar · Historie ohne Limit · CSV-Export")
 label("detail",  "Schreiben & Lesen",   "Werte direkt auf den Bus schreiben oder lesen - aus der Detailansicht")
 label("charts",  "Charts",              "Zeitreihen je DPT · eigene Y-Achse pro Einheit · neue Werte live")
 label("temp",    "Mess- & Schaltkurven","Alle Zahlenwerte und Schaltvorgänge im Zeitverlauf")

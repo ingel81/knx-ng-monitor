@@ -169,3 +169,15 @@ Beat-Startzeiten (T=0.5): s_i start = Σ(dauer_j - 0.5) für j<i.
 | Übergang weicher/härter | `build.py` `T` |
 | Schärfer/kleinere Datei | `build.py` `CRF` (16=hoch, 20=kleiner) |
 ```
+
+---
+
+## 8. Voice-Over (Stand 2026-06-28)
+
+- **Stimme:** ElevenLabs Voice-ID `dpsgxAAQscpwOkeRSVZr`, Modell `eleven_multilingual_v2`. Key: `~/.claude/skills/video-use/.env`.
+- **KNX-Aussprache:** plain schreiben (`KNX-NG`, `KNX-Bus`) — nicht `K N X` (zu langsam).
+- **Generator:** `tts_vo.mjs` (Node, UTF-8-safe; enthält das 17-zeilige DE-Skript, ausführlich/erklärend). → `vo/s00.mp3 … s16.mp3`. Aussprache via UTF-8 ok; bash-curl mit Umlauten vermeiden.
+- **build.py VO-Modus:** Beat-Dauer = `vo_len + LEAD(0.4) + TRAIL(1.1)`, Floor 4.5. Video-Clips geloopt (`-stream_loop -1`). Audio: VO `adelay`→`amix(normalize=0)`, Musik `track03.mp3` `volume=MUSVOL` + Sidechain-Ducking unter VO.
+- **Pegel aktuell:** `MUSVOL=0.13`, `sidechaincompress=threshold=0.04:ratio=14:attack=5:release=400` (User: Musik leiser). Prüfen: `ffmpeg -i final.mp4 -af volumedetect -f null -`.
+- **Rebuild VO:** `node tts_vo.mjs` (nur bei Skript/Stimm-Änderung) → `python build.py` → Kopie nach G:.
+- Gesamt aktuell **239 s**. Track03 (180 s) loopt unter VO (geduckt, unauffällig).
