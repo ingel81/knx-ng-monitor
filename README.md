@@ -309,9 +309,12 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.7.0:** GA network graph (Alpha), weekday × hour activity heatmap,
-mobile-responsive overhaul, account menu, charts & tooltip polish, UTC-timestamp
-fix. Builds on v0.6.0: unified Monitor (Live/Archive), time-series charts +
+**Current - v0.8.0:** in-app Logs viewer (live log stream), one-click diagnostics
+zip, rolling file logs (`KNX_LOG_LEVEL`), history-preserving re-import (keeps
+telegram history), data dir anchored to the executable, hardened refresh-token
+auth, and multi-arch (amd64 + arm64) Docker images. Builds on v0.7.0: GA network
+graph (Alpha), weekday × hour activity heatmap, mobile-responsive overhaul,
+account menu. Earlier: unified Monitor (Live/Archive), time-series charts +
 statistics, building topology, group-address tree, runtime DE/EN switch, GA
 write/read, KNX Secure runtime decryption + optional IP-Secure tunnel.
 

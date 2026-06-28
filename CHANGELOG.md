@@ -10,6 +10,33 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
+## [0.8.0]
+
+### Added
+- **In-app log viewer** - a new **Logs** page streams the backend log live over
+  SignalR (level filter, pause, copy), backed by an in-memory ring buffer.
+- **Diagnostics download** - a one-click button bundles the rolling log files and
+  system/version info into a single zip for bug reports.
+- **Rolling file logs** - logs are written to `./data/logs/` with a configurable
+  level via the `KNX_LOG_LEVEL` environment variable.
+- **`/api/version`** endpoint and an embedded build version surfaced in the UI.
+
+### Changed
+- **History-preserving re-import** - re-importing a `.knxproj` now matches the
+  existing project by its ETS project id and merges group addresses in place, so
+  the recorded telegram history is kept instead of being discarded.
+- **Data directory anchored to the executable** - the SQLite DB, JWT secret and
+  logs now resolve relative to the binary instead of the current working
+  directory, so the portable build behaves the same regardless of launch folder.
+- **Auth hardening** - refresh tokens are stored hashed with reuse detection,
+  rate limiting, automatic pruning and a logout-all option.
+- **CI** - multi-arch (amd64 + arm64) Docker image, `SHA256SUMS` for release
+  binaries, embedded version stamping.
+
+### Fixed
+- **Startup robustness** - `/healthz` now probes the database, startup fails fast
+  on a bad data directory, and an upload size limit guards the import endpoint.
+
 ## [0.7.0]
 
 ### Added
