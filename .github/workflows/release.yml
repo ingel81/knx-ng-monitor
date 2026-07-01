@@ -109,21 +109,93 @@ jobs:
           path: ${{ matrix.artifact }}
           retention-days: 1
 
+  # Build each arch on its OWN native runner (no QEMU). Emulated arm64
+  # `dotnet publish --self-contained` inside the Dockerfile hangs for hours, so
+  # amd64 builds on ubuntu-latest and arm64 on the native ubuntu-24.04-arm
+  # runner. Each pushes an image by digest; merge-docker stitches them into one
+  # multi-arch manifest under the shared tags.
   build-docker:
-    name: Build Docker Images
+    name: Build Docker (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Prepare platform pair
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # CLEAN strips the leading "v" so the in-image dotnet publish embeds a
+      # plain SemVer (0.8.0) rather than "v0.8.0".
+      - name: Derive clean version
+        id: clean_version
+        run: echo "CLEAN=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          # Forward the version into the Dockerfile ARG VERSION -> dotnet publish.
+          build-args: |
+            VERSION=${{ steps.clean_version.outputs.CLEAN }}
+          outputs: type=image,name=ingel81/knx-ng-monitor,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}
+          cache-to: type=gha,mode=max,scope=${{ env.PLATFORM_PAIR }}
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v5
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-docker:
+    name: Merge Docker manifest
+    needs: build-docker
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      # QEMU provides the cross-arch emulation that lets the amd64 runner
-      # build the linux/arm64 image layers (needed for Raspberry Pi pulls).
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Download digests
+        uses: actions/download-artifact@v5
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -138,28 +210,16 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      # CLEAN strips the leading "v" so the in-image dotnet publish embeds a
-      # plain SemVer (0.7.0) rather than "v0.7.0".
-      - name: Derive clean version
-        id: clean_version
-        run: echo "CLEAN=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            -t ingel81/knx-ng-monitor:latest \
+            -t ingel81/knx-ng-monitor:${{ steps.version.outputs.VERSION }} \
+            $(printf 'ingel81/knx-ng-monitor@sha256:%s ' *)
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          # Multi-arch manifest: buildx + QEMU produce both arch images and push
-          # them under one tag so amd64 and arm64 hosts pull the right variant.
-          platforms: linux/amd64,linux/arm64
-          push: true
-          # Forward the version into the Dockerfile ARG VERSION -> dotnet publish.
-          build-args: |
-            VERSION=${{ steps.clean_version.outputs.CLEAN }}
-          tags: |
-            ingel81/knx-ng-monitor:latest
-            ingel81/knx-ng-monitor:${{ steps.version.outputs.VERSION }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Inspect manifest
+        run: docker buildx imagetools inspect ingel81/knx-ng-monitor:${{ steps.version.outputs.VERSION }}
 
       - name: Logout from DockerHub
         if: always()
@@ -167,7 +227,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: [build-binaries, build-docker]
+    needs: [build-binaries, merge-docker]
     runs-on: ubuntu-latest
 
     permissions:
