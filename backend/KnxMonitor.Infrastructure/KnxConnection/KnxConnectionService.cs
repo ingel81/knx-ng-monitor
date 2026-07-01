@@ -29,6 +29,12 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     private volatile bool _manualDisconnect;
     private volatile bool _testInProgress;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
+    // Serializes the whole connect / cleanup / disconnect / test path. Without it, overlapping
+    // callers (auto-connect worker, controller, project activate, import) could race on _knxBus:
+    // an old bus never disposed (leak) with GroupMessageReceived still subscribed => duplicate
+    // telegram delivery + duplicate persistence. Not reentrant — internal helpers below assume the
+    // lock is already held and must NOT re-acquire it.
+    private readonly SemaphoreSlim _busLock = new(1, 1);
 
     public event EventHandler<KnxTelegram>? TelegramReceived;
     public bool IsConnected => _state == KnxLinkState.Connected;
@@ -60,6 +66,21 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     private int _decodeErrorLogged;
 
     public async Task<bool> ConnectAsync(KnxConfiguration configuration)
+    {
+        await _busLock.WaitAsync();
+        try
+        {
+            return await ConnectCoreAsync(configuration);
+        }
+        finally
+        {
+            _busLock.Release();
+        }
+    }
+
+    // Lock-free connect body. Callers MUST hold _busLock (public ConnectAsync, or
+    // TestConnectionAsync which owns the lock for its whole span).
+    private async Task<bool> ConnectCoreAsync(KnxConfiguration configuration)
     {
         try
         {
@@ -119,6 +140,10 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     /// </summary>
     public async Task<bool> TestConnectionAsync(KnxConfiguration configuration)
     {
+        // Hold the bus lock for the entire probe: the pause, the throwaway probe and the restore
+        // all touch _knxBus, and the restore calls ConnectCoreAsync (not the public, lock-taking
+        // ConnectAsync — the semaphore is not reentrant).
+        await _busLock.WaitAsync();
         // Latch the test-in-progress guard FIRST, before reading IsConnected, so the auto-connect
         // worker cannot slip a reconnect into the gap between the check and the pause below.
         _testInProgress = true;
@@ -159,12 +184,13 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
                 try { await probe.DisposeAsync(); } catch { /* best effort */ }
             }
 
-            // Restore the live link if we paused it. ConnectAsync is non-latching.
+            // Restore the live link if we paused it. ConnectCoreAsync is non-latching and assumes
+            // the lock is held (it is — we own it for the whole method).
             if (liveConfig != null)
             {
                 try
                 {
-                    await ConnectAsync(liveConfig);
+                    await ConnectCoreAsync(liveConfig);
                 }
                 catch (Exception ex)
                 {
@@ -174,6 +200,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             }
 
             _testInProgress = false;
+            _busLock.Release();
         }
     }
 
@@ -363,6 +390,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
 
     public async Task DisconnectAsync()
     {
+        await _busLock.WaitAsync();
         try
         {
             // User-initiated disconnect: latch so the auto-connect worker stays away.
@@ -376,6 +404,10 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error disconnecting from KNX bus");
+        }
+        finally
+        {
+            _busLock.Release();
         }
     }
 
@@ -550,6 +582,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         _cancellationTokenSource.Cancel();
         await DisconnectAsync();
         _cancellationTokenSource.Dispose();
+        _busLock.Dispose();
         GC.SuppressFinalize(this);
     }
 

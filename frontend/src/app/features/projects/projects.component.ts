@@ -53,15 +53,10 @@ export class ProjectsComponent implements OnInit {
   deletingId: number | null = null;
   togglingId: number | null = null;
 
-  // Auto-connect state for the active project (governs automatic bus connect/reconnect).
-  autoConnect = true;
-  autoConnectBusy = false;
-
   displayedColumns: string[] = ['name', 'fileName', 'importDate', 'stats', 'isActive', 'actions'];
 
   ngOnInit() {
     this.loadProjects();
-    this.loadAutoConnect();
   }
 
   async loadProjects() {
@@ -80,35 +75,6 @@ export class ProjectsComponent implements OnInit {
     return this.projects.find(p => p.isActive) ?? null;
   }
 
-  async loadAutoConnect() {
-    try {
-      const state = await this.projectService.getAutoConnect().toPromise();
-      if (state) {
-        this.autoConnect = state.enabled;
-      }
-    } catch (error) {
-      this.logger.error('Failed to load auto-connect state:', error);
-    }
-  }
-
-  async toggleAutoConnect() {
-    this.autoConnectBusy = true;
-    const next = !this.autoConnect;
-    try {
-      const state = await this.projectService.setAutoConnect(next).toPromise();
-      if (state) {
-        this.autoConnect = state.enabled;
-      }
-      this.snackBar.open(
-        this.lang.translate(this.autoConnect ? 'projects.autoConnectEnabled' : 'projects.autoConnectDisabled'),
-        this.lang.translate('common.close'), { duration: 2500 });
-    } catch (error) {
-      this.logger.error('Failed to set auto-connect:', error);
-      this.snack(this.lang.translate('projects.autoConnectChangeFailed'));
-    } finally {
-      this.autoConnectBusy = false;
-    }
-  }
 
   openImportWizard() {
     const dialogRef = this.dialog.open(ImportWizardComponent, {

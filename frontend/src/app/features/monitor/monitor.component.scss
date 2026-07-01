@@ -11,6 +11,41 @@
   position: absolute;
   inset: 0;
 
+  // Persistent "no active project" banner between toolbar and grid. Mirrors the
+  // design-system alert look (.info-line): tint fill + left accent + token type.
+  .no-project-banner {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-5);
+    background: var(--warn-tint);
+    border-bottom: 1px solid var(--line);
+    border-left: 3px solid var(--warn);
+    color: var(--ink-2);
+    font-size: var(--fs-md);
+
+    > mat-icon {
+      flex: none;
+      color: var(--warn);
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+
+    .npb-text { flex: 1 1 auto; line-height: 1.4; }
+
+    .knx-btn { flex: none; }
+
+    .npb-close {
+      color: var(--ink-3);
+
+      &:hover { color: var(--ink); }
+
+      mat-icon { width: 16px; height: 16px; font-size: 16px; }
+    }
+  }
+
   // Segmented Live/Archive toggle: active button highlighted like a primary.
   .knx-segmented {
     display: inline-flex;
@@ -115,6 +150,10 @@
         font-size: 72px;
         width: 72px;
         height: 72px;
+        // Material sets .mat-icon { overflow: hidden } — at 72px the glyph's top
+        // gets clipped. Let it paint fully and center it in the line box.
+        line-height: 72px;
+        overflow: visible;
         margin-bottom: $spacing-lg;
         opacity: 0.4;
         color: $text-disabled;

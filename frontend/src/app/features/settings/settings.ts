@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { environment } from '../../../environments/environment.development';
 import { RecordingSettingsService } from '../../core/services/recording-settings.service';
 import { RecordingSettings } from '../../core/models/recording-settings.models';
@@ -30,7 +31,7 @@ interface KnxSettings {
 
 @Component({
   selector: 'app-settings',
-  imports: [CommonModule, FormsModule, MatIconModule, MatSnackBarModule, MatDialogModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, MatIconModule, MatSnackBarModule, MatDialogModule, MatTooltipModule, TranslatePipe],
   templateUrl: './settings.html',
   styleUrl: './settings.scss',
 })
@@ -61,6 +62,12 @@ export class Settings implements OnInit {
   isTesting = false;
   isSaving = false;
 
+  // Gateway auto-connect: whether the auto-connect worker keeps the bus link up
+  // automatically (initial connect + reconnect after drops). Pure connection policy,
+  // independent of any project. Backed by KnxConfiguration.AutoConnect.
+  autoConnect = true;
+  autoConnectBusy = false;
+
   recording: RecordingSettings = {
     hotBufferMaxCount: 1_000_000,
     archiveEnabled: false,
@@ -71,6 +78,43 @@ export class Settings implements OnInit {
   ngOnInit() {
     this.loadSettings();
     this.loadRecordingSettings();
+    this.loadAutoConnect();
+  }
+
+  async loadAutoConnect() {
+    try {
+      const state = await this.http
+        .get<{ enabled: boolean }>(`${environment.apiUrl}/knx/autoconnect`)
+        .toPromise();
+      if (state) {
+        this.autoConnect = state.enabled;
+      }
+    } catch (error) {
+      this.logger.error('Failed to load auto-connect state:', error);
+    }
+  }
+
+  async toggleAutoConnect() {
+    this.autoConnectBusy = true;
+    const next = !this.autoConnect;
+    try {
+      const state = await this.http
+        .put<{ enabled: boolean }>(`${environment.apiUrl}/knx/autoconnect`, { enabled: next })
+        .toPromise();
+      this.autoConnect = state?.enabled ?? next;
+      this.snackBar.open(
+        this.lang.translate(this.autoConnect ? 'settings.autoConnectEnabled' : 'settings.autoConnectDisabled'),
+        this.lang.translate('common.close'),
+        { duration: 2500, horizontalPosition: 'end', verticalPosition: 'top' });
+    } catch (error) {
+      this.logger.error('Failed to set auto-connect:', error);
+      this.snackBar.open(
+        this.lang.translate('settings.autoConnectChangeFailed'),
+        this.lang.translate('common.close'),
+        { duration: 3000, horizontalPosition: 'end', verticalPosition: 'top', panelClass: ['error-snackbar'] });
+    } finally {
+      this.autoConnectBusy = false;
+    }
   }
 
   async loadRecordingSettings() {
@@ -155,7 +199,8 @@ export class Settings implements OnInit {
           ipAddress: this.knxConfig.ipAddress,
           port: this.knxConfig.port,
           physicalAddress: this.knxConfig.physicalAddress,
-          connectionType: 0 // Tunneling
+          connectionType: 0, // Tunneling
+          autoConnect: this.autoConnect
         }).toPromise();
       } else {
         // Create new configuration
@@ -163,7 +208,8 @@ export class Settings implements OnInit {
           ipAddress: this.knxConfig.ipAddress,
           port: this.knxConfig.port,
           physicalAddress: this.knxConfig.physicalAddress,
-          connectionType: 0 // Tunneling
+          connectionType: 0, // Tunneling
+          autoConnect: this.autoConnect
         }).toPromise();
       }
 

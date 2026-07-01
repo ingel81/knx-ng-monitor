@@ -60,12 +60,13 @@
         <p>{{ 'logs.empty' | translate }}</p>
       </div>
     } @else {
-      <cdk-virtual-scroll-viewport itemSize="44" class="log-viewport">
+      <cdk-virtual-scroll-viewport itemSize="30" class="log-viewport">
         <div *cdkVirtualFor="let e of filtered; trackBy: trackEntry" class="log-row" [ngClass]="levelClass(e.level)">
           <span class="col-time">{{ e.timestamp | date:'yyyy-MM-dd HH:mm:ss.SSS' }}</span>
           <span class="col-level"><span class="level-pill">{{ e.level }}</span></span>
           <span class="col-source" [matTooltip]="e.source || ''">{{ e.source || '—' }}</span>
-          <span class="col-msg">
+          <span class="col-msg" [matTooltip]="e.exception ? e.message + '\n\n' + e.exception : e.message"
+                matTooltipClass="log-msg-tooltip">
             {{ e.message }}
             @if (e.exception) {
               <span class="exc">{{ e.exception }}</span>

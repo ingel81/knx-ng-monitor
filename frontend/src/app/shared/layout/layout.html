@@ -1,10 +1,10 @@
 <div class="app-layout">
   <header class="app-header">
     <div class="header-content">
-      <div class="brand">
+      <a class="brand" routerLink="/monitor" [attr.aria-label]="'nav.monitor' | translate">
         <span class="brand-knx">KNX</span><span class="brand-ng">·NG</span>
         <span class="brand-sub">Monitor</span>
-      </div>
+      </a>
 
       <nav class="main-nav" role="navigation" [attr.aria-label]="'nav.mainNav' | translate">
         <a routerLink="/monitor" routerLinkActive="active" class="nav-link">

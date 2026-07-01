@@ -353,21 +353,11 @@ public class ProjectImportService
 
             if (project.IsActive)
             {
+                // Decoding-only side effect: refresh the GA cache so incoming telegrams resolve to
+                // names/DPTs. The bus link is deliberately NOT touched here — the gateway connection
+                // is governed solely by KnxConfiguration.AutoConnect + the auto-connect worker +
+                // manual connect/disconnect. Import decodes; it does not connect.
                 await cacheService.RefreshAsync();
-
-                // Couple the bus to the freshly auto-activated project. A prior deactivate/delete
-                // leaves the ManualDisconnect latch set, which keeps the auto-connect worker away —
-                // so without this an import that auto-activates would NOT go live until the user
-                // manually toggled active off/on. ConnectAsync clears the latch and connects now.
-                var knx = scope.ServiceProvider.GetRequiredService<KnxMonitor.Core.Services.IKnxConnectionService>();
-                var configRepo = scope.ServiceProvider.GetRequiredService<IKnxConfigurationRepository>();
-                var configs = await configRepo.GetAllAsync();
-                var config = configs.FirstOrDefault(c => c.IsActive) ?? configs.FirstOrDefault();
-                if (config != null && config.AutoConnect && !knx.IsConnected)
-                {
-                    try { await knx.ConnectAsync(config); }
-                    catch (Exception ex) { _logger.LogWarning(ex, "Job {JobId}: auto-connect after import failed; worker will retry", jobId); }
-                }
             }
 
             _jobManager.UpdateStep(jobId, ImportStepType.RefreshCache, "completed", 100);

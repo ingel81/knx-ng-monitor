@@ -55,14 +55,6 @@
                   <span class="track"></span>
                   <span class="sw-label">{{ 'projects.colActive' | translate }}</span>
                 </label>
-                @if (project.isActive) {
-                  <label class="knx-switch knx-autoconnect" [class.is-busy]="autoConnectBusy"
-                         [matTooltip]="'projects.autoConnectTooltip' | translate">
-                    <input type="checkbox" [checked]="autoConnect" [disabled]="autoConnectBusy" (change)="toggleAutoConnect()">
-                    <span class="track"></span>
-                    <span class="sw-label">{{ 'projects.autoConnect' | translate }}</span>
-                  </label>
-                }
               </div>
             </td>
             <td>

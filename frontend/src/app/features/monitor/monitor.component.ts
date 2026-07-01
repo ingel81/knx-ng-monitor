@@ -96,6 +96,8 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   hasProject = false;
   hasActiveProject = false;
   hasKnxConfig = false;
+  // User-dismissed the "no active project" banner for this session.
+  bannerDismissed = false;
 
   private statusPoll?: ReturnType<typeof setInterval>;
 

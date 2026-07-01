@@ -50,6 +50,12 @@ public class ProjectFeatureDetector : IProjectFeatureDetector
 
             if (projectEntry != null)
             {
+                // Stable ETS project id = the "P-XXXX" folder (constant across edits). Set it here
+                // too — not just on the password path — so re-import of a NON-password project is
+                // matched to the existing row instead of creating a duplicate. GetFileNameWithout-
+                // Extension in the import service maps both "P-XXXX.zip" and "P-XXXX" to "P-XXXX".
+                features.InnerZipFileName = projectEntry.FullName.Split('/')[0];
+
                 // Read into memory stream to allow multiple reads
                 using var memoryStream = new MemoryStream();
                 using (var stream = projectEntry.Open())

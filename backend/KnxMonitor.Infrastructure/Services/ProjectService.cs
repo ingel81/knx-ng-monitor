@@ -12,23 +12,17 @@ public class ProjectService : IProjectService
     private readonly IGroupAddressRepository _groupAddressRepository;
     private readonly IKnxProjectParserService _parserService;
     private readonly IGroupAddressCacheService _cacheService;
-    private readonly IKnxConnectionService _knxService;
-    private readonly IKnxConfigurationRepository _configRepository;
 
     public ProjectService(
         IProjectRepository projectRepository,
         IGroupAddressRepository groupAddressRepository,
         IKnxProjectParserService parserService,
-        IGroupAddressCacheService cacheService,
-        IKnxConnectionService knxService,
-        IKnxConfigurationRepository configRepository)
+        IGroupAddressCacheService cacheService)
     {
         _projectRepository = projectRepository;
         _groupAddressRepository = groupAddressRepository;
         _parserService = parserService;
         _cacheService = cacheService;
-        _knxService = knxService;
-        _configRepository = configRepository;
     }
 
     public async Task<ProjectDto> UploadProjectAsync(Stream fileStream, string fileName)
@@ -136,19 +130,11 @@ public class ProjectService : IProjectService
         // Atomically make exactly this project active (set-based, single transaction).
         await _projectRepository.SetActiveExclusiveAsync(id);
 
-        // Refresh the cache with the new active project
+        // Decoding-only: refresh the GA cache so telegrams resolve to names/DPTs. The bus link is
+        // intentionally untouched — connection is governed solely by KnxConfiguration.AutoConnect,
+        // the auto-connect worker and manual connect/disconnect. Activating a project decodes; it
+        // does not connect (and must not override a deliberate manual disconnect).
         await _cacheService.RefreshAsync();
-
-        // Couple the bus to the active project (model: active ⇒ connected). If auto-connect is
-        // enabled, (re)connect now — this also clears any manual-disconnect latch left by a
-        // previous deactivate, so re-activating restores the live link.
-        var configs = await _configRepository.GetAllAsync();
-        var config = configs.FirstOrDefault(c => c.IsActive) ?? configs.FirstOrDefault();
-        if (config != null && config.AutoConnect && !_knxService.IsConnected)
-        {
-            try { await _knxService.ConnectAsync(config); }
-            catch { /* non-fatal: the auto-connect worker will retry */ }
-        }
 
         return true;
     }
@@ -165,10 +151,11 @@ public class ProjectService : IProjectService
         project.IsActive = false;
         await _projectRepository.UpdateAsync(project);
 
-        // No active project anymore: clear the GA cache and sever the bus link. DisconnectAsync
-        // latches ManualDisconnect, so the auto-connect worker won't immediately reconnect.
+        // No active project anymore: clear the GA cache so telegrams show up undecoded
+        // (raw hex, no name/DPT). The bus link is intentionally LEFT UP — monitoring keeps
+        // running without a project; DisconnectAsync would latch ManualDisconnect and strand
+        // the bus in "reconnecting" until the next import.
         await _cacheService.RefreshAsync();
-        await _knxService.DisconnectAsync();
 
         return true;
     }
@@ -186,11 +173,13 @@ public class ProjectService : IProjectService
         if (!deleted)
             return false;
 
-        // If the deleted project was active, no project is active anymore: clear cache + drop bus.
+        // If the deleted project was active, no project is active anymore: clear the GA cache so
+        // telegrams show up undecoded (raw hex). The bus link is intentionally LEFT UP — monitoring
+        // continues without a project; DisconnectAsync would latch ManualDisconnect and strand the
+        // bus in "reconnecting" until the next import.
         if (wasActive)
         {
             await _cacheService.RefreshAsync();
-            await _knxService.DisconnectAsync();
         }
 
         return true;

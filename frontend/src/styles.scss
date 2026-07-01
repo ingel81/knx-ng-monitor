@@ -77,29 +77,73 @@ body {
 
 // Fix icon sizes in form fields globally
 .mat-mdc-form-field {
+  // Brand-align the outlined field: Material's cyan primary is brighter than the
+  // teal brand, so focus/label/caret + resting outline are pinned to design tokens.
+  --mdc-outlined-text-field-focus-outline-color: var(--brand);
+  --mdc-outlined-text-field-focus-label-text-color: var(--brand);
+  --mdc-outlined-text-field-caret-color: var(--brand);
+  --mdc-outlined-text-field-outline-color: var(--line-strong);
+  --mdc-outlined-text-field-hover-outline-color: var(--ink-3);
+  --mdc-outlined-text-field-label-text-color: var(--ink-3);
+  --mdc-outlined-text-field-input-text-color: var(--ink);
+  --mdc-outlined-text-field-input-text-placeholder-color: var(--ink-3);
+  --mdc-outlined-text-field-error-outline-color: var(--err);
+  --mdc-outlined-text-field-error-focus-outline-color: var(--err);
+  --mdc-outlined-text-field-error-label-text-color: var(--err);
+
   .mat-mdc-form-field-icon-prefix,
   .mat-mdc-form-field-icon-suffix {
+    color: var(--ink-3);
+
     .mat-icon {
-      font-size: 24px !important;
-      width: 24px !important;
-      height: 24px !important;
-      line-height: 24px !important;
+      font-size: 20px !important;
+      width: 20px !important;
+      height: 20px !important;
+      line-height: 20px !important;
     }
   }
 
   // Also target direct mat-icon children
   mat-icon[matPrefix],
   mat-icon[matSuffix] {
-    font-size: 24px !important;
-    width: 24px !important;
-    height: 24px !important;
-    line-height: 24px !important;
+    font-size: 20px !important;
+    width: 20px !important;
+    height: 20px !important;
+    line-height: 20px !important;
   }
 }
+
+// ============================================================================
+// Global scrollbars — thin, token-coloured. One place so every overflow
+// container (log viewport, topology / group-addresses / graph / stats pages,
+// mat overlays, dialogs) matches instead of falling back to the OS default.
+// ============================================================================
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+*::-webkit-scrollbar { width: 12px; height: 12px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: var(--r-full);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+*::-webkit-scrollbar-corner { background: transparent; }
 
 // Global tooltip fix for AG-Grid and other components
 .mat-mdc-tooltip {
   z-index: $z-index-tooltip !important;
+}
+
+// Log message tooltip: preserve newlines (message + stack trace) and widen.
+.log-msg-tooltip .mdc-tooltip__surface {
+  white-space: pre-wrap;
+  max-width: 640px;
+  font-family: var(--font-mono);
+  text-align: left;
 }
 
 // Telegram-Detail-Sheet (Dialog als angedocktes Panel)

@@ -69,6 +69,17 @@
               <span class="set-hint">{{ 'settings.physicalAddressHint' | translate }}</span>
             </div>
           </div>
+          <div class="set-row">
+            <div>
+              <div class="set-row-label">{{ 'settings.autoConnect' | translate }}</div>
+              <div class="set-row-sub">{{ 'settings.autoConnectSub' | translate }}</div>
+            </div>
+            <label class="knx-switch" [class.is-busy]="autoConnectBusy"
+                   [matTooltip]="'settings.autoConnectTooltip' | translate">
+              <input type="checkbox" [checked]="autoConnect" [disabled]="autoConnectBusy" (change)="toggleAutoConnect()">
+              <span class="track"></span>
+            </label>
+          </div>
           <div class="info-line">
             <mat-icon svgIcon="knx:wifi"></mat-icon>
             <div><b>{{ 'settings.connectionInfo' | translate }}</b> IP Tunneling (UDP) · <b>{{ 'settings.protocolInfo' | translate }}</b> KNXnet/IP</div>

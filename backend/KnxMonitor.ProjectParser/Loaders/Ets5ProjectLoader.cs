@@ -32,7 +32,15 @@ public class Ets5ProjectLoader : BaseProjectLoader
 
         foreach (var element in gaElements)
         {
-            var rawAddress = int.Parse(element.Attribute("Address")?.Value ?? "0");
+            var addressValue = element.Attribute("Address")?.Value;
+            if (!int.TryParse(addressValue, out var rawAddress))
+            {
+                _logger.LogWarning(
+                    "Skipping group address with malformed Address attribute '{Address}' (Id={Id})",
+                    addressValue, element.Attribute("Id")?.Value);
+                continue;
+            }
+
             var dptString = element.Attribute("DatapointType")?.Value;
 
             var ga = new GroupAddress

@@ -133,6 +133,25 @@
     </div>
   </div>
 
+  <!-- Persistent banner: telegrams arriving without a decoding project. Independent of
+       telegrams.length (the onboarding overlay disappears once the first telegram lands). -->
+  @if (mode === 'live' && hasKnxConfig && !hasActiveProject && !bannerDismissed) {
+    <div class="no-project-banner" role="status">
+      <mat-icon>info</mat-icon>
+      <span class="npb-text">
+        {{ (hasProject ? 'monitor.banner.noActive' : 'monitor.banner.noProject') | translate }}
+      </span>
+      <button class="knx-btn knx-btn--primary knx-btn--sm" (click)="navigateToProjects()">
+        {{ (hasProject ? 'monitor.banner.noActiveAction' : 'monitor.banner.noProjectAction') | translate }}
+      </button>
+      <button class="knx-btn knx-btn--ghost knx-btn--icon knx-btn--sm npb-close"
+              (click)="bannerDismissed = true"
+              [matTooltip]="'monitor.banner.dismiss' | translate">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  }
+
   <!-- Archive-only structured filter bar -->
   @if (mode === 'archive') {
     <div class="filterbar" [class.is-open]="filtersExpanded">

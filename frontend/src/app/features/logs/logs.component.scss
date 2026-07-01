@@ -109,9 +109,13 @@
 
 .log-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-1) var(--sp-5);
+  // Fixed height MUST match the viewport itemSize (30) — the fixed-size virtual
+  // scroll strategy reserves itemSize px per row, so any mismatch leaves dead
+  // scroll space at the bottom (rows don't fill the page).
+  height: 30px;
+  padding: 0 var(--sp-5);
   border-bottom: 1px solid var(--line);
   color: var(--ink-2);
   white-space: nowrap;
@@ -140,12 +144,14 @@
     flex: 1;
     min-width: 0;
     color: var(--ink);
-    white-space: pre-wrap;
-    word-break: break-word;
+    // Single-line + ellipsis keeps every row at the fixed itemSize height.
+    // Full message + stack trace are available via the hover tooltip.
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 
     .exc {
-      display: block;
-      margin-top: 2px;
+      margin-left: var(--sp-2);
       color: var(--err);
       opacity: 0.85;
       font-size: var(--fs-xs, 11px);

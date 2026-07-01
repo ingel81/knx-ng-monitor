@@ -47,10 +47,6 @@ export interface ProjectDeletePreview {
   telegramCount: number;
 }
 
-export interface AutoConnectState {
-  enabled: boolean;
-  connected: boolean;
-}
 
 /** Flat node of the building/location tree (rebuilt client-side via externalId/parentExternalId). */
 export interface LocationDto {
@@ -136,16 +132,6 @@ export class ProjectService {
 
   deleteProject(id: number): Observable<{ message: string }> {
     return this.http.delete<{ message: string }>(`${this.apiUrl}/${id}`);
-  }
-
-  // Auto-connect governs whether the active project's bus link is (re)established
-  // automatically. Surfaced on the active project row.
-  getAutoConnect(): Observable<AutoConnectState> {
-    return this.http.get<AutoConnectState>(`${environment.apiUrl}/knx/autoconnect`);
-  }
-
-  setAutoConnect(enabled: boolean): Observable<AutoConnectState> {
-    return this.http.put<AutoConnectState>(`${environment.apiUrl}/knx/autoconnect`, { enabled });
   }
 
   // --- Locations (building tree) / communication objects / keyring -----------

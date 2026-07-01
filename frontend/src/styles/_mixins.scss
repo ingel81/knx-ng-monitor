@@ -13,7 +13,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: $background-dark;
+  background: var(--paper);
   padding: 2rem;
 
   @media (max-width: $breakpoint-sm) {
@@ -24,10 +24,10 @@
 @mixin auth-card {
   max-width: 440px;
   width: 100%;
-  background: $surface-dark;
-  border-radius: $border-radius-md;
-  border: 1px solid $border-color;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--sh-3);
   overflow: hidden;
 
   @media (max-width: $breakpoint-sm) {
@@ -38,8 +38,8 @@
 @mixin auth-header {
   text-align: center;
   padding: 3rem 2.5rem 2rem 2.5rem;
-  background: $surface-dark;
-  border-bottom: 1px solid $border-color;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 
   @media (max-width: $breakpoint-sm) {
     padding: 2.5rem 2rem 1.5rem 2rem;
@@ -66,7 +66,7 @@
       font-weight: $font-weight-medium;
       margin: 0;
       letter-spacing: 0.5px;
-      color: $text-primary;
+      color: var(--ink);
       white-space: nowrap;
 
       @media (max-width: $breakpoint-sm) {
@@ -78,7 +78,7 @@
   .auth-subtitle {
     font-size: 0.95rem;
     margin: 0;
-    color: $text-secondary;
+    color: var(--ink-2);
     font-weight: $font-weight-normal;
 
     @media (max-width: $breakpoint-sm) {
@@ -110,11 +110,11 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.875rem 1rem;
-  background-color: rgba(239, 83, 80, 0.15);
-  color: #ef5350;
-  border-radius: $border-radius-sm;
+  background-color: var(--err-tint);
+  color: var(--err);
+  border-radius: var(--r-sm);
   font-size: $font-size-sm;
-  border-left: 3px solid #ef5350;
+  border-left: 3px solid var(--err);
 
   mat-icon {
     font-size: 1.25rem;
@@ -129,11 +129,11 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.875rem 1rem;
-  background-color: rgba(100, 181, 246, 0.15);
-  color: $accent-color;
-  border-radius: $border-radius-sm;
+  background-color: var(--read-tint);
+  color: var(--read);
+  border-radius: var(--r-sm);
   font-size: $font-size-sm;
-  border-left: 3px solid $accent-color;
+  border-left: 3px solid var(--read);
 
   mat-icon {
     font-size: 1.25rem;
@@ -150,16 +150,16 @@
   font-weight: $font-weight-medium;
   margin-top: 0.5rem;
   letter-spacing: 0.5px;
-  background-color: $primary-color !important;
-  color: white !important;
+  background-color: var(--brand) !important;
+  color: #fff !important;
 
   &:hover:not(:disabled) {
-    background-color: $primary-light !important;
+    background-color: var(--brand-hover) !important;
   }
 
   &:disabled {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    color: rgba(255, 255, 255, 0.3) !important;
+    background-color: var(--line-2) !important;
+    color: var(--ink-3) !important;
   }
 
   ::ng-deep {
@@ -190,8 +190,8 @@
 @mixin auth-footer {
   text-align: center;
   padding: 1.25rem 2rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-top: 1px solid $border-color;
+  background: var(--paper-sunk);
+  border-top: 1px solid var(--line);
 
   @media (max-width: $breakpoint-sm) {
     padding: 1rem 2rem;
