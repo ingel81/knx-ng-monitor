@@ -10,6 +10,34 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
+## [0.8.1]
+
+### Fixed
+- **Import of current ETS versions** ([#2](https://github.com/ingel81/knx-ng-monitor/issues/2)) -
+  the ETS version was matched against a hard-coded list of project schema
+  namespaces that ended at schema 21 (ETS 6.0). ETS 6.1 writes schema 22 and
+  ETS 6.2 / 6.3 / 6.4 write schema 23, so those projects were detected as
+  `Unknown` and the import aborted with *"No loader available for ETS version
+  Unknown"*. This hit password-protected projects in particular, where
+  `knx_master.xml` is the only version marker readable before decryption. The
+  schema is now mapped by numeric range, so future ETS releases keep working.
+- **Group-address style ignored** - `GroupAddressStyle` is stored on
+  `<ProjectInformation>`, but was read off the document root, so every ETS 5 / 6
+  project fell back to three-level addressing. Two-level and free projects
+  imported with wrong group addresses (`0/0/1` instead of `0/1` or `1`). ETS 4
+  projects were affected additionally because their `P-XXXX/Project.xml` was
+  looked up case-sensitively and never found. **Re-import affected projects to
+  correct stored addresses.**
+- **Missing device names in password-protected projects** - only the `P-XXXX/`
+  folder is encrypted, while `knx_master.xml` and the `M-XXXX/` manufacturer
+  data sit in the outer archive. The latter were dropped after decryption, so
+  devices imported without product name and manufacturer (shown as their bare
+  physical address). Affects ETS 4, 5 and 6.
+- **Wrong-password diagnostics** - a failed decryption now reports the project
+  password as the cause instead of surfacing a raw ZIP error, and both the ETS 6
+  (PBKDF2-derived) and the plain ETS 4 / 5 password encoding are attempted when
+  the ETS version cannot be determined up front.
+
 ## [0.8.0]
 
 ### Added
