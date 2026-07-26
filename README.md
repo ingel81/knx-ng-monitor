@@ -21,6 +21,18 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 
 </div>
 
+### Video tour
+
+A ~4-minute guided walkthrough of every feature. The app UI itself is bilingual (DE / EN, switchable live); the voice-over comes in two versions:
+
+**🇬🇧 English**
+
+https://github.com/user-attachments/assets/d42fe0cb-d088-48fa-a07a-ead21aeebbbe
+
+**🇩🇪 Deutsch**
+
+https://github.com/user-attachments/assets/3b4ca0b0-97f8-420f-acb7-784465a6f5a5
+
 <sub>Click any thumbnail for the full-resolution image.</sub>
 
 ### Desktop
@@ -346,4 +358,4 @@ license does **not** cover the Falcon SDK. See
 
 ## Author
 
-Joerg.
+ingel81.

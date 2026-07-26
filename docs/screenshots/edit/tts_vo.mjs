@@ -26,7 +26,9 @@ const lines = [
 for (const [id,text] of lines) {
   const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE}?output_format=mp3_44100_128`, {
     method:'POST', headers:{'xi-api-key':KEY,'Content-Type':'application/json'},
-    body: JSON.stringify({ text, model_id:'eleven_multilingual_v2', voice_settings:{stability:0.45,similarity_boost:0.75,style:0.0,use_speaker_boost:true} })
+    // eleven_v3: bessere Prosodie als multilingual_v2, aber stability ist diskret
+    // (0.0 creative / 0.5 natural / 1.0 robust) und die Ausgabe ist nicht deterministisch.
+    body: JSON.stringify({ text, model_id:'eleven_v3', voice_settings:{stability:0.5,similarity_boost:0.75,use_speaker_boost:true} })
   });
   if(!r.ok){ console.log(id,'ERR',r.status,(await r.text()).slice(0,120)); continue; }
   fs.writeFileSync(`${OUT}/${id}.mp3`, Buffer.from(await r.arrayBuffer()));

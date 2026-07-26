@@ -1,12 +1,103 @@
 #!/usr/bin/env python3
-"""Generate cards (3840x2160, crisp for supersampled zoom) + lower-third labels (1920x1080)."""
+"""Generate cards (3840x2160, crisp for supersampled zoom) + lower-third labels (1920x1080).
+
+Language: set env VLANG=en to render English text into cards_en/. Default (de) → cards/.
+The DE pipeline is the default and stays byte-for-byte unchanged."""
 import os
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 HERE  = os.path.dirname(os.path.abspath(__file__))
 SHOTS = os.path.normpath(os.path.join(HERE, ".."))
-OUT   = os.path.join(HERE, "cards")
+LANG  = os.environ.get("VLANG", "de").lower()
+OUT   = os.path.join(HERE, "cards_en" if LANG == "en" else "cards")
 os.makedirs(OUT, exist_ok=True)
+
+# ---------------------------------------------------------------- i18n strings
+# Every user-visible string keyed by language. DE is the original wording; EN is
+# a natural (non-literal) translation. Labels are (title, subtitle[, tag]).
+TXT = {
+    "de": {
+        "intro_tag":  "KNX-Bus in Echtzeit  ·  historisiert  ·  visualisiert",
+        "outro_os":   "Open Source  ·  MIT",
+        "outro_l2":   "KNX-Bus in Echtzeit - selbst gehostet",
+        "plat_title": "Überall lauffähig",
+        "plat_rows":  [("Docker", "  ·  ", "Single-File-Binary"),
+                       ("Linux", "  ·  ", "Windows  ·  macOS"),
+                       ("x64", "  +  ", "ARM64  ·  Raspberry Pi")],
+        "plat_foot":  "Als Container oder portable Binary starten - bedient im Browser, komplett lokal",
+        "beta_title": "Beta-Tester gesucht",
+        "beta_sub":   "Egal ob KNX-Profi oder Smart-Home-Einsteiger",
+        "beta_foot":  "Issues & Ideen willkommen",
+        "close_title":"Beta-Tester gesucht",
+        "close_sub":  "Egal ob KNX-Profi oder Smart-Home-Einsteiger",
+        "close_foot": "Open Source  ·  MIT  ·  selbst gehostet",
+        "mob_title":  "Voll responsive",
+        "mob_sub":    "Phone-Layout  ·  Bottom-Nav  ·  Karten statt Tabellen",
+        "moblive_title": "Voll responsive",
+        "moblive_bul": ["Live-Feed auch unterwegs", "Für Smartphone und Tablet",
+                        "Karten statt Tabellen", "Touch-optimiert"],
+        "secure_title": "KNX Secure",
+        "secure_bul": ["Passwortgeschützte Projekte (ETS 4 / 5 / 6)",
+                       ".knxkeys-Keyring-Entschlüsselung",
+                       "Data-Secure: Telegramme zur Laufzeit entschlüsselt",
+                       "Optional: IP-Secure-Tunnel"],
+        "labels": {
+            "monitor":  ("Live-Monitor",        "Telegramme in Echtzeit vom Bus · always-on, auto-reconnect · DPT-decodiert mit Einheiten"),
+            "archive":  ("Live & Archiv",        "Lückenlos historisiert · Volltextsuche · umfangreich filterbar · Historie ohne Limit · CSV-Export"),
+            "detail":   ("Schreiben & Lesen",    "Werte direkt auf den Bus schreiben oder lesen - aus der Detailansicht"),
+            "charts":   ("Charts",               "Zeitreihen je DPT · eigene Y-Achse pro Einheit · neue Werte live"),
+            "temp":     ("Mess- & Schaltkurven", "Alle Zahlenwerte und Schaltvorgänge im Zeitverlauf"),
+            "stats":    ("Statistik",            "Summen · Ø msg/s · Telegramme über Zeit"),
+            "heatmap":  ("Aktivitäts-Heatmap",   "Wochentag × Stunde - Routinen auf einen Blick"),
+            "import":   ("ETS 4 / 5 / 6 Import", "Zweistufiger Wizard · .knxproj · Gruppenadressen, Geräte, Hardware"),
+            "topology": ("Topologie",            "Gebäude → Etage → Raum · Kommunikationsobjekte · Raumfilter"),
+            "groupadr": ("Gruppenadressen",      "3-Ebenen-Baum · durchsuchbar · lesen / schreiben / charten"),
+            "settings": ("Themes & Sprache",     "Light & Console (Dark) · DE / EN live umschaltbar · Dichte einstellbar"),
+            "graph":    ("GA-Netzwerk-Graph",    "Building → Floor → Room → GA · Live-Telegramme lassen Knoten glühen", "EXPERIMENTELL"),
+        },
+    },
+    "en": {
+        "intro_tag":  "Your KNX bus in real time  ·  historized  ·  visualized",
+        "outro_os":   "Open Source  ·  MIT",
+        "outro_l2":   "Your KNX bus in real time - self-hosted",
+        "plat_title": "Runs anywhere",
+        "plat_rows":  [("Docker", "  ·  ", "Single-file binary"),
+                       ("Linux", "  ·  ", "Windows  ·  macOS"),
+                       ("x64", "  +  ", "ARM64  ·  Raspberry Pi")],
+        "plat_foot":  "Run as a container or portable binary - operated in the browser, fully local",
+        "beta_title": "Beta testers wanted",
+        "beta_sub":   "Whether KNX pro or smart-home beginner",
+        "beta_foot":  "Issues & ideas welcome",
+        "close_title":"Beta testers wanted",
+        "close_sub":  "Whether KNX pro or smart-home beginner",
+        "close_foot": "Open Source  ·  MIT  ·  self-hosted",
+        "mob_title":  "Fully responsive",
+        "mob_sub":    "Phone layout  ·  bottom nav  ·  cards instead of tables",
+        "moblive_title": "Fully responsive",
+        "moblive_bul": ["Live feed on the go", "For smartphone and tablet",
+                        "Cards instead of tables", "Touch-optimized"],
+        "secure_title": "KNX Secure",
+        "secure_bul": ["Password-protected projects (ETS 4 / 5 / 6)",
+                       ".knxkeys keyring decryption",
+                       "Data Secure: telegrams decrypted at runtime",
+                       "Optional: IP Secure tunnel"],
+        "labels": {
+            "monitor":  ("Live Monitor",         "Telegrams in real time from the bus · always-on, auto-reconnect · DPT-decoded with units"),
+            "archive":  ("Live & Archive",        "Seamlessly historized · full-text search · richly filterable · unlimited history · CSV export"),
+            "detail":   ("Write & Read",          "Write or read values directly on the bus - from the detail view"),
+            "charts":   ("Charts",                "Time series per DPT · own Y axis per unit · new values live"),
+            "temp":     ("Measurement & switching curves", "All numeric values and switching events over time"),
+            "stats":    ("Statistics",            "Totals · avg msg/s · telegrams over time"),
+            "heatmap":  ("Activity heatmap",      "Weekday × hour - routines at a glance"),
+            "import":   ("ETS 4 / 5 / 6 import",  "Two-step wizard · .knxproj · group addresses, devices, hardware"),
+            "topology": ("Topology",              "Building → Floor → Room · communication objects · room filter"),
+            "groupadr": ("Group addresses",       "3-level tree · searchable · read / write / chart"),
+            "settings": ("Themes & Language",     "Light & Console (Dark) · DE / EN live switchable · adjustable density"),
+            "graph":    ("GA network graph",      "Building → Floor → Room → GA · live telegrams make nodes glow", "EXPERIMENTAL"),
+        },
+    },
+}
+L = TXT[LANG]
 
 # Palette — card bg = app nav-bar dark teal (bridges dark hero + light screenshots)
 BG    = (14, 53, 49)
@@ -68,7 +159,7 @@ W, H = 1920 * S, 1080 * S
 def intro_card():
     img, d = grad_bg(S)
     draw_logo(d, W / 2, H / 2 - 40 * S, S, mult=1.30)
-    tagline = "KNX-Bus in Echtzeit  ·  historisiert  ·  visualisiert"
+    tagline = L["intro_tag"]
     ft = Fl(36 * S)
     d.text(((W - tw(d, tagline, ft)) / 2, H / 2 + 60 * S), tagline, font=ft, fill=GRAY)
     d.rectangle([W / 2 - 60 * S, H / 2 + 130 * S, W / 2 + 60 * S, H / 2 + 134 * S], fill=MINT)
@@ -77,10 +168,10 @@ def intro_card():
 def outro_card():
     img, d = grad_bg(S)
     draw_logo(d, W / 2, H / 2 - 110 * S, S, mult=1.05)
-    l1 = "Open Source  ·  MIT"
+    l1 = L["outro_os"]
     f1 = Fsb(40 * S)
     d.text(((W - tw(d, l1, f1)) / 2, H / 2 - 5 * S), l1, font=f1, fill=WHITE)
-    l2 = "KNX-Bus in Echtzeit - selbst gehostet"
+    l2 = L["outro_l2"]
     f2 = Fl(32 * S)
     d.text(((W - tw(d, l2, f2)) / 2, H / 2 + 60 * S), l2, font=f2, fill=GRAY)
     url = "github.com/ingel81/knx-ng-monitor"
@@ -113,14 +204,10 @@ def bullet_card(name, title, bullets, accent_title=False):
 def platform_card():
     img, d = grad_bg(S)
     ft = Fb(72 * S)
-    title = "Überall lauffähig"
+    title = L["plat_title"]
     d.text(((W - tw(d, title, ft)) / 2, H * 0.18), title, font=ft, fill=WHITE)
     d.rectangle([W / 2 - 70 * S, H * 0.18 + 100 * S, W / 2 + 70 * S, H * 0.18 + 106 * S], fill=MINT)
-    rows = [
-        ("Docker", "  ·  ", "Single-File-Binary"),
-        ("Linux", "  ·  ", "Windows  ·  macOS"),
-        ("x64", "  +  ", "ARM64  ·  Raspberry Pi"),
-    ]
+    rows = L["plat_rows"]
     fbld = Fsb(46 * S); freg = Fr(46 * S)
     y = H * 0.36
     for a, sep, b in rows:
@@ -131,7 +218,7 @@ def platform_card():
         d.text((x, y), sep, font=freg, fill=DIM); x += tw(d, sep, freg)
         d.text((x, y), b, font=fbld, fill=WHITE)
         y += 92 * S
-    foot = "Als Container oder portable Binary starten - bedient im Browser, komplett lokal"
+    foot = L["plat_foot"]
     ff = Fl(36 * S)
     d.text(((W - tw(d, foot, ff)) / 2, y + 30 * S), foot, font=ff, fill=GRAY)
     save(img, "platform.png")
@@ -139,15 +226,15 @@ def platform_card():
 def beta_card():
     img, d = grad_bg(S)
     ft = Fb(88 * S)
-    title = "Beta-Tester gesucht"
+    title = L["beta_title"]
     d.text(((W - tw(d, title, ft)) / 2, H * 0.26), title, font=ft, fill=MINT)
-    sub = "Egal ob KNX-Profi oder Smart-Home-Einsteiger"
+    sub = L["beta_sub"]
     fs = Fr(42 * S)
     d.text(((W - tw(d, sub, fs)) / 2, H * 0.46), sub, font=fs, fill=WHITE)
     url = "github.com/ingel81/knx-ng-monitor"
     fu = Fsb(44 * S)
     d.text(((W - tw(d, url, fu)) / 2, H * 0.57), url, font=fu, fill=MINT)
-    foot = "Issues & Ideen willkommen"
+    foot = L["beta_foot"]
     ff = Fl(34 * S)
     d.text(((W - tw(d, foot, ff)) / 2, H * 0.66), foot, font=ff, fill=GRAY)
     save(img, "beta.png")
@@ -156,17 +243,17 @@ def close_card():
     """Merged closing slide: Logo + Beta-CTA + URL + Open Source/MIT."""
     img, d = grad_bg(S)
     draw_logo(d, W / 2, H * 0.22, S, mult=1.05)
-    title = "Beta-Tester gesucht"
+    title = L["close_title"]
     ft = Fb(78 * S)
     d.text(((W - tw(d, title, ft)) / 2, H * 0.36), title, font=ft, fill=MINT)
     d.rectangle([W / 2 - 70 * S, H * 0.36 + 108 * S, W / 2 + 70 * S, H * 0.36 + 114 * S], fill=MINT)
-    sub = "Egal ob KNX-Profi oder Smart-Home-Einsteiger"
+    sub = L["close_sub"]
     fs = Fr(40 * S)
     d.text(((W - tw(d, sub, fs)) / 2, H * 0.52), sub, font=fs, fill=WHITE)
     url = "github.com/ingel81/knx-ng-monitor"
     fu = Fsb(44 * S)
     d.text(((W - tw(d, url, fu)) / 2, H * 0.62), url, font=fu, fill=MINT)
-    foot = "Open Source  ·  MIT  ·  selbst gehostet"
+    foot = L["close_foot"]
     ff = Fl(32 * S)
     d.text(((W - tw(d, foot, ff)) / 2, H * 0.71), foot, font=ff, fill=GRAY)
     save(img, "close.png")
@@ -174,10 +261,10 @@ def close_card():
 def mobile_card():
     img, d = grad_bg(S)
     ft = Fb(72 * S)
-    title = "Voll responsive"
+    title = L["mob_title"]
     d.text(((W - tw(d, title, ft)) / 2, H * 0.08), title, font=ft, fill=WHITE)
     d.rectangle([W / 2 - 70 * S, H * 0.08 + 100 * S, W / 2 + 70 * S, H * 0.08 + 106 * S], fill=MINT)
-    sub = "Phone-Layout  ·  Bottom-Nav  ·  Karten statt Tabellen"
+    sub = L["mob_sub"]
     fs = Fl(34 * S)
     d.text(((W - tw(d, sub, fs)) / 2, H * 0.18), sub, font=fs, fill=GRAY)
     # 3 phones
@@ -242,9 +329,9 @@ def mobile_live_bg():
         t = y / LH
         d.line([(0, y), (LW, y)], fill=tuple(int(top[i] + (bot[i] - top[i]) * t) for i in range(3)))
     x, cy = 150, LH // 2
-    d.text((x, cy - 230), "Voll responsive", font=Fb(74), fill=WHITE)
+    d.text((x, cy - 230), L["moblive_title"], font=Fb(74), fill=WHITE)
     d.rectangle([x, cy - 118, x + 90, cy - 112], fill=MINT)
-    bullets = ["Live-Feed auch unterwegs", "Für Smartphone und Tablet", "Karten statt Tabellen", "Touch-optimiert"]
+    bullets = L["moblive_bul"]
     fb = Fr(42); yy = cy - 60
     for b in bullets:
         d.ellipse([x, yy + 17, x + 20, yy + 37], fill=MINT)
@@ -253,23 +340,8 @@ def mobile_live_bg():
 
 # ----- build all -----
 intro_card(); outro_card(); platform_card(); beta_card(); close_card(); mobile_card(); mobile_live_bg()
-bullet_card("secure.png", "KNX Secure", [
-    "Passwortgeschützte Projekte (ETS 4 / 5 / 6)",
-    ".knxkeys-Keyring-Entschlüsselung",
-    "Data-Secure: Telegramme zur Laufzeit entschlüsselt",
-    "Optional: IP-Secure-Tunnel",
-])
+bullet_card("secure.png", L["secure_title"], L["secure_bul"])
 
-label("monitor", "Live-Monitor",        "Telegramme in Echtzeit vom Bus · always-on, auto-reconnect · DPT-decodiert mit Einheiten")
-label("archive", "Live & Archiv",       "Lückenlos historisiert · Volltextsuche · umfangreich filterbar · Historie ohne Limit · CSV-Export")
-label("detail",  "Schreiben & Lesen",   "Werte direkt auf den Bus schreiben oder lesen - aus der Detailansicht")
-label("charts",  "Charts",              "Zeitreihen je DPT · eigene Y-Achse pro Einheit · neue Werte live")
-label("temp",    "Mess- & Schaltkurven","Alle Zahlenwerte und Schaltvorgänge im Zeitverlauf")
-label("stats",   "Statistik",           "Summen · Ø msg/s · Telegramme über Zeit")
-label("heatmap", "Aktivitäts-Heatmap",  "Wochentag × Stunde - Routinen auf einen Blick")
-label("import",  "ETS 4 / 5 / 6 Import","Zweistufiger Wizard · .knxproj · Gruppenadressen, Geräte, Hardware")
-label("topology","Topologie",           "Gebäude → Etage → Raum · Kommunikationsobjekte · Raumfilter")
-label("groupadr","Gruppenadressen",     "3-Ebenen-Baum · durchsuchbar · lesen / schreiben / charten")
-label("settings","Themes & Sprache",    "Light & Console (Dark) · DE / EN live umschaltbar · Dichte einstellbar")
-label("graph",   "GA-Netzwerk-Graph",   "Building → Floor → Room → GA · Live-Telegramme lassen Knoten glühen", tag="EXPERIMENTELL")
-print("assets ok")
+for _name, _spec in L["labels"].items():
+    label(_name, *_spec)
+print("assets ok (lang=%s, out=%s)" % (LANG, OUT))

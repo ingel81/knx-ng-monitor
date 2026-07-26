@@ -6,9 +6,13 @@ import os, subprocess
 
 HERE  = os.path.dirname(os.path.abspath(__file__))
 SHOTS = os.path.normpath(os.path.join(HERE, ".."))
-CARDS = os.path.join(HERE, "cards")
-SEG   = os.path.join(HERE, "segments")
-VO    = os.path.join(HERE, "vo")
+# Language switch: VLANG=en → English cards/VO/output. Default (de) unchanged.
+LANG  = os.environ.get("VLANG", "de").lower()
+_SFX  = "_en" if LANG == "en" else ""
+CARDS = os.path.join(HERE, "cards" + _SFX)
+SEG   = os.path.join(HERE, "segments" + _SFX)
+VO    = os.path.join(HERE, "vo" + _SFX)
+FINAL = "final_en.mp4" if LANG == "en" else "final.mp4"
 os.makedirs(SEG, exist_ok=True)
 
 FPS, T, CRF, ZOOM = 30, 0.5, "16", 0.030
@@ -133,7 +137,7 @@ def main():
     has_music = os.path.exists(music)
     has_vo = all(os.path.exists(vp) for vp, _ in vos)
 
-    final = os.path.join(HERE, "final.mp4")
+    final = os.path.join(HERE, FINAL)
     cmd = ["ffmpeg", "-y"] + inputs
     # input indices: segments 0..n-1, then music (n) if present, then VO clips
     next_idx = n
