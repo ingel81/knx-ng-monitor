@@ -1,8 +1,10 @@
 using System.IO.Compression;
+using System.Xml;
 using System.Xml.Linq;
 using KnxMonitor.ProjectParser.Core.Enums;
 using KnxMonitor.ProjectParser.Core.Interfaces;
 using KnxMonitor.ProjectParser.Core.Models;
+using KnxMonitor.ProjectParser.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace KnxMonitor.ProjectParser.Services;
@@ -92,10 +94,10 @@ public class FeatureDetector : IFeatureDetector
             features.EtsVersion = await DetectEtsVersionAsync(archive, cancellationToken);
 
             // 4. Check for KNX Secure
-            features.HasKnxSecure = await CheckKnxSecureAsync(archive, features, cancellationToken);
+            features.HasKnxSecure = await CheckKnxSecureAsync(archive, cancellationToken);
 
             // 5. Detect Addressing Style
-            features.AddressingStyle = await DetectAddressingStyleAsync(archive, features, cancellationToken);
+            features.AddressingStyle = await DetectAddressingStyleAsync(archive, cancellationToken);
 
             _logger.LogInformation(
                 "Detected: ETS {Version}, Password={HasPw}, Secure={HasSecure}, Style={Style}",
@@ -113,62 +115,107 @@ public class FeatureDetector : IFeatureDetector
 
     private async Task<EtsVersion> DetectEtsVersionAsync(ZipArchive archive, CancellationToken cancellationToken)
     {
-        // Versuche knx_master.xml zu finden
+        // 1. knx_master.xml — the only version marker that is readable in EVERY project, including
+        //    password-protected ones (project.xml / 0.xml live inside the encrypted P-XXXX.zip).
+        //    Its root namespace carries the schema number, which is mapped by numeric range so new
+        //    ETS releases (schema 22, 23, …) keep working instead of falling through to Unknown.
         var knxMasterEntry = archive.Entries
             .FirstOrDefault(e => e.Name.Equals("knx_master.xml", StringComparison.OrdinalIgnoreCase));
 
         if (knxMasterEntry != null)
         {
             await using var stream = knxMasterEntry.Open();
-            using var reader = new StreamReader(stream);
+            var rootNamespace = await ReadRootNamespaceAsync(stream, cancellationToken);
+            var version = EtsSchemaVersion.FromNamespace(rootNamespace);
 
-            // Lese erste Zeilen für Namespace-Detection
-            for (int i = 0; i < 5; i++)
+            if (version != EtsVersion.Unknown)
             {
-                var line = await reader.ReadLineAsync(cancellationToken);
-                if (line == null) break;
-
-                if (line.Contains("http://knx.org/xml/project/11"))
-                    return EtsVersion.Ets4;
-                if (line.Contains("http://knx.org/xml/project/14"))
-                    return EtsVersion.Ets4;
-                if (line.Contains("http://knx.org/xml/project/20"))
-                    return EtsVersion.Ets5;
-                if (line.Contains("http://knx.org/xml/project/21"))
-                    return EtsVersion.Ets6;
+                _logger.LogInformation(
+                    "ETS version {Version} detected from knx_master.xml (schema {Schema})",
+                    version, EtsSchemaVersion.ParseSchemaVersion(rootNamespace));
+                return version;
             }
         }
 
-        // Fallback: Versuche project.xml und ToolVersion-Attribut
-        var projectEntry = archive.Entries
-            .FirstOrDefault(e => e.Name.Equals("project.xml", StringComparison.OrdinalIgnoreCase) ||
-                                 e.Name.Equals("Project.xml", StringComparison.OrdinalIgnoreCase));
-
-        if (projectEntry != null)
+        // 2. Fallback: project.xml, then 0.xml — namespace first, then the ToolVersion / CreatedBy
+        //    attributes (both only exist on the project files, never on knx_master.xml).
+        foreach (var entry in EnumerateVersionCandidates(archive))
         {
-            await using var stream = projectEntry.Open();
-            var xml = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
-            var toolVersion = xml.Root?.Attribute("ToolVersion")?.Value;
-
-            if (toolVersion != null)
+            try
             {
-                if (toolVersion.StartsWith("4.")) return EtsVersion.Ets4;
-                if (toolVersion.StartsWith("5.")) return EtsVersion.Ets5;
-                if (toolVersion.StartsWith("6.")) return EtsVersion.Ets6;
+                await using var stream = entry.Open();
+                var xml = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
+
+                var version = ProjectXmlMetadata.ReadEtsVersion(xml.Root);
+                if (version != EtsVersion.Unknown)
+                {
+                    _logger.LogInformation(
+                        "ETS version {Version} detected from {Entry}", version, entry.FullName);
+                    return version;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not read ETS version from {Entry}", entry.FullName);
             }
         }
 
+        _logger.LogWarning("Could not determine ETS version from archive");
         return EtsVersion.Unknown;
     }
 
-    private async Task<bool> CheckKnxSecureAsync(
+    private static IEnumerable<ZipArchiveEntry> EnumerateVersionCandidates(ZipArchive archive)
+    {
+        return archive.Entries
+            .Where(e => e.Name.Equals("project.xml", StringComparison.OrdinalIgnoreCase))
+            .Concat(archive.Entries
+                .Where(e => e.Name.Equals("0.xml", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Read only the namespace of the document's root element. knx_master.xml is several MB — parsing
+    /// it into an XDocument just to look at the root would be wasteful, so this stops after the first
+    /// element node. Returns null for non-XML / truncated content.
+    /// </summary>
+    private static async Task<string?> ReadRootNamespaceAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        var settings = new XmlReaderSettings
+        {
+            Async = true,
+            DtdProcessing = DtdProcessing.Ignore,
+            IgnoreComments = true,
+            IgnoreWhitespace = true,
+            IgnoreProcessingInstructions = true,
+            CloseInput = false
+        };
+
+        try
+        {
+            using var reader = XmlReader.Create(stream, settings);
+            while (await reader.ReadAsync())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (reader.NodeType == XmlNodeType.Element)
+                    return reader.NamespaceURI;
+            }
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Malformed knx_master.xml — fall through to the project.xml / 0.xml candidates.
+        }
+
+        return null;
+    }
+
+    private static async Task<bool> CheckKnxSecureAsync(
         ZipArchive archive,
-        ProjectFeatures features,
         CancellationToken cancellationToken)
     {
-        // Finde 0.xml im Projekt
-        var projectFile = $"{features.ProjectId}/0.xml";
-        var entry = archive.GetEntry(projectFile);
+        // Look up 0.xml by entry name instead of the "{ProjectId}/0.xml" path: ZipArchive.GetEntry is
+        // case-sensitive and ProjectId is null when the archive carries no P-XXXX.signature, which
+        // would skip the KNX Secure check altogether.
+        var entry = archive.Entries
+            .FirstOrDefault(e => e.Name.Equals("0.xml", StringComparison.OrdinalIgnoreCase));
 
         if (entry == null)
             return false;
@@ -202,47 +249,35 @@ public class FeatureDetector : IFeatureDetector
 
     private async Task<AddressingStyle> DetectAddressingStyleAsync(
         ZipArchive archive,
-        ProjectFeatures features,
         CancellationToken cancellationToken)
     {
-        // Finde project.xml im Projekt
-        var projectFile = $"{features.ProjectId}/project.xml";
-        var entry = archive.GetEntry(projectFile);
-
-        if (entry == null)
+        // project.xml first, then 0.xml. Looked up by entry NAME rather than by the
+        // "{ProjectId}/project.xml" path: ETS4 writes "P-XXXX/Project.xml" with a capital P, and
+        // ZipArchive.GetEntry is case-sensitive, so the old path lookup missed those projects
+        // entirely and silently returned the ThreeLevel default.
+        foreach (var entry in EnumerateVersionCandidates(archive))
         {
-            // Fallback: Default to ThreeLevel
-            return AddressingStyle.ThreeLevel;
-        }
-
-        try
-        {
-            await using var stream = entry.Open();
-            var xml = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
-
-            // Look for GroupAddressStyle attribute in Project element
-            // Examples: GroupAddressStyle="ThreeLevel", "TwoLevel", or "Free"
-            var styleAttr = xml.Root?.Attribute("GroupAddressStyle")?.Value;
-
-            if (string.IsNullOrEmpty(styleAttr))
+            try
             {
-                // Default to ThreeLevel if not specified
-                return AddressingStyle.ThreeLevel;
+                await using var stream = entry.Open();
+                var xml = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
+
+                var style = ProjectXmlMetadata.ReadAddressingStyle(xml.Root);
+                if (style.HasValue)
+                {
+                    _logger.LogInformation(
+                        "Addressing style {Style} detected from {Entry}", style.Value, entry.FullName);
+                    return style.Value;
+                }
             }
-
-            // Map XML value to enum
-            return styleAttr.ToLowerInvariant() switch
+            catch (Exception ex)
             {
-                "threelevel" or "3level" => AddressingStyle.ThreeLevel,
-                "twolevel" or "2level" => AddressingStyle.TwoLevel,
-                "free" or "freelevel" => AddressingStyle.Free,
-                _ => AddressingStyle.ThreeLevel // Default fallback
-            };
+                _logger.LogDebug(ex, "Could not read addressing style from {Entry}", entry.FullName);
+            }
         }
-        catch
-        {
-            // If XML parsing fails, fall back to ThreeLevel
-            return AddressingStyle.ThreeLevel;
-        }
+
+        // Nothing readable (e.g. password-protected project) — ETS's own default. ProjectParser
+        // re-reads the style from the decrypted files before the loader converts any address.
+        return AddressingStyle.ThreeLevel;
     }
 }

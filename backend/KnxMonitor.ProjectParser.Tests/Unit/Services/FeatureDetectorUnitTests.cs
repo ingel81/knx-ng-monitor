@@ -13,9 +13,15 @@ public class FeatureDetectorUnitTests
 
     [Theory]
     [InlineData("http://knx.org/xml/project/11", EtsVersion.Ets4)]
+    [InlineData("http://knx.org/xml/project/12", EtsVersion.Ets4)]
     [InlineData("http://knx.org/xml/project/14", EtsVersion.Ets4)]
     [InlineData("http://knx.org/xml/project/20", EtsVersion.Ets5)]
-    [InlineData("http://knx.org/xml/project/21", EtsVersion.Ets6)]
+    [InlineData("http://knx.org/xml/project/21", EtsVersion.Ets6)]  // ETS 6.0
+    [InlineData("http://knx.org/xml/project/22", EtsVersion.Ets6)]  // ETS 6.1
+    [InlineData("http://knx.org/xml/project/23", EtsVersion.Ets6)]  // ETS 6.2 / 6.3
+    [InlineData("http://knx.org/xml/project/24", EtsVersion.Ets6)]  // future schema -> newest loader
+    [InlineData("http://knx.org/xml/project/99", EtsVersion.Ets6)]
+    [InlineData("http://example.com/not-knx", EtsVersion.Unknown)]
     public async Task DetectAsync_MasterNamespace_MapsVersion(string ns, EtsVersion expected)
     {
         using var zip = TestZipBuilder.BuildOuter(new[]
@@ -48,6 +54,46 @@ public class FeatureDetectorUnitTests
 
         var features = await Detector().DetectAsync(zip);
         features.EtsVersion.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("ETS4", EtsVersion.Ets4)]
+    [InlineData("ETS5", EtsVersion.Ets5)]
+    [InlineData("ETS6", EtsVersion.Ets6)]
+    public async Task DetectAsync_CreatedByFallback_MapsVersion(string createdBy, EtsVersion expected)
+    {
+        using var zip = TestZipBuilder.BuildOuter(new[]
+        {
+            ("P-0001.signature", ""),
+            ("P-0001/project.xml", $"<KNX CreatedBy=\"{createdBy}\"></KNX>"),
+        });
+
+        var features = await Detector().DetectAsync(zip);
+        features.EtsVersion.Should().Be(expected);
+    }
+
+    /// <summary>
+    /// Regression for GitHub issue #2: a password-protected project from a current ETS release.
+    /// project.xml / 0.xml sit inside the encrypted P-XXXX.zip, so knx_master.xml with its newer
+    /// schema (22 = ETS 6.1, 23 = ETS 6.2/6.3) is the only readable version marker. The old
+    /// hard-coded namespace list only knew schema 21 and returned Unknown -> "No loader available".
+    /// </summary>
+    [Theory]
+    [InlineData("http://knx.org/xml/project/22")]
+    [InlineData("http://knx.org/xml/project/23")]
+    public async Task DetectAsync_PasswordProtected_NewEtsSchema_DetectsEts6(string ns)
+    {
+        using var zip = TestZipBuilder.BuildOuter(new[]
+        {
+            ("P-0001.signature", ""),
+            ("P-0001.zip", "encrypted-payload"),
+            ("knx_master.xml", $"<?xml version=\"1.0\"?>\n<KNX xmlns=\"{ns}\"></KNX>"),
+        });
+
+        var features = await Detector().DetectAsync(zip);
+
+        features.HasPassword.Should().BeTrue();
+        features.EtsVersion.Should().Be(EtsVersion.Ets6);
     }
 
     [Fact]
@@ -94,6 +140,48 @@ public class FeatureDetectorUnitTests
 
         var features = await Detector().DetectAsync(zip);
         features.AddressingStyle.Should().Be(expected);
+    }
+
+    /// <summary>
+    /// Real ETS files put GroupAddressStyle on &lt;ProjectInformation&gt;, not on the root element.
+    /// Reading only the root made every ETS5/6 project look like ThreeLevel, so TwoLevel/Free
+    /// projects got three-part group addresses ("0/0/1" instead of "0/1").
+    /// </summary>
+    [Theory]
+    [InlineData("Free", AddressingStyle.Free)]
+    [InlineData("TwoLevel", AddressingStyle.TwoLevel)]
+    [InlineData("ThreeLevel", AddressingStyle.ThreeLevel)]
+    public async Task DetectAsync_AddressingStyle_OnProjectInformation_Mapped(string raw, AddressingStyle expected)
+    {
+        using var zip = TestZipBuilder.BuildOuter(new[]
+        {
+            ("P-0001.signature", ""),
+            ("knx_master.xml", "<KNX xmlns=\"http://knx.org/xml/project/23\"></KNX>"),
+            ("P-0001/project.xml",
+                "<KNX xmlns=\"http://knx.org/xml/project/23\"><Project Id=\"P-0001\">"
+                + $"<ProjectInformation Name=\"x\" GroupAddressStyle=\"{raw}\" /></Project></KNX>"),
+            ("P-0001/0.xml", "<KNX/>"),
+        });
+
+        var features = await Detector().DetectAsync(zip);
+        features.AddressingStyle.Should().Be(expected);
+    }
+
+    /// <summary>ETS4 writes "P-XXXX/Project.xml" with a capital P; entry lookup must be case-insensitive.</summary>
+    [Fact]
+    public async Task DetectAsync_AddressingStyle_Ets4CapitalisedProjectXml_Mapped()
+    {
+        using var zip = TestZipBuilder.BuildOuter(new[]
+        {
+            ("P-0600.signature", ""),
+            ("knx_master.xml", "<KNX xmlns=\"http://knx.org/xml/project/11\"></KNX>"),
+            ("P-0600/Project.xml",
+                "<KNX xmlns=\"http://knx.org/xml/project/11\"><Project Id=\"P-0600\">"
+                + "<ProjectInformation Name=\"x\" GroupAddressStyle=\"TwoLevel\" /></Project></KNX>"),
+        });
+
+        var features = await Detector().DetectAsync(zip);
+        features.AddressingStyle.Should().Be(AddressingStyle.TwoLevel);
     }
 
     [Fact]

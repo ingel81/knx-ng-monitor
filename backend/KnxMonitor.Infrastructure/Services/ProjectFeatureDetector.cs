@@ -3,6 +3,7 @@ using System.Xml.Linq;
 using KnxMonitor.Core.Enums;
 using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Models;
+using KnxMonitor.ProjectParser.Helpers;
 
 namespace KnxMonitor.Infrastructure.Services;
 
@@ -105,13 +106,11 @@ public class ProjectFeatureDetector : IProjectFeatureDetector
                     return EtsVersion.Ets6;
             }
 
-            // Check XML namespace
+            // Check XML namespace. The schema number is mapped by range (see EtsSchemaVersion) —
+            // knx_master.xml carries neither ToolVersion nor CreatedBy, so for password-protected
+            // projects this is the only marker, and ETS raises the schema with each minor release.
             var ns = doc.Root?.Name.Namespace.NamespaceName;
-            if (ns == "http://knx.org/xml/project/20")
-                return EtsVersion.Ets5; // ETS5 and ETS6 use this namespace
-
-            if (ns == "http://knx.org/xml/project/14")
-                return EtsVersion.Ets4;
+            return MapParserVersion(EtsSchemaVersion.FromNamespace(ns));
         }
         catch
         {
@@ -120,6 +119,18 @@ public class ProjectFeatureDetector : IProjectFeatureDetector
 
         return EtsVersion.Unknown;
     }
+
+    /// <summary>
+    /// The parser library and the Core domain each declare their own EtsVersion enum with different
+    /// underlying values, so the mapping is explicit rather than a cast.
+    /// </summary>
+    private static EtsVersion MapParserVersion(KnxMonitor.ProjectParser.Core.Enums.EtsVersion version) => version switch
+    {
+        KnxMonitor.ProjectParser.Core.Enums.EtsVersion.Ets4 => EtsVersion.Ets4,
+        KnxMonitor.ProjectParser.Core.Enums.EtsVersion.Ets5 => EtsVersion.Ets5,
+        KnxMonitor.ProjectParser.Core.Enums.EtsVersion.Ets6 => EtsVersion.Ets6,
+        _ => EtsVersion.Unknown
+    };
 
     private static async Task<bool> DetectKnxSecureDevicesAsync(Stream xmlStream)
     {

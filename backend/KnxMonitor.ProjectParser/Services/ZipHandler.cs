@@ -21,7 +21,7 @@ public static class ZipHandler
 
         if (!features.HasPassword)
         {
-            return await ExtractAllAsync(outerArchive, cancellationToken);
+            return new ProjectFileMap(await ExtractAllAsync(outerArchive, cancellationToken));
         }
 
         if (string.IsNullOrEmpty(password))
@@ -51,11 +51,18 @@ public static class ZipHandler
         await nestedStream.CopyToAsync(nestedBuffer, cancellationToken);
         nestedBuffer.Position = 0;
 
-        var zipPassword = features.EtsVersion == EtsVersion.Ets6
-            ? DeriveEts6Password(password)
-            : password;
+        var innerFiles = await ExtractWithPasswordCandidatesAsync(
+            nestedBuffer, features.EtsVersion, password, cancellationToken);
 
-        var files = await ExtractPasswordProtectedAsync(nestedBuffer, zipPassword, cancellationToken);
+        // Only the P-XXXX/ project folder is encrypted. knx_master.xml and the M-XXXX/ manufacturer
+        // folders (Hardware.xml, Catalog.xml) stay in the OUTER archive — without them devices have
+        // no product name and no manufacturer, so a password-protected project used to import with
+        // devices named after their bare address ("1.1.0"). Outer files first, inner ones win.
+        var files = await ExtractAllAsync(outerArchive, cancellationToken, skip: nestedZipEntry.FullName);
+        foreach (var (path, data) in innerFiles)
+        {
+            files[path] = data;
+        }
 
         progress?.Report(new ParserProgress
         {
@@ -67,20 +74,67 @@ public static class ZipHandler
         return new ProjectFileMap(files);
     }
 
-    private static async Task<ProjectFileMap> ExtractAllAsync(
+    private static async Task<Dictionary<string, byte[]>> ExtractAllAsync(
         ZipArchive archive,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? skip = null)
     {
         var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in archive.Entries)
         {
             if (string.IsNullOrEmpty(entry.Name)) continue;
+            if (skip != null && entry.FullName.Equals(skip, StringComparison.OrdinalIgnoreCase)) continue;
             await using var entryStream = entry.Open();
             using var ms = new MemoryStream();
             await entryStream.CopyToAsync(ms, cancellationToken);
             files[entry.FullName] = ms.ToArray();
         }
-        return new ProjectFileMap(files);
+        return files;
+    }
+
+    /// <summary>
+    /// Decrypt the inner archive, trying every plausible password encoding. ETS 6 does not hand the
+    /// user password to the ZIP directly but runs it through PBKDF2 first (see
+    /// <see cref="DeriveEts6Password"/>), ETS 4/5 use it verbatim — so the correct variant depends on
+    /// the detected ETS version. When detection is uncertain (<see cref="EtsVersion.Unknown"/>, e.g. a
+    /// password-protected project whose knx_master.xml carries no usable schema marker) BOTH variants
+    /// are tried instead of failing outright; the detected version only decides the order. The extra
+    /// attempt costs one PBKDF2 run and only happens when the first variant fails.
+    /// </summary>
+    private static async Task<Dictionary<string, byte[]>> ExtractWithPasswordCandidatesAsync(
+        MemoryStream nestedBuffer,
+        EtsVersion etsVersion,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        // ETS6 first unless we positively know this is an ETS 4/5 project. Deferred via Func so the
+        // PBKDF2 run (65536 iterations) only happens when that candidate is actually reached.
+        var ets6First = etsVersion is EtsVersion.Ets6 or EtsVersion.Unknown;
+        var candidates = ets6First
+            ? new Func<string>[] { () => DeriveEts6Password(password), () => password }
+            : new Func<string>[] { () => password, () => DeriveEts6Password(password) };
+
+        Exception? firstFailure = null;
+
+        foreach (var candidate in candidates)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            nestedBuffer.Position = 0;
+
+            try
+            {
+                return await ExtractPasswordProtectedAsync(nestedBuffer, candidate(), cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                firstFailure ??= ex;
+            }
+        }
+
+        throw new InvalidOperationException(
+            "Could not decrypt the password-protected project archive - the project password is wrong "
+            + "or the archive uses an unsupported encryption.",
+            firstFailure);
     }
 
     internal static string DeriveEts6Password(string plainPassword)

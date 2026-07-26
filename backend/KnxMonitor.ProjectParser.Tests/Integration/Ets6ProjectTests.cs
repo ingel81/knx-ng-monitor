@@ -62,9 +62,12 @@ public class Ets6ProjectTests : IClassFixture<SampleFileFixture>
         result.Should().NotBeNull();
         result.Features.EtsVersion.Should().Be(EtsVersion.Ets6);
         result.Features.HasPassword.Should().BeFalse();
-        // Note: Sample file doesn't have GroupAddressStyle attribute, defaults to ThreeLevel
 
+        // GroupAddressStyle="Free" sits on <ProjectInformation>, not on the document root — reading it
+        // off the root made every project look like ThreeLevel and produced "0/0/1"-style addresses.
+        result.Features.AddressingStyle.Should().Be(AddressingStyle.Free);
         result.GroupAddresses.Should().NotBeEmpty();
+        result.GroupAddresses.Select(ga => ga.Address).Should().Contain(new[] { "1", "2", "3", "1025" });
         // Note: This minimal sample doesn't contain devices
     }
 
@@ -83,9 +86,10 @@ public class Ets6ProjectTests : IClassFixture<SampleFileFixture>
         result.Should().NotBeNull();
         result.Features.EtsVersion.Should().Be(EtsVersion.Ets6);
         result.Features.HasPassword.Should().BeFalse();
-        // Note: Sample file doesn't have GroupAddressStyle attribute, defaults to ThreeLevel
 
+        result.Features.AddressingStyle.Should().Be(AddressingStyle.TwoLevel);
         result.GroupAddresses.Should().NotBeEmpty();
+        result.GroupAddresses.Select(ga => ga.Address).Should().OnlyContain(a => a.Count(c => c == '/') == 1);
         // Note: This minimal sample doesn't contain devices
     }
 
@@ -105,11 +109,14 @@ public class Ets6ProjectTests : IClassFixture<SampleFileFixture>
         features.HasPassword.Should().BeTrue();
     }
 
-    [Fact]
-    public async Task DetectFeatures_Ets6FreeAddressing_ReturnsCorrectVersion()
+    [Theory]
+    [InlineData("ets6_free.knxproj", AddressingStyle.Free)]
+    [InlineData("ets6_two_level.knxproj", AddressingStyle.TwoLevel)]
+    [InlineData("testprojekt-ets6-functions.knxproj", AddressingStyle.ThreeLevel)]
+    public async Task DetectFeatures_Ets6_ReturnsVersionAndAddressingStyle(string sample, AddressingStyle expectedStyle)
     {
         // Arrange
-        var samplePath = Path.Combine("TestData", "ets6_free.knxproj");
+        var samplePath = Path.Combine("TestData", sample);
         await using var stream = File.OpenRead(samplePath);
 
         // Act
@@ -118,23 +125,7 @@ public class Ets6ProjectTests : IClassFixture<SampleFileFixture>
         // Assert
         features.Should().NotBeNull();
         features.EtsVersion.Should().Be(EtsVersion.Ets6);
-        // Note: AddressingStyle requires GroupAddressStyle attribute which may not be present in all samples
-    }
-
-    [Fact]
-    public async Task DetectFeatures_Ets6TwoLevelAddressing_ReturnsCorrectVersion()
-    {
-        // Arrange
-        var samplePath = Path.Combine("TestData", "ets6_two_level.knxproj");
-        await using var stream = File.OpenRead(samplePath);
-
-        // Act
-        var features = await _fixture.FeatureDetector.DetectAsync(stream);
-
-        // Assert
-        features.Should().NotBeNull();
-        features.EtsVersion.Should().Be(EtsVersion.Ets6);
-        // Note: AddressingStyle requires GroupAddressStyle attribute which may not be present in all samples
+        features.AddressingStyle.Should().Be(expectedStyle);
     }
 
     [Fact]
