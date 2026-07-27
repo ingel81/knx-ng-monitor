@@ -13,6 +13,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { InitialSetupRequest } from '../../core/models/auth.models';
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { VersionService } from '../../core/services/version.service';
 
 @Component({
   selector: 'app-initial-setup',
@@ -35,6 +36,9 @@ export class InitialSetup {
   private router = inject(Router);
   private toast = inject(ToastService);
   private lang = inject(LanguageService);
+
+  /** Shown in the footer — the real assembly version, not a hard-coded literal. */
+  readonly version$ = inject(VersionService).version$;
 
   credentials: InitialSetupRequest = {
     username: '',

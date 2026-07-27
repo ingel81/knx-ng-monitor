@@ -79,7 +79,7 @@
 
     <!-- Footer -->
     <div class="login-footer">
-      <span class="version-info">{{ 'login.version' | translate:{ version: '1.0.0' } }}</span>
+      <span class="version-info">{{ 'login.version' | translate:{ version: (version$ | async) || '…' } }}</span>
     </div>
   </div>
 </div>

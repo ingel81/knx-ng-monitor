@@ -14,6 +14,7 @@ import { LoginRequest } from '../../core/models/auth.models';
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LoggerService } from '../../core/logging/logger.service';
+import { VersionService } from '../../core/services/version.service';
 
 @Component({
   selector: 'app-login',
@@ -37,6 +38,9 @@ export class LoginComponent implements OnInit {
   private toast = inject(ToastService);
   private lang = inject(LanguageService);
   private logger = inject(LoggerService);
+
+  /** Shown in the footer — the real assembly version, not a hard-coded literal. */
+  readonly version$ = inject(VersionService).version$;
 
   credentials: LoginRequest = {
     username: '',

@@ -10,6 +10,15 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
+## [Unreleased]
+
+### Fixed
+- **Login and setup screens always showed "Version 1.0.0"** - the footer had the
+  version hard-coded. Both now read it from `GET /api/version` (anonymous, so it
+  works before sign-in) and strip the build metadata the informational version
+  carries. The csproj fallback used for local builds was bumped from 0.7.0 to
+  0.8.4; CI keeps overriding it from the tag.
+
 ## [0.8.4]
 
 ### Fixed
