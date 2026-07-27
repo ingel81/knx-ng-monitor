@@ -325,7 +325,16 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.8.4:** the portable binary now also anchors its *content root* to
+**Current - v0.9.0:** the charts view grew up - display options (line / area /
+steps, data points, zero-based axis, average line), PNG and CSV export, a
+per-series summary of min / max / average / last that doubles as the interactive
+legend, a searchable group-address picker, a moving window in live mode, and the
+selection is remembered. Two silent data defects behind those charts are fixed:
+down-sampling kept every n-th point and dropped short spikes, and the row cap
+discarded the *newest* data on wide ranges. The group-address page now fills its
+values from the live stream, reports a read that nobody answers, and shows the
+KNX flags per address; the topology tree's "collapse all" works again after
+manual expanding. Builds on v0.8.4: the portable binary anchors its *content root* to
 the executable, so `appsettings.json` and the bundled frontend are found no
 matter which directory it is started from. The release workflow additionally
 smoke-tests the artifact it is about to publish - it starts, answers `/healthz`,
