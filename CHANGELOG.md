@@ -25,6 +25,10 @@ binaries and auto-generated notes are on the
 - **Live values on the group-address page** - rows fill from the telegram stream,
   and a read that goes unanswered for 3 s now says so instead of looking
   successful. KNX flags per address are shown as compact badges.
+- **Live charts follow a moving window** - with live append on, points older than
+  the selected range are dropped instead of letting the time axis grow without
+  end. Implemented by trimming the data rather than pinning the axis, so a manual
+  zoom keeps working.
 - Chart group-address selection and time range are remembered across visits.
 
 ### Fixed
@@ -40,6 +44,9 @@ binaries and auto-generated notes are on the
 - **The series row cap silently cut off the newest data** - on a large range the
   query kept the *oldest* rows, so the chart stopped short of now without a word.
   It now keeps the newest rows and reports that the range is incomplete.
+- **The down-sampling note said nothing useful** - "some series were down-sampled"
+  gave no idea of the scale. It now states the actual ratio ("2,000 of 48,214
+  points") and says that narrowing the range restores full resolution.
 - **The chart toolbar wrapped onto a second row** once several group addresses
   were selected, because the picker grew with the concatenated labels.
 - **Clearing the chart selection did not stick** - the previous selection was
