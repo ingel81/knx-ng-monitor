@@ -143,7 +143,7 @@ https://github.com/user-attachments/assets/3b4ca0b0-97f8-420f-acb7-784465a6f5a5
 
 ## Features
 
-- **Real-time KNX monitoring** - live view of bus telegrams via SignalR, **always-on**: auto-connects on startup and reconnects after gateway/network/container interruptions
+- **Real-time KNX monitoring** - live view of bus telegrams via SignalR, over KNXnet/IP **tunneling or routing**, **always-on**: auto-connects on startup and reconnects after gateway/network/container interruptions
 - **DPT decoding** - via the Falcon datapoint catalog: full DPT range, sub-type aware, with units and enumeration names (English labels, locale-invariant numbers)
 - **ETS project import** - ETS 4 / 5 / 6 `.knxproj` files up to ETS 6.4 (project schema 23), three- / two-level / free addressing
 - **KNX Secure** - password-protected projects (incl. ETS6 PBKDF2/AES wrapping) and `.knxkeys` keyring decryption; **Data Secure** group telegrams decrypted at runtime, optional opt-in IP-Secure tunnel
@@ -325,11 +325,17 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.8.1:** import fixes for current ETS releases - projects from
+**Current - v0.8.2:** KNXnet/IP **routing** is selectable in Settings - the
+backend always supported it, the UI always saved tunneling. Routing now also
+honours the configured port and sends under the configured physical address, and
+*Test connection* no longer reports success for a multicast group that nothing
+can reach. Group-address names are shown verbatim again instead of having a
+guessed floor prefix stripped, and the topology tree is sorted by name and
+address. Builds on v0.8.1: import fixes for current ETS releases - projects from
 ETS 6.1 / 6.2 / 6.3 / 6.4 (project schema 22 and 23) no longer fail with *"No
 loader available for ETS version Unknown"*, two-level and free addressing is
 honoured again, and password-protected projects keep their device product names
-and manufacturers. Builds on v0.8.0: in-app Logs viewer (live log stream),
+and manufacturers. And on v0.8.0: in-app Logs viewer (live log stream),
 one-click diagnostics zip, rolling file logs (`KNX_LOG_LEVEL`),
 history-preserving re-import, data dir anchored to the executable, hardened
 refresh-token auth, multi-arch (amd64 + arm64) Docker images. Earlier: GA

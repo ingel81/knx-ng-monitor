@@ -10,7 +10,7 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
-## [Unreleased]
+## [0.8.2]
 
 ### Fixed
 - **Routing could not be selected** ([#4](https://github.com/ingel81/knx-ng-monitor/issues/4)) -
