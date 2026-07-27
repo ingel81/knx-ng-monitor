@@ -325,7 +325,13 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.8.2:** KNXnet/IP **routing** is selectable in Settings - the
+**Current - v0.8.3:** fixes silent data loss on update. Versions 0.8.0 - 0.8.2
+resolved the data directory to the single-file bundle's extraction directory
+instead of the folder next to the executable, so the database, JWT secret, logs
+and archive bypassed the mounted volume and were dropped whenever the container
+was recreated - an update came up with the setup wizard and an empty history.
+See [CHANGELOG.md](CHANGELOG.md) for how to recover data written by those
+versions. Builds on v0.8.2: KNXnet/IP **routing** is selectable in Settings - the
 backend always supported it, the UI always saved tunneling. Routing now also
 honours the configured port and sends under the configured physical address, and
 *Test connection* no longer reports success for a multicast group that nothing

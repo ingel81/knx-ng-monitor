@@ -10,6 +10,29 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
+## [0.8.3]
+
+### Fixed
+- **Data loss on update: the data directory was ignored (0.8.0 - 0.8.2)** - the
+  data directory was resolved via `AppContext.BaseDirectory`, which for our
+  compressed single-file build is not the executable's folder but the bundle's
+  *extraction* directory (`/tmp/.net/KnxMonitor.Api/<bundle-hash>/` in the
+  container). Database, JWT secret, logs and archive therefore bypassed the
+  mounted volume, and because that directory name is a hash over the bundle,
+  every new version started from an empty one - hence the setup wizard and an
+  empty history after an update. Now anchored to `Environment.ProcessPath`.
+
+  **Recovering data written by 0.8.0 - 0.8.2:** it only exists while the old
+  container does, so do this *before* updating:
+  ```bash
+  docker exec <container> sh -c 'find /tmp/.net -name knxmonitor.db'
+  docker cp <container>:<path from above> ./knxmonitor.db
+  ```
+  Then move that file into the mounted data directory. If the container was
+  already recreated, that data is gone; a database from before 0.8.0 is still in
+  the mounted directory and is picked up automatically. On startup the app now
+  logs a warning when it finds a stranded database.
+
 ## [0.8.2]
 
 ### Fixed
