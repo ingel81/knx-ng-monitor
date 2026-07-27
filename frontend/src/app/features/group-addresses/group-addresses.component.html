@@ -87,6 +87,25 @@
                               @if (leaf.datapointType) {
                                 <span class="leaf-dpt mono">{{ leaf.datapointType }}</span>
                               }
+
+                              <!-- KNX flags, aggregated over the linked communication objects. -->
+                              @if (leaf.flags?.length) {
+                                <span class="leaf-flags">
+                                  @for (f of leaf.flags; track f) {
+                                    <span class="flag" [attr.title]="flagTitle(f, leaf)">{{ flagLabel(f) }}</span>
+                                  }
+                                </span>
+                              }
+
+                              <!-- Filled from the live telegram stream; empty until this address
+                                   is seen on the bus. -->
+                              @if (leaf.pendingRead) {
+                                <span class="leaf-value is-waiting">{{ 'ga.waiting' | translate }}</span>
+                              } @else if (leaf.liveValue !== undefined) {
+                                <span class="leaf-value" [attr.title]="liveValueTitle(leaf)">{{ leaf.liveValue }}</span>
+                              } @else if (leaf.noAnswer) {
+                                <span class="leaf-value is-muted">{{ 'ga.noAnswer' | translate }}</span>
+                              }
                             </div>
                             <div class="leaf-actions">
                               <div class="slot slot-read">
@@ -94,6 +113,7 @@
                                   <mat-icon svgIcon="knx:download"></mat-icon>
                                   {{ 'detail.read' | translate }}
                                 </button>
+
                               </div>
 
                               <div class="slot slot-write">

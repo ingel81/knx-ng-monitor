@@ -189,6 +189,57 @@
     border-radius: var(--r-sm, 4px);
     padding: 1px 6px;
   }
+
+  // KNX flags. Single letters so a full set stays narrower than the DPT badge next to it.
+  .leaf-flags {
+    display: inline-flex;
+    gap: 2px;
+    flex: none;
+  }
+
+  .flag {
+    display: inline-grid;
+    place-items: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 3px;
+    border-radius: 3px;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: var(--fw-semi);
+    line-height: 1;
+    cursor: help;
+  }
+
+  // Last value seen on the bus. Pushed to the right edge of the info block so it forms its own
+  // column across rows instead of drifting with the name length.
+  .leaf-value {
+    margin-left: auto;
+    flex: none;
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs, 11px);
+    font-weight: var(--fw-semi);
+    color: var(--teal-800, var(--brand));
+    background: var(--brand-tint);
+    border-radius: var(--r-sm, 4px);
+    padding: 1px 8px;
+
+    &.is-waiting,
+    &.is-muted {
+      color: var(--ink-3);
+      background: var(--surface-3);
+      font-weight: var(--fw-normal);
+      font-family: var(--font-ui);
+      font-style: italic;
+    }
+  }
 }
 
 // Fixed-width slots so every leaf row reserves the same width for
