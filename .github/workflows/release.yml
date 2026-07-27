@@ -124,7 +124,10 @@ jobs:
           if [ -f "$EXE.exe" ]; then EXE="$EXE.exe"; else chmod +x "$EXE"; fi
 
           export ASPNETCORE_ENVIRONMENT=Production
-          export ASPNETCORE_URLS=http://127.0.0.1:8080
+          # appsettings.json pins an explicit Kestrel endpoint, which outranks ASPNETCORE_URLS.
+          # Environment variables do outrank appsettings, so bind the probe port this way and
+          # stay off 8080 in case something else on the runner holds it.
+          export Kestrel__Endpoints__Http__Url=http://127.0.0.1:8099
           # Mirror the container: a separate bundle extraction directory, so a data directory
           # resolved from AppContext.BaseDirectory would land there and be caught below.
           export DOTNET_BUNDLE_EXTRACT_BASE_DIR="$EXTRACT"
@@ -141,7 +144,7 @@ jobs:
             ( cd "$WORK" && exec "$EXE" ) > "$WORK/smoke-$1.log" 2>&1 &
             APP_PID=$!
             for _ in $(seq 60); do
-              if curl -fsS -m 2 http://127.0.0.1:8080/healthz >/dev/null 2>&1; then return 0; fi
+              if curl -fsS -m 2 http://127.0.0.1:8099/healthz >/dev/null 2>&1; then return 0; fi
               sleep 1
             done
             echo "::error::app did not answer /healthz within 60s ($1 start)"
@@ -150,9 +153,11 @@ jobs:
           }
           stop() {
             [ -n "$APP_PID" ] && kill "$APP_PID" 2>/dev/null || true
-            # Git Bash cannot reliably signal a native Windows process by its MSYS pid.
-            command -v taskkill >/dev/null 2>&1 && taskkill //F //IM KnxMonitor.Api.exe >/dev/null 2>&1 || true
             sleep 3
+            # Git Bash cannot reliably signal a native Windows process by its MSYS pid; only
+            # force-kill leftovers after the graceful attempt above had its chance.
+            command -v taskkill >/dev/null 2>&1 && taskkill //F //IM KnxMonitor.Api.exe >/dev/null 2>&1 || true
+            sleep 1
           }
           # Never leave the app running when an assertion aborts the step.
           trap stop EXIT
@@ -166,19 +171,27 @@ jobs:
             find "$SMOKE" "$EXTRACT" -name knxmonitor.db || true
             exit 1
           fi
-          if find "$EXTRACT" -name knxmonitor.db | grep -q .; then
-            echo "::error::database was written into the bundle extraction directory"
+          STRAY_DB=$(find "$EXTRACT" -name knxmonitor.db)
+          if [ -n "$STRAY_DB" ]; then
+            echo "::error::database was written into the bundle extraction directory: $STRAY_DB"
             exit 1
           fi
 
           # 3) the Angular frontend is bundled and served
-          curl -fsS -m 10 http://127.0.0.1:8080/ | grep -q '<app-root' \
-            || { echo "::error::frontend missing from the published output"; exit 1; }
+          # Matched without a pipe on purpose: `curl | grep -q` makes grep exit on the first hit,
+          # curl dies of SIGPIPE and `set -o pipefail` would turn a passing check into a failure.
+          INDEX_HTML=$(curl -fsS -m 10 http://127.0.0.1:8099/)
+          case "$INDEX_HTML" in
+            *"<app-root"*) ;;
+            *) echo "::error::frontend missing from the published output"; exit 1 ;;
+          esac
 
           # 4) -p:Version actually reached the assembly
-          VERSION_JSON=$(curl -fsS -m 10 http://127.0.0.1:8080/api/version)
-          echo "$VERSION_JSON" | grep -q "\"version\":\"$CLEAN" \
-            || { echo "::error::expected version $CLEAN, got $VERSION_JSON"; exit 1; }
+          VERSION_JSON=$(curl -fsS -m 10 http://127.0.0.1:8099/api/version)
+          case "$VERSION_JSON" in
+            *"\"version\":\"$CLEAN"*) ;;
+            *) echo "::error::expected version $CLEAN, got $VERSION_JSON"; exit 1 ;;
+          esac
 
           # 6) the rolling file log is actually written
           ls "$SMOKE/data/logs/"*.log >/dev/null 2>&1 \
