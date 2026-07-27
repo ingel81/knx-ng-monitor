@@ -143,24 +143,38 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
 
     // --- Charts / statistics ---
 
-    public async Task<IReadOnlyList<KnxTelegram>> GetSeriesRangeAsync(
+    public async Task<(IReadOnlyList<KnxTelegram> Rows, bool Truncated)> GetSeriesRangeAsync(
         IReadOnlyCollection<string> addresses, DateTime from, DateTime to, int maxRows,
         CancellationToken ct = default)
     {
         if (addresses.Count == 0)
         {
-            return Array.Empty<KnxTelegram>();
+            return (Array.Empty<KnxTelegram>(), false);
         }
 
         var addressList = addresses.ToList();
-        return await _dbSet
+
+        // Newest-first with one extra row: the extra tells us the cap was hit without a second
+        // COUNT query. Taking the oldest rows instead would silently cut off the recent end of
+        // the range, which looks like a complete chart and is the harder error to notice.
+        var rows = await _dbSet
             .Where(t => t.Timestamp >= from && t.Timestamp <= to && addressList.Contains(t.DestinationAddress))
             .Include(t => t.GroupAddress)
-            .OrderBy(t => t.Timestamp)
-            .ThenBy(t => t.Id)
-            .Take(maxRows)
+            .OrderByDescending(t => t.Timestamp)
+            .ThenByDescending(t => t.Id)
+            .Take(maxRows + 1)
             .AsNoTracking()
             .ToListAsync(ct);
+
+        var truncated = rows.Count > maxRows;
+        if (truncated)
+        {
+            rows.RemoveRange(maxRows, rows.Count - maxRows);
+        }
+
+        // Callers expect chronological order.
+        rows.Reverse();
+        return (rows, truncated);
     }
 
     public async Task<int> CountInRangeAsync(DateTime from, DateTime to, CancellationToken ct = default)

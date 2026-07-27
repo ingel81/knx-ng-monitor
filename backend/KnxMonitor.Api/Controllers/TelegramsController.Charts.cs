@@ -45,7 +45,7 @@ public partial class TelegramsController
         var cap = Math.Clamp(maxPoints, 1, MaxMaxPoints);
 
         var ct = HttpContext.RequestAborted;
-        var rows = await _repository.GetSeriesRangeAsync(addressList, rangeFrom, rangeTo, SeriesRowCap, ct);
+        var (rows, truncated) = await _repository.GetSeriesRangeAsync(addressList, rangeFrom, rangeTo, SeriesRowCap, ct);
 
         // Group by destination address, preserving the requested order.
         var byAddress = rows
@@ -99,11 +99,12 @@ public partial class TelegramsController
                 Name = name,
                 Unit = unit,
                 DownSampled = downSampled,
+                TotalPoints = points.Count,
                 Points = sampled
             });
         }
 
-        return Ok(new SeriesResponse { Series = series });
+        return Ok(new SeriesResponse { Series = series, Truncated = truncated });
     }
 
     /// <summary>
@@ -200,6 +201,16 @@ public partial class TelegramsController
     }
 
     /// <summary>Uniform-stride down-sampling, keeping the first and last point. Returns whether it down-sampled.</summary>
+    /// <summary>
+    /// Reduces a series to at most <paramref name="maxPoints"/> points by keeping the minimum and
+    /// the maximum of each bucket.
+    /// <para>
+    /// This used to take every n-th point, which is cheap but drops extremes: a short temperature
+    /// spike inside a 30-day view disappeared entirely and left a smooth, trustworthy-looking
+    /// curve behind. Keeping both extremes per bucket preserves the envelope of the signal — for
+    /// a monitoring tool the peaks are usually the interesting part.
+    /// </para>
+    /// </summary>
     private static (List<ChartPoint> Points, bool DownSampled) DownSample(List<ChartPoint> points, int maxPoints)
     {
         if (points.Count <= maxPoints)
@@ -207,22 +218,46 @@ public partial class TelegramsController
             return (points, false);
         }
 
-        // maxPoints is clamped to >= 1 by the caller. With exactly 1 the stride formula below
-        // would divide by zero, so collapse to the single most-recent point.
-        if (maxPoints <= 1)
+        // Two points per bucket, so halve the budget. maxPoints is clamped to >= 1 by the caller;
+        // with 1 or 2 there is no room for a range, so fall back to the most recent point.
+        var buckets = maxPoints / 2;
+        if (buckets < 2)
         {
             return (new List<ChartPoint> { points[^1] }, true);
         }
 
         var result = new List<ChartPoint>(maxPoints);
-        // Stride so we land on at most maxPoints points, always including first and last.
-        var stride = (double)(points.Count - 1) / (maxPoints - 1);
-        for (var i = 0; i < maxPoints; i++)
+        var bucketSize = (double)points.Count / buckets;
+
+        for (var b = 0; b < buckets; b++)
         {
-            var idx = (int)Math.Round(i * stride);
-            if (idx >= points.Count) idx = points.Count - 1;
-            result.Add(points[idx]);
+            var start = (int)Math.Floor(b * bucketSize);
+            var end = b == buckets - 1 ? points.Count : (int)Math.Floor((b + 1) * bucketSize);
+            if (end <= start)
+            {
+                continue;
+            }
+
+            var minIdx = start;
+            var maxIdx = start;
+            for (var i = start + 1; i < end; i++)
+            {
+                if (points[i].V < points[minIdx].V) minIdx = i;
+                if (points[i].V > points[maxIdx].V) maxIdx = i;
+            }
+
+            if (minIdx == maxIdx)
+            {
+                result.Add(points[minIdx]);
+                continue;
+            }
+
+            // Emit in chronological order — the series must stay monotonic in time.
+            var (firstIdx, secondIdx) = minIdx < maxIdx ? (minIdx, maxIdx) : (maxIdx, minIdx);
+            result.Add(points[firstIdx]);
+            result.Add(points[secondIdx]);
         }
+
         return (result, true);
     }
 
@@ -296,6 +331,12 @@ public partial class TelegramsController
 public class SeriesResponse
 {
     public List<ChartSeries> Series { get; set; } = new();
+
+    /// <summary>
+    /// True when the row cap was reached and the requested range could not be read in full.
+    /// The returned data is the most recent part of it; the older end is missing.
+    /// </summary>
+    public bool Truncated { get; set; }
 }
 
 public class ChartSeries
@@ -304,6 +345,10 @@ public class ChartSeries
     public string? Name { get; set; }
     public string Unit { get; set; } = string.Empty;
     public bool DownSampled { get; set; }
+
+    /// <summary>Numeric points available before down-sampling — lets the UI state the real ratio.</summary>
+    public int TotalPoints { get; set; }
+
     public List<ChartPoint> Points { get; set; } = new();
 }
 

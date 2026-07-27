@@ -119,4 +119,67 @@ public class TelegramRepositoryTests
         streamed.Should().BeInAscendingOrder();
         streamed.Should().HaveCount(3);
     }
+
+    [Fact]
+    public async Task Series_range_returns_everything_in_order_when_under_the_cap()
+    {
+        using var db = new SqliteTestDb();
+        using var scope = db.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<ITelegramRepository>();
+
+        var baseTs = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        await repo.AddRangeAsync(Enumerable.Range(0, 10).Select(i => Tg(baseTs.AddMinutes(i))));
+
+        var (rows, truncated) = await repo.GetSeriesRangeAsync(
+            new[] { "1/1/1" }, baseTs.AddMinutes(-1), baseTs.AddHours(1), maxRows: 100);
+
+        truncated.Should().BeFalse();
+        rows.Should().HaveCount(10);
+        rows.Select(r => r.Timestamp).Should().BeInAscendingOrder();
+    }
+
+    [Fact]
+    public async Task Series_range_keeps_the_newest_rows_when_capped_and_says_so()
+    {
+        using var db = new SqliteTestDb();
+        using var scope = db.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<ITelegramRepository>();
+
+        var baseTs = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        await repo.AddRangeAsync(Enumerable.Range(0, 20).Select(i => Tg(baseTs.AddMinutes(i))));
+
+        var (rows, truncated) = await repo.GetSeriesRangeAsync(
+            new[] { "1/1/1" }, baseTs.AddMinutes(-1), baseTs.AddHours(1), maxRows: 5);
+
+        truncated.Should().BeTrue("the caller has to be able to tell the user the range is incomplete");
+        rows.Should().HaveCount(5);
+        // Newest five (minutes 15..19), still chronological. Dropping the recent end instead
+        // would produce a chart that looks complete but silently stops short of now.
+        rows.First().Timestamp.Should().Be(baseTs.AddMinutes(15));
+        rows.Last().Timestamp.Should().Be(baseTs.AddMinutes(19));
+        rows.Select(r => r.Timestamp).Should().BeInAscendingOrder();
+    }
+
+    [Fact]
+    public async Task Series_range_filters_by_address_and_window()
+    {
+        using var db = new SqliteTestDb();
+        using var scope = db.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<ITelegramRepository>();
+
+        var baseTs = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        await repo.AddRangeAsync(new[]
+        {
+            Tg(baseTs, "1/1/1"),
+            Tg(baseTs.AddMinutes(5), "1/1/2"),
+            Tg(baseTs.AddMinutes(10), "1/1/1"),
+            Tg(baseTs.AddHours(5), "1/1/1")
+        });
+
+        var (rows, _) = await repo.GetSeriesRangeAsync(
+            new[] { "1/1/1" }, baseTs, baseTs.AddHours(1), maxRows: 100);
+
+        rows.Should().HaveCount(2);
+        rows.Should().OnlyContain(r => r.DestinationAddress == "1/1/1");
+    }
 }

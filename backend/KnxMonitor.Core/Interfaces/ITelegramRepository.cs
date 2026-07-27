@@ -46,9 +46,14 @@ public interface ITelegramRepository : IRepository<KnxTelegram>
     /// <summary>
     /// Returns telegrams for the given destination addresses within [from,to], ordered by
     /// Timestamp ASC. Uses the (Timestamp, DestinationAddress) index. Includes the GroupAddress
-    /// navigation for name/DPT lookup. Bounded by <paramref name="maxRows"/> (oldest kept).
+    /// navigation for name/DPT lookup.
+    /// <para>
+    /// Bounded by <paramref name="maxRows"/>, keeping the <b>newest</b> rows: a chart that stops
+    /// short of "now" is obviously incomplete, whereas one missing its recent end looks correct
+    /// and is not. <c>Truncated</c> reports whether the cap was hit so callers can say so.
+    /// </para>
     /// </summary>
-    Task<IReadOnlyList<KnxTelegram>> GetSeriesRangeAsync(
+    Task<(IReadOnlyList<KnxTelegram> Rows, bool Truncated)> GetSeriesRangeAsync(
         IReadOnlyCollection<string> addresses, DateTime from, DateTime to, int maxRows,
         CancellationToken ct = default);
 
