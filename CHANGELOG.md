@@ -22,6 +22,9 @@ binaries and auto-generated notes are on the
   a leading `KG`/`UG`/`EG`/`OG`/`DG` token was turned into a badge and stripped
   from the name, inconsistently (`_` was not an accepted separator) and unlike the
   mobile cards and detail panel. Names are now shown verbatim everywhere.
+- **Topology tree was in import order** ([#6](https://github.com/ingel81/knx-ng-monitor/issues/6)) -
+  locations are now sorted by name (digit-aware, so `2_` precedes `10_`) and their
+  devices and group addresses numerically by address.
 - **"Test connection" was green for unreachable routing setups** - a multicast join
   always succeeds locally, so the probe now listens for real bus traffic and warns
   when the group stays silent. Tunneling is unchanged.

@@ -71,10 +71,39 @@ export class TopologyComponent implements OnInit {
     }
   }
 
+  /** Digit-aware so "2_Bad" sorts before "10_Flur" instead of after it. */
+  private static readonly collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+  /**
+   * Compares dotted / slashed KNX addresses segment by segment, so 1.0.9 comes before
+   * 1.0.50 — a plain string compare would get that backwards. Anything non-numeric
+   * (free group-address style, malformed values) falls back to the collator.
+   */
+  private static compareAddress(a: string, b: string): number {
+    const pa = a.split(/[./]/);
+    const pb = b.split(/[./]/);
+    for (let i = 0; i < Math.min(pa.length, pb.length); i++) {
+      const na = Number(pa[i]);
+      const nb = Number(pb[i]);
+      if (!Number.isInteger(na) || !Number.isInteger(nb)) {
+        return TopologyComponent.collator.compare(a, b);
+      }
+      if (na !== nb) return na - nb;
+    }
+    return pa.length - pb.length;
+  }
+
   private buildTree(flat: LocationDto[]): LocationNode[] {
     const byId = new Map<string, LocationNode>();
     for (const loc of flat) {
-      byId.set(loc.externalId, { ...loc, children: [] });
+      // Copy the reference arrays before sorting — the DTOs come straight from the
+      // service and must not be reordered underneath other consumers.
+      byId.set(loc.externalId, {
+        ...loc,
+        deviceAddresses: [...loc.deviceAddresses].sort(TopologyComponent.compareAddress),
+        groupAddresses: [...loc.groupAddresses].sort(TopologyComponent.compareAddress),
+        children: []
+      });
     }
     const roots: LocationNode[] = [];
     for (const node of byId.values()) {
@@ -86,6 +115,16 @@ export class TopologyComponent implements OnInit {
         roots.push(node);
       }
     }
+
+    // Without this the tree keeps the order the locations were imported in (ETS document
+    // order), which is invisible to the user and reads as arbitrary — floors showed up as
+    // UG, OG, EG. Sort every sibling level by name instead.
+    const sortLevel = (nodes: LocationNode[]): void => {
+      nodes.sort((a, b) => TopologyComponent.collator.compare(a.name, b.name));
+      for (const child of nodes) sortLevel(child.children);
+    };
+    sortLevel(roots);
+
     return roots;
   }
 
