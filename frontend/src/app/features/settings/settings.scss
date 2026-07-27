@@ -9,7 +9,9 @@
 // Snackbar (global panel classes)
 ::ng-deep {
   .success-snackbar .mdc-snackbar__surface { background-color: var(--ok) !important; }
+  .warn-snackbar .mdc-snackbar__surface { background-color: var(--warn) !important; }
   .error-snackbar .mdc-snackbar__surface { background-color: var(--err) !important; }
   .success-snackbar .mat-mdc-snack-bar-label,
+  .warn-snackbar .mat-mdc-snack-bar-label,
   .error-snackbar .mat-mdc-snack-bar-label { color: #fff !important; }
 }

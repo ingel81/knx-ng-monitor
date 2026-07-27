@@ -75,10 +75,21 @@ public class KnxController : ControllerBase
             return NotFound("Configuration not found");
         }
 
-        var success = await _knxService.TestConnectionAsync(config);
-        return success
-            ? Ok(new { Success = true, Message = "Connection successful" })
-            : Ok(new { Success = false, Message = "Connection failed" });
+        var outcome = await _knxService.TestConnectionAsync(config);
+        return Ok(new
+        {
+            // JoinedWithoutTraffic is not a failure — the socket is fine, we just cannot confirm
+            // that anything reaches it. The UI renders it as a warning with its own message.
+            Success = outcome != ConnectionTestOutcome.Failed,
+            Outcome = outcome,
+            Message = outcome switch
+            {
+                ConnectionTestOutcome.Success => "Connection successful",
+                ConnectionTestOutcome.JoinedWithoutTraffic =>
+                    "Joined the multicast group, but no bus traffic was observed",
+                _ => "Connection failed"
+            }
+        });
     }
 
     /// <summary>

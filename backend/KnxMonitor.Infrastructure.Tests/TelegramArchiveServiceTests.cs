@@ -128,7 +128,8 @@ public class TelegramArchiveServiceTests : IDisposable
         public bool ManualDisconnect => false;
         public bool TestInProgress => false;
         public Task<bool> ConnectAsync(KnxConfiguration configuration) => Task.FromResult(false);
-        public Task<bool> TestConnectionAsync(KnxConfiguration configuration) => Task.FromResult(false);
+        public Task<KnxMonitor.Core.Enums.ConnectionTestOutcome> TestConnectionAsync(KnxConfiguration configuration)
+            => Task.FromResult(KnxMonitor.Core.Enums.ConnectionTestOutcome.Failed);
         public Task DisconnectAsync() => Task.CompletedTask;
         public Task<bool> WriteGroupValueAsync(string address, string? dptType, string value) => Task.FromResult(false);
         public Task<bool> ReadGroupValueAsync(string address) => Task.FromResult(false);

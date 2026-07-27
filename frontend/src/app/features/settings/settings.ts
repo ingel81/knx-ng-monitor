@@ -16,17 +16,30 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LoggerService } from '../../core/logging/logger.service';
 import { DiagnosticsService } from '../../core/services/diagnostics.service';
 
+/**
+ * Mirrors Core.Enums.ConnectionType. The API serialises enums as strings
+ * (JsonStringEnumConverter), so the wire format is the enum name — older
+ * clients sent the ordinal, which the converter still accepts on input.
+ */
+type ConnectionMode = 'Tunneling' | 'Routing';
+
+/** Default KNXnet/IP routing group per the KNX standard. */
+const ROUTING_MULTICAST_DEFAULT = '224.0.23.12';
+const TUNNELING_IP_DEFAULT = '192.168.10.60';
+
 interface KnxConfiguration {
   id: number;
   ipAddress: string;
   port: number;
   physicalAddress: string;
+  connectionType: ConnectionMode | number;
 }
 
 interface KnxSettings {
   ipAddress: string;
   port: number;
   physicalAddress: string;
+  connectionType: ConnectionMode;
 }
 
 @Component({
@@ -54,9 +67,16 @@ export class Settings implements OnInit {
   setDensity(d: Density): void { this.themeService.setDensity(d); }
 
   knxConfig: KnxSettings = {
-    ipAddress: '192.168.10.60',
+    ipAddress: TUNNELING_IP_DEFAULT,
     port: 3671,
-    physicalAddress: '1.0.58'
+    physicalAddress: '1.0.58',
+    connectionType: 'Tunneling'
+  };
+
+  /** Per-mode endpoint memory; see setConnectionType(). */
+  private endpointDrafts: Record<ConnectionMode, { ipAddress: string; port: number }> = {
+    Tunneling: { ipAddress: TUNNELING_IP_DEFAULT, port: 3671 },
+    Routing: { ipAddress: ROUTING_MULTICAST_DEFAULT, port: 3671 }
   };
 
   isTesting = false;
@@ -178,12 +198,54 @@ export class Settings implements OnInit {
         this.knxConfig = {
           ipAddress: config.ipAddress,
           port: config.port,
-          physicalAddress: config.physicalAddress
+          physicalAddress: config.physicalAddress,
+          connectionType: this.toConnectionMode(config.connectionType)
+        };
+        this.endpointDrafts[this.knxConfig.connectionType] = {
+          ipAddress: this.knxConfig.ipAddress,
+          port: this.knxConfig.port
         };
       }
     } catch (error) {
       this.logger.error('Failed to load settings:', error);
     }
+  }
+
+  /** Accepts both the string enum name and the legacy ordinal. */
+  private toConnectionMode(value: ConnectionMode | number | undefined): ConnectionMode {
+    return value === 'Routing' || value === 1 ? 'Routing' : 'Tunneling';
+  }
+
+  get isRouting(): boolean {
+    return this.knxConfig.connectionType === 'Routing';
+  }
+
+  /**
+   * Address and port mean different things per mode — a gateway IP for tunneling, a
+   * multicast group for routing — so each mode keeps its own draft. Toggling the
+   * switch back and forth therefore never destroys a typed-in gateway address or a
+   * custom port, which a plain "overwrite with the default" would.
+   */
+  setConnectionType(mode: ConnectionMode): void {
+    if (this.knxConfig.connectionType === mode) {
+      return;
+    }
+
+    this.endpointDrafts[this.knxConfig.connectionType] = {
+      ipAddress: this.knxConfig.ipAddress,
+      port: this.knxConfig.port
+    };
+
+    const draft = this.endpointDrafts[mode];
+    this.knxConfig.connectionType = mode;
+    this.knxConfig.ipAddress = draft.ipAddress;
+    this.knxConfig.port = draft.port;
+  }
+
+  /** True for the IPv4 multicast range 224.0.0.0 – 239.255.255.255. */
+  private isMulticastAddress(ip: string): boolean {
+    const first = Number(ip.split('.')[0]);
+    return Number.isFinite(first) && first >= 224 && first <= 239;
   }
 
   async saveSettings(showToast: boolean = true) {
@@ -199,7 +261,7 @@ export class Settings implements OnInit {
           ipAddress: this.knxConfig.ipAddress,
           port: this.knxConfig.port,
           physicalAddress: this.knxConfig.physicalAddress,
-          connectionType: 0, // Tunneling
+          connectionType: this.knxConfig.connectionType,
           autoConnect: this.autoConnect
         }).toPromise();
       } else {
@@ -208,7 +270,7 @@ export class Settings implements OnInit {
           ipAddress: this.knxConfig.ipAddress,
           port: this.knxConfig.port,
           physicalAddress: this.knxConfig.physicalAddress,
-          connectionType: 0, // Tunneling
+          connectionType: this.knxConfig.connectionType,
           autoConnect: this.autoConnect
         }).toPromise();
       }
@@ -272,10 +334,19 @@ export class Settings implements OnInit {
 
       // Non-destructive probe: does NOT touch the live recording connection.
       const result = await this.http
-        .post<{ success: boolean }>(`${environment.apiUrl}/knx/test-connection`, configs[0].id)
+        .post<{ success: boolean; outcome: string }>(`${environment.apiUrl}/knx/test-connection`, configs[0].id)
         .toPromise();
 
-      if (result?.success) {
+      // Routing joined the group but saw no telegrams — the socket is fine, so this is neither a
+      // success nor a failure. Most likely multicast never reaches this process.
+      if (result?.outcome === 'JoinedWithoutTraffic') {
+        this.snackBar.open(this.lang.translate('settings.testNoTraffic'), this.lang.translate('common.close'), {
+          duration: 8000,
+          horizontalPosition: 'end',
+          verticalPosition: 'top',
+          panelClass: ['warn-snackbar']
+        });
+      } else if (result?.success) {
         this.snackBar.open(this.lang.translate('settings.testSuccess'), this.lang.translate('common.close'), {
           duration: 4000,
           horizontalPosition: 'end',
@@ -305,9 +376,14 @@ export class Settings implements OnInit {
 
   resetToDefaults() {
     this.knxConfig = {
-      ipAddress: '192.168.10.60',
+      ipAddress: TUNNELING_IP_DEFAULT,
       port: 3671,
-      physicalAddress: '1.0.58'
+      physicalAddress: '1.0.58',
+      connectionType: 'Tunneling'
+    };
+    this.endpointDrafts = {
+      Tunneling: { ipAddress: TUNNELING_IP_DEFAULT, port: 3671 },
+      Routing: { ipAddress: ROUTING_MULTICAST_DEFAULT, port: 3671 }
     };
     this.saveSettings();
   }
@@ -348,6 +424,13 @@ export class Settings implements OnInit {
       return false;
     }
 
+    // The address means different things per mode, and the two ranges are disjoint:
+    // routing joins a multicast group, tunneling opens a unicast connection to a single
+    // gateway. A mismatch only surfaces as a failed connect buried in the log.
+    if (this.isRouting !== this.isMulticastAddress(this.knxConfig.ipAddress)) {
+      return false;
+    }
+
     // Port validation
     if (!this.knxConfig.port || this.knxConfig.port < 1 || this.knxConfig.port > 65535) {
       return false;
@@ -359,6 +442,23 @@ export class Settings implements OnInit {
       return false;
     }
 
+    // Routing sends under this address, so here it has to be a real individual address.
+    // Out of range, the backend cannot parse it and silently falls back to a default
+    // source. Tunneling does not use the field at all, so it stays leniently validated.
+    if (this.isRouting && !this.isIndividualAddress(this.knxConfig.physicalAddress)) {
+      return false;
+    }
+
     return true;
+  }
+
+  /** KNX individual address ranges: area 0-15, line 0-15, device 0-255. */
+  private isIndividualAddress(value: string): boolean {
+    const parts = value.split('.').map(Number);
+    return parts.length === 3
+      && parts.every(Number.isInteger)
+      && parts[0] >= 0 && parts[0] <= 15
+      && parts[1] >= 0 && parts[1] <= 15
+      && parts[2] >= 0 && parts[2] <= 255;
   }
 }

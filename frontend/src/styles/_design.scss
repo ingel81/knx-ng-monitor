@@ -55,6 +55,8 @@
 .knx-input::placeholder { color: var(--ink-3); }
 .knx-input:hover { border-color: var(--ink-3); }
 .knx-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
+.knx-input:disabled { background: var(--surface-3); color: var(--ink-3); cursor: not-allowed; }
+.knx-input:disabled:hover { border-color: var(--line-strong); }
 .knx-input--search { padding-left: 36px; }
 .knx-field .field-icon {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
@@ -181,6 +183,9 @@
 .set-actions .spacer { flex: 1; }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-3) 0; }
 .set-row + .set-row { border-top: 1px solid var(--line); }
+/* Leading row above a .set-grid — the grid brings no divider of its own. */
+.set-row--lead { padding-top: 0; border-bottom: 1px solid var(--line); margin-bottom: var(--sp-4); }
+.info-line .info-note { margin-top: 6px; color: var(--ink-3); font-size: var(--fs-xs); }
 .set-row .set-row-label { font-weight: var(--fw-medium); color: var(--ink); }
 .set-row .set-row-sub { font-size: var(--fs-sm); color: var(--ink-3); margin-top: 2px; }
 

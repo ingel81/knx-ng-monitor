@@ -261,10 +261,14 @@ the same database is used regardless of where you launch it from.
 
 Configured on the **Settings** page in the UI:
 
-- IP address of the KNX IP-Interface or router
+- Connection type: **Tunneling** (unicast to one interface) or **Routing** (KNXnet/IP multicast)
+- IP address of the KNX IP-Interface or router - for routing, the multicast group (default `224.0.23.12`)
 - Port (default 3671 for KNXnet/IP)
-- Connection type: Tunneling or Routing
-- Optional physical address
+- Physical address - in routing mode this is the source address of sent telegrams, so it has to be free in your installation
+
+> Routing needs multicast to reach the process. In Docker, start the container
+> with `--network host`; in a Home Assistant add-on, set `host_network: true`.
+> Tunneling works with the default bridge networking.
 
 ## Troubleshooting & logs
 

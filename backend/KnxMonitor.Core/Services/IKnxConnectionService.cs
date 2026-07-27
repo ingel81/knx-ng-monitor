@@ -12,8 +12,11 @@ public interface IKnxConnectionService
     /// Probes a configuration. If a live link is up it is briefly paused (its tunnel freed)
     /// for the duration of the probe and then restored — so gateways with a single tunnel
     /// slot can still be tested. Callers should warn the user before triggering this while live.
+    /// For routing configurations the probe additionally listens for real bus traffic, because
+    /// joining a multicast group succeeds even when nothing can ever arrive; see
+    /// <see cref="ConnectionTestOutcome.JoinedWithoutTraffic"/>.
     /// </summary>
-    Task<bool> TestConnectionAsync(KnxConfiguration configuration);
+    Task<ConnectionTestOutcome> TestConnectionAsync(KnxConfiguration configuration);
 
     /// <summary>True while a test probe is running (live link paused). The auto-connect
     /// worker must not try to (re)connect in this window or it would open a second tunnel.</summary>

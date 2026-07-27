@@ -138,7 +138,14 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     /// tradeoff — the UI warns the user before triggering this while live. The
     /// <see cref="TestInProgress"/> flag keeps the auto-connect worker out of the window.
     /// </summary>
-    public async Task<bool> TestConnectionAsync(KnxConfiguration configuration)
+    /// <summary>
+    /// How long a routing probe waits for a first telegram before reporting
+    /// <see cref="ConnectionTestOutcome.JoinedWithoutTraffic"/>. Long enough that a normally
+    /// busy installation is recognised, short enough to keep the paused-live-link gap small.
+    /// </summary>
+    private static readonly TimeSpan RoutingTrafficWindow = TimeSpan.FromSeconds(5);
+
+    public async Task<ConnectionTestOutcome> TestConnectionAsync(KnxConfiguration configuration)
     {
         // Hold the bus lock for the entire probe: the pause, the throwaway probe and the restore
         // all touch _knxBus, and the restore calls ConnectCoreAsync (not the public, lock-taking
@@ -166,16 +173,38 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             probe = new KnxBus(await BuildConnectorParameters(configuration, null));
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await probe.ConnectAsync(cts.Token);
-            var ok = probe.ConnectionState == BusConnectionState.Connected;
-            _logger.LogInformation("Test connection to {IpAddress}:{Port} => {Result}",
-                configuration.IpAddress, configuration.Port, ok ? "success" : "failed");
-            return ok;
+
+            if (probe.ConnectionState != BusConnectionState.Connected)
+            {
+                _logger.LogInformation("Test connection to {IpAddress}:{Port} => failed",
+                    configuration.IpAddress, configuration.Port);
+                return ConnectionTestOutcome.Failed;
+            }
+
+            // Tunneling has a real handshake, so reaching Connected means reachable. Routing does
+            // not: the multicast join is local and always succeeds, even when the group can never
+            // be reached (router in another VLAN, container on a bridge network, multicast not
+            // forwarded). Reporting that as success sends people looking in the wrong place, so
+            // wait for an actual telegram before calling it good.
+            if (configuration.ConnectionType != Core.Enums.ConnectionType.Routing)
+            {
+                _logger.LogInformation("Test connection to {IpAddress}:{Port} => success",
+                    configuration.IpAddress, configuration.Port);
+                return ConnectionTestOutcome.Success;
+            }
+
+            var sawTraffic = await WaitForRoutingTrafficAsync(probe);
+            _logger.LogInformation(
+                "Routing probe on {IpAddress}:{Port} joined the multicast group => {Result}",
+                configuration.IpAddress, configuration.Port,
+                sawTraffic ? "traffic observed" : $"no traffic within {RoutingTrafficWindow.TotalSeconds}s");
+            return sawTraffic ? ConnectionTestOutcome.Success : ConnectionTestOutcome.JoinedWithoutTraffic;
         }
         catch (Exception ex)
         {
             _logger.LogInformation(ex, "Test connection to {IpAddress}:{Port} failed",
                 configuration.IpAddress, configuration.Port);
-            return false;
+            return ConnectionTestOutcome.Failed;
         }
         finally
         {
@@ -204,7 +233,30 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         }
     }
 
-    private async Task<ConnectorParameters> BuildConnectorParameters(KnxConfiguration configuration, ProjectKeyringBlob? keyringBlob)
+    /// <summary>
+    /// Listens on a probe bus for the first group telegram, up to <see cref="RoutingTrafficWindow"/>.
+    /// Purely passive — nothing is written to the bus.
+    /// </summary>
+    private static async Task<bool> WaitForRoutingTrafficAsync(KnxBus probe)
+    {
+        var received = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnProbeMessage(object? sender, GroupEventArgs e) => received.TrySetResult(true);
+
+        probe.GroupMessageReceived += OnProbeMessage;
+        try
+        {
+            var completed = await Task.WhenAny(received.Task, Task.Delay(RoutingTrafficWindow));
+            return completed == received.Task;
+        }
+        finally
+        {
+            probe.GroupMessageReceived -= OnProbeMessage;
+        }
+    }
+
+    // internal (not private) so the test project can assert the tunneling/routing mapping
+    // without spinning up a real bus. See KnxMonitor.Infrastructure.Tests.
+    internal async Task<ConnectorParameters> BuildConnectorParameters(KnxConfiguration configuration, ProjectKeyringBlob? keyringBlob)
     {
         if (configuration.ConnectionType == Core.Enums.ConnectionType.Tunneling)
         {
@@ -233,7 +285,35 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
                 true /* NAT mode */);
         }
 
-        return new IpRoutingConnectorParameters(IPAddress.Parse(configuration.IpAddress));
+        // KNXnet/IP routing: join the multicast group instead of opening a tunnel to one
+        // interface. Unlike tunneling — where the gateway hands out the source address — a
+        // router-mode endpoint sends under its OWN individual address, so the configured
+        // PhysicalAddress is passed through here. Falcon would otherwise fall back to its
+        // 0.0.1 default, which collides with anything else defaulting the same way.
+        // localIPAddress stays null = bind to all interfaces.
+        var multicastAddress = IPAddress.Parse(configuration.IpAddress);
+        IpRoutingConnectorParameters routingParameters;
+
+        if (IndividualAddress.TryParse(configuration.PhysicalAddress, out var source))
+        {
+            routingParameters = new IpRoutingConnectorParameters(multicastAddress, source, null);
+        }
+        else
+        {
+            // Loud, because the fallback is the one outcome nobody wants: two endpoints both
+            // sending as 0.0.1. The UI blocks this, so getting here means the config was set
+            // through the API directly.
+            _logger.LogWarning(
+                "Physical address '{PhysicalAddress}' is not a valid KNX individual address; "
+                + "routing falls back to the default source address {DefaultAddress}, which "
+                + "collides with any other endpoint doing the same",
+                configuration.PhysicalAddress, IpRoutingConnectorParameters.DefaultKnxAddress);
+            routingParameters = new IpRoutingConnectorParameters(multicastAddress);
+        }
+
+        // Honour a non-standard routing port; 3671 is Falcon's default anyway.
+        routingParameters.IpPort = configuration.Port;
+        return routingParameters;
     }
 
     /// <summary>
