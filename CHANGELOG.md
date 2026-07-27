@@ -12,7 +12,33 @@ binaries and auto-generated notes are on the
 
 ## [Unreleased]
 
+### Added
+- **Chart display options** - a settings popover for curve style (line / area /
+  steps), data points, including zero on the value axis, an average line and the
+  chart's own legend. Persisted across sessions.
+- **PNG and CSV export** of the current chart, straight from the toolbar.
+- **Per-series summary** under the chart (min / max / average / last / point
+  count) which doubles as the interactive legend: clicking a row shows or hides
+  that series. The chart's built-in legend is therefore off by default.
+- **Search in the group-address picker**, matching address and name, with the
+  hit highlighted.
+- **Live values on the group-address page** - rows fill from the telegram stream,
+  and a read that goes unanswered for 3 s now says so instead of looking
+  successful. KNX flags per address are shown as compact badges.
+- Chart group-address selection and time range are remembered across visits.
+
 ### Fixed
+- **Down-sampling dropped peaks** - the series endpoint kept every n-th point, so
+  a short spike inside a wide range vanished and left a smooth, trustworthy
+  looking curve. It now keeps the minimum and maximum of each bucket, preserving
+  the envelope of the signal.
+- **The series row cap silently cut off the newest data** - on a large range the
+  query kept the *oldest* rows, so the chart stopped short of now without a word.
+  It now keeps the newest rows and reports that the range is incomplete.
+- **The chart toolbar wrapped onto a second row** once several group addresses
+  were selected, because the picker grew with the concatenated labels.
+- **Clearing the chart selection did not stick** - the previous selection was
+  restored on the next visit, and the summary table kept showing stale rows.
 - **Login and setup screens always showed "Version 1.0.0"** - the footer had the
   version hard-coded. Both now read it from `GET /api/version` (anonymous, so it
   works before sign-in) and strip the build metadata the informational version
