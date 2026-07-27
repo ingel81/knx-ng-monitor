@@ -10,6 +10,27 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
+## [Unreleased]
+
+### Fixed
+- **Portable binary served no frontend when started from another directory** - the
+  ASP.NET Core content root defaults to the current working directory, so both
+  `appsettings.json` and `wwwroot` were looked up there instead of next to the
+  executable: no UI, and configuration silently falling back to defaults. Now
+  anchored to the executable like the data directory. Docker was unaffected
+  (`WORKDIR /app` happened to match).
+
+### Added
+- The release workflow now smoke-tests the artifact it is about to publish, on
+  every OS it can execute natively: the app has to start, `/healthz` must answer
+  (which exercises EF plus the native SQLite provider), the data directory has to
+  sit next to the executable and not in the single-file bundle's extraction
+  directory, the frontend has to be served, `/api/version` has to match the tag,
+  a log file has to appear, and a restart on the same data directory has to keep
+  the database. The image is additionally checked for the bind mount reaching
+  `/app/data`, a non-root uid and a healthy `HEALTHCHECK`. The data-loss bug in
+  0.8.0 - 0.8.2 existed only in the packaged artifact and passed every unit test.
+
 ## [0.8.3]
 
 ### Fixed

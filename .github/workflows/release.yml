@@ -14,12 +14,16 @@ jobs:
       contents: read
 
     strategy:
+      # `smoke: true` marks the RIDs the runner can execute natively. The publish flags are
+      # identical for every RID, so covering one per OS catches packaging defects without
+      # dragging QEMU into the release path.
       matrix:
         include:
           - os: ubuntu-latest
             rid: linux-x64
             artifact: knx-ng-monitor-linux-x64.tar.gz
             archive_cmd: tar -czf
+            smoke: true
           - os: ubuntu-latest
             rid: linux-arm64
             artifact: knx-ng-monitor-linux-arm64.tar.gz
@@ -28,6 +32,7 @@ jobs:
             rid: win-x64
             artifact: knx-ng-monitor-win-x64.zip
             archive_cmd: 7z a -tzip
+            smoke: true
           - os: windows-latest
             rid: win-arm64
             artifact: knx-ng-monitor-win-arm64.zip
@@ -40,6 +45,7 @@ jobs:
             rid: osx-arm64
             artifact: knx-ng-monitor-osx-arm64.tar.gz
             archive_cmd: tar -czf
+            smoke: true
 
     steps:
       - name: Checkout code
@@ -93,6 +99,104 @@ jobs:
             -p:Version=$CLEAN \
             -o ./publish/${{ matrix.rid }}
         working-directory: backend
+
+      # Exercise the artifact that actually ships. The unit tests run against the assemblies and
+      # are blind to packaging defects: 0.8.0 shipped a data-directory bug that existed only in
+      # the single-file bundle and silently discarded user data across three releases.
+      - name: Smoke-test published binary
+        if: matrix.smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLEAN="${GITHUB_REF#refs/tags/v}"
+          # On the Windows runner RUNNER_TEMP is a backslash path that MSYS tools mishandle;
+          # cd + pwd normalises it to a POSIX path on every runner.
+          WORK=$(cd "$RUNNER_TEMP" && pwd)
+          SMOKE="$WORK/smoke"
+          EXTRACT="$WORK/bundle-extract"
+          rm -rf "$SMOKE" "$EXTRACT"
+          mkdir -p "$SMOKE" "$EXTRACT"
+          # Run against a copy: the app creates data/ on startup and that must never end up
+          # inside the release archive.
+          cp -r "backend/publish/${{ matrix.rid }}/." "$SMOKE/"
+
+          EXE="$SMOKE/KnxMonitor.Api"
+          if [ -f "$EXE.exe" ]; then EXE="$EXE.exe"; else chmod +x "$EXE"; fi
+
+          export ASPNETCORE_ENVIRONMENT=Production
+          export ASPNETCORE_URLS=http://127.0.0.1:8080
+          # Mirror the container: a separate bundle extraction directory, so a data directory
+          # resolved from AppContext.BaseDirectory would land there and be caught below.
+          export DOTNET_BUNDLE_EXTRACT_BASE_DIR="$EXTRACT"
+          if command -v cygpath >/dev/null 2>&1; then
+            # The .NET single-file host needs a native Windows path here — handed a POSIX one it
+            # fails to extract the bundle and dies with "Failed to create CoreCLR".
+            export DOTNET_BUNDLE_EXTRACT_BASE_DIR="$(cygpath -w "$EXTRACT")"
+          fi
+
+          APP_PID=""
+          start() {
+            # Deliberately launched from a different working directory — the data directory has
+            # to be anchored to the executable, never to the cwd.
+            ( cd "$WORK" && exec "$EXE" ) > "$WORK/smoke-$1.log" 2>&1 &
+            APP_PID=$!
+            for _ in $(seq 60); do
+              if curl -fsS -m 2 http://127.0.0.1:8080/healthz >/dev/null 2>&1; then return 0; fi
+              sleep 1
+            done
+            echo "::error::app did not answer /healthz within 60s ($1 start)"
+            cat "$WORK/smoke-$1.log" || true
+            return 1
+          }
+          stop() {
+            [ -n "$APP_PID" ] && kill "$APP_PID" 2>/dev/null || true
+            # Git Bash cannot reliably signal a native Windows process by its MSYS pid.
+            command -v taskkill >/dev/null 2>&1 && taskkill //F //IM KnxMonitor.Api.exe >/dev/null 2>&1 || true
+            sleep 3
+          }
+          # Never leave the app running when an assertion aborts the step.
+          trap stop EXIT
+
+          # 1) starts at all, and /healthz proves EF + the native SQLite provider work
+          start first
+
+          # 2) data next to the executable, nothing in the bundle extraction directory
+          if [ ! -f "$SMOKE/data/knxmonitor.db" ]; then
+            echo "::error::database is not next to the executable"
+            find "$SMOKE" "$EXTRACT" -name knxmonitor.db || true
+            exit 1
+          fi
+          if find "$EXTRACT" -name knxmonitor.db | grep -q .; then
+            echo "::error::database was written into the bundle extraction directory"
+            exit 1
+          fi
+
+          # 3) the Angular frontend is bundled and served
+          curl -fsS -m 10 http://127.0.0.1:8080/ | grep -q '<app-root' \
+            || { echo "::error::frontend missing from the published output"; exit 1; }
+
+          # 4) -p:Version actually reached the assembly
+          VERSION_JSON=$(curl -fsS -m 10 http://127.0.0.1:8080/api/version)
+          echo "$VERSION_JSON" | grep -q "\"version\":\"$CLEAN" \
+            || { echo "::error::expected version $CLEAN, got $VERSION_JSON"; exit 1; }
+
+          # 6) the rolling file log is actually written
+          ls "$SMOKE/data/logs/"*.log >/dev/null 2>&1 \
+            || { echo "::error::no log file in data/logs"; exit 1; }
+
+          SIZE_BEFORE=$(wc -c < "$SMOKE/data/knxmonitor.db")
+          stop
+
+          # 5) second start on the same data directory: migrations must be idempotent and the
+          #    existing database must be reused, not replaced
+          start second
+          [ -f "$SMOKE/data/knxmonitor.db" ] || { echo "::error::database gone after restart"; exit 1; }
+          SIZE_AFTER=$(wc -c < "$SMOKE/data/knxmonitor.db")
+          [ "$SIZE_AFTER" -ge "$SIZE_BEFORE" ] \
+            || { echo "::error::database shrank across restart ($SIZE_BEFORE -> $SIZE_AFTER bytes)"; exit 1; }
+          stop
+
+          echo "smoke test OK — version $CLEAN, data dir anchored to the executable"
 
       - name: Create archive (tar.gz)
         if: contains(matrix.artifact, '.tar.gz')
@@ -166,6 +270,53 @@ jobs:
           outputs: type=image,name=ingel81/knx-ng-monitor,push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}
           cache-to: type=gha,mode=max,scope=${{ env.PLATFORM_PAIR }}
+
+      # Pull the image that was just pushed and exercise it before it becomes part of a
+      # manifest. Covers what the binary smoke test cannot see: the bind mount, the non-root
+      # user and the built-in HEALTHCHECK.
+      - name: Smoke-test image
+        run: |
+          set -euo pipefail
+          IMAGE="ingel81/knx-ng-monitor@${{ steps.build.outputs.digest }}"
+          docker pull -q "$IMAGE"
+
+          # 8) must not run as root
+          UID_IN_IMAGE=$(docker run --rm --entrypoint sh "$IMAGE" -c 'id -u')
+          [ "$UID_IN_IMAGE" = "1000" ] \
+            || { echo "::error::image runs as uid $UID_IN_IMAGE, expected 1000"; exit 1; }
+
+          # 7) a bind-mounted data directory has to actually receive the database
+          DATA="$RUNNER_TEMP/dockerdata"
+          rm -rf "$DATA"
+          mkdir -p "$DATA"
+          chmod 777 "$DATA"   # the container writes as uid 1000, the runner user is not
+          CID=$(docker run -d -p 8099:8080 -v "$DATA:/app/data" "$IMAGE")
+          trap 'docker rm -f "$CID" >/dev/null 2>&1 || true' EXIT
+
+          for _ in $(seq 60); do
+            curl -fsS -m 2 http://127.0.0.1:8099/healthz >/dev/null 2>&1 && break
+            sleep 1
+          done
+          curl -fsS -m 5 http://127.0.0.1:8099/healthz >/dev/null \
+            || { echo "::error::container never answered /healthz"; docker logs "$CID"; exit 1; }
+
+          if [ ! -f "$DATA/knxmonitor.db" ]; then
+            echo "::error::database did not appear in the mounted volume"
+            ls -la "$DATA" || true
+            docker logs "$CID"
+            exit 1
+          fi
+
+          # 9) the built-in HEALTHCHECK has to reach "healthy" (15s start period)
+          for _ in $(seq 90); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' "$CID")" = "healthy" ] && break
+            sleep 1
+          done
+          STATUS=$(docker inspect -f '{{.State.Health.Status}}' "$CID")
+          [ "$STATUS" = "healthy" ] \
+            || { echo "::error::HEALTHCHECK reports '$STATUS'"; docker logs "$CID"; exit 1; }
+
+          echo "image smoke test OK — uid 1000, volume written, healthcheck healthy"
 
       - name: Export digest
         run: |
