@@ -25,8 +25,7 @@
             @case ('mono') { <span class="mono" knxOverflowTitle>{{ val(row, col.key) }}</span> }
             @case ('muted-mono') { <span class="mono muted" knxOverflowTitle>{{ val(row, col.key) || '–' }}</span> }
             @case ('name') {
-              @if (room(row)) { <span class="room-tag">{{ room(row) }}</span> }
-              <span class="name-text" [class.empty]="!val(row, 'groupAddressName')" knxOverflowTitle>{{ val(row, 'groupAddressName') ? nameText(row) : ('detail.unknown' | translate) }}</span>
+              <span class="name-text" [class.empty]="!val(row, 'groupAddressName')" knxOverflowTitle>{{ val(row, 'groupAddressName') || ('detail.unknown' | translate) }}</span>
             }
             @case ('type') {
               @if (typeName(row)) {

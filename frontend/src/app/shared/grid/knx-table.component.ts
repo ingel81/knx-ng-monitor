@@ -24,7 +24,6 @@ export interface KnxColumn {
 export type SortDir = 'asc' | 'desc';
 
 const BARE_NUMBER_RE = /^-?\d[\d.,\s]*$/;
-const ROOM_RE = /^(KG|UG|EG|OG|DG)(\d{0,2})(?:\s+|(?=[A-ZÄÖÜ]))(.+)$/;
 
 /**
  * Leichtgewichtige virtualisierte Tabelle (CDK Virtual Scroll + CSS-Grid),
@@ -95,16 +94,10 @@ export class KnxTableComponent {
     return v == null ? '' : String(v);
   }
 
-  // --- Name / Raum-Tag -------------------------------------------------------
-  room(row: KnxTelegram): string | null {
-    const m = this.val(row, 'groupAddressName').match(ROOM_RE);
-    return m ? m[1] + m[2] : null;
-  }
-  nameText(row: KnxTelegram): string {
-    const v = this.val(row, 'groupAddressName');
-    const m = v.match(ROOM_RE);
-    return m ? m[3] : v;
-  }
+  // Group-address names are rendered verbatim. An earlier version pulled a leading
+  // KG/UG/EG/OG/DG token out into a badge and stripped it from the name, which guessed
+  // wrong on other naming schemes (e.g. "OG1_TP_..." kept the prefix while "OG F_..."
+  // lost it) and differed from the mobile cards and the detail panel, which never did it.
 
   // --- Typ -------------------------------------------------------------------
   typeKind(row: KnxTelegram): string { return messageTypeKind(row.messageType) || ''; }

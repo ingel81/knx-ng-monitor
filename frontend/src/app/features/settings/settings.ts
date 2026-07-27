@@ -436,17 +436,16 @@ export class Settings implements OnInit {
       return false;
     }
 
-    // Physical Address validation
-    const paPattern = /^\d{1,2}\.\d{1,2}\.\d{1,3}$/;
-    if (!paPattern.test(this.knxConfig.physicalAddress)) {
-      return false;
-    }
-
-    // Routing sends under this address, so here it has to be a real individual address.
-    // Out of range, the backend cannot parse it and silently falls back to a default
-    // source. Tunneling does not use the field at all, so it stays leniently validated.
-    if (this.isRouting && !this.isIndividualAddress(this.knxConfig.physicalAddress)) {
-      return false;
+    // The physical address only matters for routing, where it is the source address we send
+    // under; the field is hidden for tunneling, so validating it there would disable Save with
+    // nothing on screen to explain why. Out of range the backend cannot parse it and silently
+    // falls back to a default source, hence the strict range check on top of the format.
+    if (this.isRouting) {
+      const paPattern = /^\d{1,2}\.\d{1,2}\.\d{1,3}$/;
+      if (!paPattern.test(this.knxConfig.physicalAddress)
+          || !this.isIndividualAddress(this.knxConfig.physicalAddress)) {
+        return false;
+      }
     }
 
     return true;

@@ -75,14 +75,18 @@
               </div>
               <span class="set-hint">{{ (isRouting ? 'settings.portRoutingHint' : 'settings.portHint') | translate }}</span>
             </div>
-            <div class="set-field span2">
-              <label class="knx-label">{{ 'settings.physicalAddress' | translate }}</label>
-              <div class="field-prefix">
-                <mat-icon class="pfx" svgIcon="knx:plug"></mat-icon>
-                <input class="knx-input" [(ngModel)]="knxConfig.physicalAddress" placeholder="1.0.58">
+            <!-- Routing only: when tunneling, the interface assigns the address from its own
+                 pool and this value is never used, so showing it would only invite confusion. -->
+            @if (isRouting) {
+              <div class="set-field span2">
+                <label class="knx-label">{{ 'settings.physicalAddress' | translate }}</label>
+                <div class="field-prefix">
+                  <mat-icon class="pfx" svgIcon="knx:plug"></mat-icon>
+                  <input class="knx-input" [(ngModel)]="knxConfig.physicalAddress" placeholder="1.0.58">
+                </div>
+                <span class="set-hint">{{ 'settings.physicalAddressRoutingHint' | translate }}</span>
               </div>
-              <span class="set-hint">{{ (isRouting ? 'settings.physicalAddressRoutingHint' : 'settings.physicalAddressHint') | translate }}</span>
-            </div>
+            }
           </div>
           <div class="set-row">
             <div>

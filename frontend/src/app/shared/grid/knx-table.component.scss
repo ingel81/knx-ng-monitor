@@ -109,7 +109,7 @@
 .mono { font-family: var(--font-mono); font-feature-settings: 'tnum' 1; }
 .muted { color: var(--ink-2); }
 
-// Name + Raum-Tag
+// Name
 .knx-td.name {
   // flex item must be allowed to shrink below its content size, otherwise long
   // GA names push the grid track wide instead of clipping with an ellipsis.
@@ -122,17 +122,6 @@
     text-overflow: ellipsis;
   }
   .name-text.empty { color: var(--ink-3); font-weight: var(--fw-normal); }
-}
-.room-tag {
-  flex: none;
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: var(--r-xs);
-  background: var(--brand-tint);
-  color: var(--teal-800);
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-semi);
-  letter-spacing: 0.02em;
 }
 
 // Typ-Pill

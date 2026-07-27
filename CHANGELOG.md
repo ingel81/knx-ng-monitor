@@ -14,27 +14,24 @@ binaries and auto-generated notes are on the
 
 ### Fixed
 - **Routing could not be selected** ([#4](https://github.com/ingel81/knx-ng-monitor/issues/4)) -
-  the backend has always supported KNXnet/IP routing, but the settings page sent
-  a hard-coded `connectionType: 0` (tunneling) on every save, so there was no way
-  to reach it from the UI. Settings now has a Tunneling / Routing switch; the
-  address field turns into a multicast address (default `224.0.23.12`, validated
-  against the `224.x`-`239.x` range) and the hints adapt to the selected mode.
-- **Routing ignored port and physical address** - the routing connector was built
-  from the multicast address alone. The configured port was dropped and telegrams
-  went out under Falcon's `0.0.1` default source address instead of the physical
-  address configured in Settings. Both are now passed through.
+  the settings page always saved `connectionType: 0`, so the backend's KNXnet/IP
+  routing support was unreachable. Settings now has a Tunneling / Routing switch.
+- **Routing ignored port and physical address** - telegrams went out under Falcon's
+  `0.0.1` default source address; both values are now passed through.
+- **Group-address names were rewritten in the table** ([#5](https://github.com/ingel81/knx-ng-monitor/issues/5)) -
+  a leading `KG`/`UG`/`EG`/`OG`/`DG` token was turned into a badge and stripped
+  from the name, inconsistently (`_` was not an accepted separator) and unlike the
+  mobile cards and detail panel. Names are now shown verbatim everywhere.
+- **"Test connection" was green for unreachable routing setups** - a multicast join
+  always succeeds locally, so the probe now listens for real bus traffic and warns
+  when the group stays silent. Tunneling is unchanged.
 
-- **"Test connection" reported success for unreachable routing setups** - routing
-  is connectionless, so joining the multicast group succeeds locally even when no
-  packet can ever arrive (router in another VLAN, container on a bridge network).
-  The probe now listens for actual bus traffic for 5 s and reports a distinct
-  warning instead of a green success when the group stays silent. Tunneling has a
-  real handshake and is unchanged.
+### Changed
+- The physical address is only shown for routing; a tunneling interface assigns it.
 
 ### Note
-- Routing depends on multicast reaching the process. Under Docker that means
-  `--network host`; in a Home Assistant add-on, `host_network: true`. Tunneling
-  is unaffected.
+- Routing needs multicast to reach the process: Docker `--network host`,
+  Home Assistant add-on `host_network: true`.
 
 ## [0.8.1]
 
