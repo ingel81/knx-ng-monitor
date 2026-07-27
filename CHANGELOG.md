@@ -28,6 +28,11 @@ binaries and auto-generated notes are on the
 - Chart group-address selection and time range are remembered across visits.
 
 ### Fixed
+- **"Collapse all" stopped working in the topology tree** ([#8](https://github.com/ingel81/knx-ng-monitor/issues/8)) -
+  the expanded state lived in the DOM behind a one-way `[open]` binding, so a
+  manual click went unnoticed and pressing the button again wrote an unchanged
+  value and did nothing. Each node now owns its state and manual toggles are read
+  back, so button and mouse always agree.
 - **Down-sampling dropped peaks** - the series endpoint kept every n-th point, so
   a short spike inside a wide range vanished and left a smooth, trustworthy
   looking curve. It now keeps the minimum and maximum of each bucket, preserving

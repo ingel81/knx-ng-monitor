@@ -9,6 +9,12 @@ import { LoggerService } from '../../core/logging/logger.service';
 /** A location node with its resolved children (rebuilt from the flat DTO list). */
 interface LocationNode extends LocationDto {
   children: LocationNode[];
+  /**
+   * Expanded state, owned by the model rather than the DOM. Binding `[open]` alone is one-way:
+   * a manual click changes the element without Angular noticing, so pressing "collapse all"
+   * afterwards wrote the unchanged value and left those nodes open.
+   */
+  open: boolean;
 }
 
 /**
@@ -102,7 +108,8 @@ export class TopologyComponent implements OnInit {
         ...loc,
         deviceAddresses: [...loc.deviceAddresses].sort(TopologyComponent.compareAddress),
         groupAddresses: [...loc.groupAddresses].sort(TopologyComponent.compareAddress),
-        children: []
+        children: [],
+        open: this.allOpen
       });
     }
     const roots: LocationNode[] = [];
@@ -130,6 +137,18 @@ export class TopologyComponent implements OnInit {
 
   setAllOpen(open: boolean): void {
     this.allOpen = open;
+    const walk = (nodes: LocationNode[]): void => {
+      for (const node of nodes) {
+        node.open = open;
+        walk(node.children);
+      }
+    };
+    walk(this.roots);
+  }
+
+  /** Keeps the model in step with a manual click on the disclosure triangle. */
+  onToggle(node: LocationNode, event: Event): void {
+    node.open = (event.target as HTMLDetailsElement).open;
   }
 
   get hasLocations(): boolean {

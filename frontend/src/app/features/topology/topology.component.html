@@ -54,7 +54,7 @@
 <!-- Recursive node template -->
 <ng-template #nodeTpl let-node>
   <li class="loc-node">
-    <details [open]="allOpen">
+    <details [open]="node.open" (toggle)="onToggle(node, $event)">
       <summary class="loc-summary">
         <mat-icon class="loc-icon">{{ node.children.length ? 'folder' : 'place' }}</mat-icon>
         <span class="loc-name">{{ node.name }}</span>
