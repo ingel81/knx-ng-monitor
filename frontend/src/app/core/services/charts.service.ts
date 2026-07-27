@@ -14,11 +14,15 @@ export interface ChartSeries {
   name: string | null;
   unit: string;
   downSampled: boolean;
+  /** Points available before down-sampling — lets the UI state the real ratio. */
+  totalPoints: number;
   points: ChartPoint[];
 }
 
 export interface SeriesResponse {
   series: ChartSeries[];
+  /** The row cap was hit: the returned data is the newest part, the older end is missing. */
+  truncated: boolean;
 }
 
 export interface StatsBucket {

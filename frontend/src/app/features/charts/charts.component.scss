@@ -37,7 +37,36 @@
 }
 
 .ga-select {
+  // Fixed span: the trigger shows one label plus a counter, so the field must not grow with
+  // the selection — otherwise it pushes the rest of the toolbar onto a second row.
+  width: 320px;
   min-width: 320px;
+  max-width: 320px;
+
+  // Keep a long single label on one line and let it ellipsise.
+  ::ng-deep .mat-mdc-select-value,
+  ::ng-deep mat-select-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-width: 0;
+
+    > span:first-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  ::ng-deep .sel-more {
+    flex: none;
+    padding: 0 6px;
+    border-radius: var(--r-xs);
+    background: var(--brand-tint);
+    color: var(--teal-800, var(--brand));
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-semi);
+  }
 
   ::ng-deep {
     .mat-mdc-text-field-wrapper {
@@ -166,6 +195,92 @@
   border-bottom: 1px solid var(--line-2);
 }
 
+// Incomplete data is a different class of problem than thinned-out data — it must not read
+// like a routine footnote.
+.note--warn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--warn);
+  background: var(--warn-tint);
+  border-bottom-color: var(--warn);
+
+  mat-icon { width: 18px; height: 18px; font-size: 18px; flex: none; }
+}
+
+// Per-series summary under the chart.
+.series-stats {
+  flex: none;
+  overflow-x: auto;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  padding: var(--sp-3) var(--sp-5);
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-sm);
+  }
+
+  th {
+    text-align: right;
+    font-size: var(--fs-2xs);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-weight: var(--fw-medium);
+    color: var(--ink-3);
+    padding: 0 var(--sp-3) var(--sp-2);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: var(--sp-1) var(--sp-3);
+    color: var(--ink);
+    border-top: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  th.col-name, td.col-name { text-align: left; width: 100%; }
+
+  td.col-name {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    min-width: 0;
+
+    .name { overflow: hidden; text-overflow: ellipsis; }
+  }
+
+  // Same visual language as the dropdown: muted mono address, then the name.
+  .addr {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--ink-3);
+    font-feature-settings: 'tnum' 1;
+  }
+
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; align-self: center; }
+
+  // The table is the primary legend — clicking a row shows/hides that series.
+  .stat-row {
+    cursor: pointer;
+
+    &:hover td { background: var(--surface-3); }
+
+    &.is-hidden {
+      td { color: var(--ink-3); }
+      .dot { opacity: .3; }
+      .name { text-decoration: line-through; }
+      .num { opacity: .5; }
+    }
+  }
+
+  .num { font-family: var(--font-mono); text-align: right; font-feature-settings: 'tnum' 1; }
+  .unit { color: var(--ink-3); margin-left: 2px; font-size: .9em; }
+  .muted { color: var(--ink-3); }
+}
+
 .chart-host {
   flex: 1;
   min-height: 0;
@@ -216,13 +331,212 @@
   }
 }
 
+// Search row inside the group-address dropdown. The panel is rendered in an overlay outside
+// this component, so the selector starts with ::ng-deep and is therefore unscoped.
+// The panel brings its own 8px top padding, which sits *above* the sticky row — options were
+// visibly scrolling through that gap. Doubled class for specificity over Material's own rule.
+::ng-deep .mat-mdc-select-panel.ga-panel {
+  // The panel's own 8px top padding sits *above* the sticky row — options were visibly
+  // scrolling through that gap.
+  padding-top: 0;
+  // Material defaults the panel to --mat-sys-surface-container, a tinted grey. Against our
+  // white search row that read as a separate block floating on the list. Set the documented
+  // token rather than overriding background-color, so Material's own rules stay consistent.
+  --mat-select-panel-background-color: var(--surface);
+}
+
+::ng-deep .ga-panel {
+  .ga-search {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    // Must stay opaque (it is sticky) — same token as the panel so no seam is visible.
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+
+    > mat-icon {
+      flex: none;
+      width: 17px;
+      height: 17px;
+      font-size: 17px;
+      color: var(--ink-3);
+    }
+
+    .knx-input {
+      flex: 1;
+      min-width: 0;
+      height: 32px;
+    }
+  }
+
+  .ga-search-clear {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--ink-3);
+    cursor: pointer;
+    border-radius: var(--r-xs);
+
+    &:hover { background: var(--surface-3); color: var(--ink); }
+    mat-icon { width: 16px; height: 16px; font-size: 16px; }
+  }
+
+  .ga-empty {
+    padding: var(--sp-4) var(--sp-3);
+    text-align: center;
+    font-size: var(--fs-sm);
+    color: var(--ink-3);
+  }
+
+  // Material's default option is 48px tall with wrapping text, which makes a long list of
+  // group addresses ragged and unscannable. One line per entry, uniform height.
+  .mat-mdc-option {
+    min-height: 34px;
+    font-size: var(--fs-sm);
+    padding-left: var(--sp-2);
+    padding-right: var(--sp-3);
+  }
+
+  .mat-pseudo-checkbox {
+    width: 15px;
+    height: 15px;
+    flex: none;
+  }
+
+  .mat-mdc-option .mdc-list-item__primary-text {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    font-size: var(--fs-sm);
+    letter-spacing: 0;
+  }
+
+  .ga-opt {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-3);
+    min-width: 0;
+  }
+
+  // Fixed column for the address so the names line up underneath each other.
+  .ga-addr {
+    flex: none;
+    width: 7ch;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--ink-3);
+    text-align: right;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  .ga-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+
+  // Emphasise the part that matched the search term.
+  .hit {
+    background: var(--brand-tint);
+    color: var(--teal-800, var(--brand));
+    border-radius: 2px;
+    font-weight: var(--fw-semi);
+  }
+
+  .mat-mdc-option.mdc-list-item--selected .ga-name { font-weight: var(--fw-medium); }
+  .mat-mdc-option.mat-mdc-option-disabled { opacity: .45; }
+}
+
+// Display-options popover. Anchored to its trigger button; the backdrop sits below the
+// panel and above everything else so any outside click closes it.
+.chart-opts {
+  position: relative;
+  display: inline-flex;
+}
+
+.opts-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.opts-panel {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  right: 0;
+  z-index: 41;
+  width: 300px;
+  padding: var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2, 0 8px 24px rgba(0, 0, 0, .16));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+
+  .opts-title {
+    font-size: var(--fs-2xs);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ink-3);
+    margin-bottom: var(--sp-1);
+  }
+
+  .opts-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+    cursor: pointer;
+
+    + .opts-row { border-top: 1px solid var(--line); }
+  }
+
+  // The segmented control needs the full width, so its label goes above it.
+  .opts-row--stack {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-2);
+    cursor: default;
+
+    .knx-seg { width: 100%; }
+    .knx-seg button { flex: 1; justify-content: center; }
+  }
+
+  .opts-label {
+    font-size: var(--fs-sm);
+    color: var(--ink-2);
+  }
+
+  .opts-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--sp-2);
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--line);
+  }
+}
+
 // Mobile: stack the toolbar cleanly — no orphan dividers, full-width controls.
 @media (max-width: 767px) {
   .toolbar { padding: var(--sp-3) var(--sp-4); }
   .tb-left, .tb-right { width: 100%; }
   .tb-divider { display: none; }
   .ga-picker { width: 100%; }
-  .ga-select { width: 100%; min-width: 0; }
+  .ga-select { width: 100%; min-width: 0; max-width: none; }
 
   .tb-right {
     flex-direction: column;
@@ -233,5 +547,10 @@
     .range-field { width: 100%; }
     .range-field .knx-input { flex: 1; width: 100%; }
     > .knx-btn { width: 100%; justify-content: center; }
+
+    // Full-width trigger, and a panel that cannot run off the screen edge.
+    .chart-opts { width: 100%; }
+    .chart-opts > .knx-btn { width: 100%; justify-content: center; }
+    .opts-panel { width: auto; left: 0; right: 0; }
   }
 }

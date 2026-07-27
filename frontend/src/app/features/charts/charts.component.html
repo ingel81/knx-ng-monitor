@@ -10,16 +10,58 @@
             (openedChange)="onPanelToggle($event)"
             [placeholder]="'charts.pickGroupAddresses' | translate"
             [disabled]="!hasActiveProject || availableGas.length === 0"
+            panelClass="ga-panel"
           >
-            @for (ga of displayGas; track ga.id) {
+            <!-- Without a custom trigger Material concatenates every selected label, which grows
+                 the field until the toolbar wraps. Show one name plus a counter instead. -->
+            <mat-select-trigger>
+              <span [attr.title]="selectionTitle()">{{ selectionLabel() }}</span>
+              @if (selectedAddresses.length > 1) {
+                <span class="sel-more">+{{ selectedAddresses.length - 1 }}</span>
+              }
+            </mat-select-trigger>
+
+            <div class="ga-search" (click)="$event.stopPropagation()">
+              <mat-icon>search</mat-icon>
+              <input
+                #gaSearch
+                class="knx-input"
+                type="text"
+                [(ngModel)]="gaFilter"
+                [ngModelOptions]="{ standalone: true }"
+                [placeholder]="'charts.searchGa' | translate"
+                (keydown)="onSearchKeydown($event)"
+              />
+              @if (gaFilter) {
+                <button type="button" class="ga-search-clear" (click)="gaFilter = ''">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+
+            @for (ga of filteredGas(); track ga.id) {
               <mat-option
                 [value]="ga.address"
                 [disabled]="
                   selectedAddresses.length >= maxSeries && !selectedAddresses.includes(ga.address)
                 "
               >
-                {{ ga.address }} — {{ ga.name }}
+                <span class="ga-opt">
+                  <span class="ga-addr">
+                    @for (part of highlightParts(ga.address); track $index) {
+                      <span [class.hit]="part.hit">{{ part.text }}</span>
+                    }
+                  </span>
+                  <span class="ga-name" [attr.title]="ga.name">
+                    @for (part of highlightParts(ga.name || ''); track $index) {
+                      <span [class.hit]="part.hit">{{ part.text }}</span>
+                    }
+                  </span>
+                </span>
               </mat-option>
+            }
+            @if (filteredGas().length === 0) {
+              <div class="ga-empty">{{ 'charts.searchNoMatch' | translate }}</div>
             }
           </mat-select>
         </mat-form-field>
@@ -65,11 +107,107 @@
         <mat-icon>refresh</mat-icon>
         {{ 'charts.refresh' | translate }}
       </button>
+
+      <button
+        class="knx-btn knx-btn--outline"
+        (click)="exportPng()"
+        [disabled]="!hasData"
+        [matTooltip]="'charts.exportPngTooltip' | translate"
+      >
+        <mat-icon>image</mat-icon>
+        {{ 'charts.exportPng' | translate }}
+      </button>
+
+      <button
+        class="knx-btn knx-btn--outline"
+        (click)="exportCsv()"
+        [disabled]="!hasData"
+        [matTooltip]="'charts.exportCsvTooltip' | translate"
+      >
+        <mat-icon>table_view</mat-icon>
+        {{ 'charts.exportCsv' | translate }}
+      </button>
+
+      <div class="chart-opts">
+        <button
+          class="knx-btn knx-btn--outline"
+          [class.is-active]="optionsOpen"
+          (click)="optionsOpen = !optionsOpen"
+          [matTooltip]="'charts.options' | translate"
+        >
+          <mat-icon>tune</mat-icon>
+        </button>
+
+        @if (optionsOpen) {
+          <!-- Click-catcher so the panel closes on any outside click without a global listener. -->
+          <div class="opts-backdrop" (click)="optionsOpen = false"></div>
+          <div class="opts-panel">
+            <div class="opts-title">{{ 'charts.options' | translate }}</div>
+
+            <div class="opts-row opts-row--stack">
+              <span class="opts-label">{{ 'charts.curve' | translate }}</span>
+              <div class="knx-seg">
+                @for (m of curveModes; track m) {
+                  <button type="button" [class.is-active]="options.curve === m" (click)="setCurve(m)">
+                    {{ 'charts.curve.' + m | translate }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <label class="opts-row">
+              <span class="opts-label">{{ 'charts.showPoints' | translate }}</span>
+              <span class="knx-switch">
+                <input type="checkbox" [checked]="options.showPoints" (change)="toggleOption('showPoints')">
+                <span class="track"></span>
+              </span>
+            </label>
+
+            <label class="opts-row">
+              <span class="opts-label">{{ 'charts.zeroBased' | translate }}</span>
+              <span class="knx-switch">
+                <input type="checkbox" [checked]="options.zeroBased" (change)="toggleOption('zeroBased')">
+                <span class="track"></span>
+              </span>
+            </label>
+
+            <label class="opts-row">
+              <span class="opts-label">{{ 'charts.averageLine' | translate }}</span>
+              <span class="knx-switch">
+                <input type="checkbox" [checked]="options.averageLine" (change)="toggleOption('averageLine')">
+                <span class="track"></span>
+              </span>
+            </label>
+
+            <label class="opts-row">
+              <span class="opts-label">{{ 'charts.showLegend' | translate }}</span>
+              <span class="knx-switch">
+                <input type="checkbox" [checked]="options.showLegend" (change)="toggleOption('showLegend')">
+                <span class="track"></span>
+              </span>
+            </label>
+
+            <div class="opts-actions">
+              <button class="knx-btn knx-btn--ghost" (click)="resetOptions()">
+                <mat-icon>refresh</mat-icon>{{ 'charts.optionsReset' | translate }}
+              </button>
+            </div>
+          </div>
+        }
+      </div>
     </div>
   </div>
 
+  @if (truncated) {
+    <div class="note note--warn">
+      <mat-icon>warning</mat-icon>
+      {{ 'charts.truncatedNote' | translate }}
+    </div>
+  }
   @if (downSampled) {
-    <div class="note">{{ 'charts.downSampledNote' | translate }}</div>
+    <div class="note">
+      {{ 'charts.downSampledNote' | translate: { shown: formatCount(shownPoints), total: formatCount(totalPoints) } }}
+    </div>
   }
 
   <div class="chart-host">
@@ -104,7 +242,46 @@
         <p>{{ 'charts.emptyNoData' | translate }}</p>
       </div>
     } @else {
-      <div echarts [options]="chartOption" class="echart" [autoResize]="true"></div>
+      <div echarts [options]="chartOption" class="echart" [autoResize]="true"
+           (chartInit)="onChartInit($event)"></div>
     }
   </div>
+
+  @if (stats.length) {
+    <div class="series-stats">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-name">{{ 'charts.stat.series' | translate }}</th>
+            <th>{{ 'charts.stat.min' | translate }}</th>
+            <th>{{ 'charts.stat.max' | translate }}</th>
+            <th>{{ 'charts.stat.avg' | translate }}</th>
+            <th>{{ 'charts.stat.last' | translate }}</th>
+            <th>{{ 'charts.stat.count' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of stats; track s.name) {
+            <tr
+              class="stat-row"
+              [class.is-hidden]="isHidden(s.name)"
+              (click)="toggleSeries(s.name)"
+              [attr.title]="'charts.stat.toggleHint' | translate"
+            >
+              <td class="col-name">
+                <span class="dot" [style.background]="s.color"></span>
+                <span class="addr">{{ s.address }}</span>
+                <span class="name" knxOverflowTitle>{{ s.name }}</span>
+              </td>
+              <td class="num">{{ formatValue(s.min) }}<span class="unit">{{ s.unit }}</span></td>
+              <td class="num">{{ formatValue(s.max) }}<span class="unit">{{ s.unit }}</span></td>
+              <td class="num">{{ formatValue(s.avg) }}<span class="unit">{{ s.unit }}</span></td>
+              <td class="num">{{ formatValue(s.last) }}<span class="unit">{{ s.unit }}</span></td>
+              <td class="num muted">{{ formatCount(s.count) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
 </div>
