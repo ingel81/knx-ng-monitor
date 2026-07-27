@@ -56,6 +56,20 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Sink(new BufferSink(logBuffer))
     .CreateLogger();
 
+// Versions 0.8.0 - 0.8.2 wrote into the single-file bundle's extraction directory instead of the
+// data directory next to the executable (see AppPaths). Report a database stranded there
+// unconditionally: it is just as relevant when the data directory already holds an older database,
+// because that is the case where the newer history would otherwise be lost without a word.
+if (AppPaths.FindStrandedDbPath() is { } strandedDb)
+{
+    Log.Warning(
+        "A database from an older version is still present at {StrandedPath} and is NOT being used "
+        + "- the data directory is {DataDir}. Versions 0.8.0-0.8.2 wrote there by mistake. To keep "
+        + "that history: stop the app, back up {DataDir}, then move the file (plus any -wal/-shm "
+        + "files and the archive folder next to it) into it.",
+        strandedDb, AppPaths.DataDir);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Use Serilog for logging
