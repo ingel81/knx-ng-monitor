@@ -325,7 +325,13 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.8.3:** fixes silent data loss on update. Versions 0.8.0 - 0.8.2
+**Current - v0.8.4:** the portable binary now also anchors its *content root* to
+the executable, so `appsettings.json` and the bundled frontend are found no
+matter which directory it is started from. The release workflow additionally
+smoke-tests the artifact it is about to publish - it starts, answers `/healthz`,
+serves the UI, reports the right version and keeps its database across a restart,
+and the image is checked for the bind mount, a non-root user and a healthy
+healthcheck. Builds on v0.8.3, which fixed silent data loss on update: versions 0.8.0 - 0.8.2
 resolved the data directory to the single-file bundle's extraction directory
 instead of the folder next to the executable, so the database, JWT secret, logs
 and archive bypassed the mounted volume and were dropped whenever the container

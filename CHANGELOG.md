@@ -10,7 +10,7 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
-## [Unreleased]
+## [0.8.4]
 
 ### Fixed
 - **Portable binary served no frontend when started from another directory** - the
