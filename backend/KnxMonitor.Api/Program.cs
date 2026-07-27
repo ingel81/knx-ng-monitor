@@ -70,7 +70,15 @@ if (AppPaths.FindStrandedDbPath() is { } strandedDb)
         strandedDb, AppPaths.DataDir);
 }
 
-var builder = WebApplication.CreateBuilder(args);
+// Anchor the content root to the executable too. It defaults to the current working directory and
+// drives both appsettings.json discovery and the wwwroot lookup — so launching the portable binary
+// from anywhere but its own folder would silently serve no frontend and fall back to default
+// configuration (the Jwt section among it).
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = AppPaths.AppDirectory
+});
 
 // Use Serilog for logging
 builder.Host.UseSerilog();

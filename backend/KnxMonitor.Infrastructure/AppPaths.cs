@@ -8,7 +8,13 @@ namespace KnxMonitor.Infrastructure;
 /// </summary>
 public static class AppPaths
 {
-    public static string DataDir { get; } = Path.Combine(ResolveAppDirectory(), "data");
+    /// <summary>
+    /// Directory the application was started from. Also used as the ASP.NET Core content root,
+    /// which drives appsettings.json discovery and the wwwroot lookup.
+    /// </summary>
+    public static string AppDirectory { get; } = ResolveAppDirectory();
+
+    public static string DataDir { get; } = Path.Combine(AppDirectory, "data");
 
     public static string LogsDir => Path.Combine(DataDir, "logs");
 
