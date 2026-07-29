@@ -140,12 +140,18 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 
 ## API Endpoints
 
-- `/api/auth/*` — login, refresh, logout
-- `/api/projects/*` — list, import (multipart), `provide-input`, activate, delete
-- `/api/groupaddresses/*` — search/list
-- `/api/telegrams/*` — query, search, export
-- `/api/knx/*` — config, test-connection, status
-- `/hubs/telegram` — SignalR hub (JWT-authenticated)
+**Full API documentation:** See `docs/API_ENDPOINTS.md` for detailed endpoint reference with request/response schemas.
+
+**Quick Reference:**
+- `/api/auth/*` — login, refresh, logout, setup, needs-setup
+- `/api/projects/*` — list, upload, import-wizard, activate, delete, keyring-upload
+- `/api/telegrams/*` — query, export, archive, stats, series, heatmap
+- `/api/recording/*` — settings management
+- `/api/knx/*` — configuration, connection, test, status, read/write
+- `/api/diagnostics/*` — logs, diagnostics bundle
+- `/api/version` — app version (no auth required)
+- `/hubs/telegram` — SignalR hub (JWT-authenticated, real-time telegrams)
+- `/hubs/logs` — SignalR hub (JWT-authenticated, real-time logs)
 
 ## Key Implementation Notes
 
