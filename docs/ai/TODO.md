@@ -186,7 +186,11 @@ Reihenfolge bewusst entschieden. Abarbeitung von oben nach unten.
 
 ### UI / UX (Backlog)
 - [ ] Filter-Chips + speicherbare Filter-Presets (Live View) — History hat bereits Topic-Chips
-- [ ] Mobile-Ansicht systematisch optimieren (Card-View existiert, systematischer Pass offen)
+- [x] Mobile-Ansicht systematisch optimieren — Durchgang 2026-07-28: Bottom-Nav auf
+      4 Tabs + „Mehr", GA-Karten, Detail-Sheet mit 2-spaltigem Feldgrid und Wischgeste,
+      Toolbars von Charts/Statistik einklappbar, Graph-Legende schaltbar, `100dvh`.
+      Tablet mitgemacht: Kopfleiste mit Überlaufmenü, Spaltenzuschnitt der Telegramm-
+      tabelle im Band 768–1279, alle Toolbars einzeilig bis 1440px.
 - [ ] Accessibility-Audit (WCAG 2.1 Level AA)
 - [ ] Live-View: msg/s-Rate-Anzeige neben "Live"-Status (gleitender Durchschnitt)
 

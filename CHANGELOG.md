@@ -10,6 +10,66 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
+## [Unreleased]
+
+### Changed
+- **Mobile layout overhaul across the app.** The bottom navigation is down to four
+  tabs plus a "More" sheet (Topology, Graph, Logs, Projects, Settings), with short
+  labels so nothing wraps mid-word; navigation order now puts the operational views
+  first and management last. Charts and Statistics collapse their time-range controls
+  behind a toggle - the same pattern the archive filter bar already used - and their
+  action buttons became a single row of icons, so the chart is visible without
+  scrolling. Group addresses render as separated cards (~100 px instead of ~300 px per
+  entry) with the write field behind a toggle, so no filled button invites an accidental
+  bus write. The telegram detail sheet lays its short fields out in two columns (5 rows
+  instead of 16), keeps its header sticky and moves the bus actions above the fold.
+  The top navigation follows the same idea below 1560 px - four core entries plus the
+  same "More" list, and icons only below 1040 px. The thresholds come from the actual
+  label widths: nine German labels next to the brand and the account trigger need about
+  1500 px, so common laptop widths get the compact bar too.
+
+### Fixed
+- **Loading spinners rendered as text.** Every `progress_activity` icon (charts, logs,
+  topology, group addresses, statistics, graph) is a Material *Symbols* name and is not
+  part of the classic `@fontsource/material-icons` set the app actually loads - the
+  browser printed the ligature name instead of an icon. Replaced with `autorenew`.
+- **Account menu could be pushed off the header.** `.main-nav` had `flex: 1` and therefore
+  a min-content flex floor, so the bar overflowed instead of yielding and shoved the account
+  trigger out of view - on a tablet there was no way to reach language, theme or logout.
+  `min-width: 0` lets the navigation give way, and the full nav set now clips its own overflow.
+- **Chart options panel opened off-screen.** It was anchored to its trigger with `right: 0`
+  at 300 px wide, so once the toolbar wrapped and the button moved left, the panel ran past
+  the left edge. It is now anchored to the toolbar and always opens flush with its right edge.
+- **Write confirmation was unreadable on a phone** (group addresses) - the dialog opened at a
+  fixed 420 px and Material's `maxWidth: 80vw` shrank it to 288 px, breaking the warning text
+  apart. The very dialog that guards a live bus write.
+- **Vertical scrolling was blocked over the chart on mobile** - `dataZoom: inside` calls
+  `preventDefault()` on every touch drag, so the summary table below the chart was unreachable.
+  The inside handler is now dropped on mobile; the slider still zooms.
+- **Series summary was cut off on a phone** - LAST and POINTS were unreachable; the table now
+  scrolls horizontally instead of being clipped.
+- **Graph legend could not be dismissed** - it covered roughly 40 % of the canvas on a
+  phone. New toolbar toggle on every breakpoint, remembered in `localStorage`, collapsed
+  by default on mobile.
+- **Detail sheet felt full-screen on Android** - `maxHeight: 85vh` resolves against the
+  large viewport, so it was effectively the whole visible area. Now `85dvh`. The write
+  confirmation dialog no longer shrinks to 288 px behind Material's `maxWidth: 80vw`.
+- **Bottom navigation was missing on mobile browsers** - the app shell was sized
+  with `100vh`, which on Android Chrome and iOS Safari means the *large* viewport
+  (the area behind the address bar included). With the address bar showing, the
+  layout was taller than the visible area and `overflow: hidden` clipped the last
+  row: the bottom nav. Now sized with `100dvh` (`100vh` kept as a fallback). Desktop
+  device emulation never reproduced this because it has no collapsing address bar.
+
+### Changed
+- **Consistent date formatting across the UI** (#11) - all timestamps now go
+  through one central formatter (`core/i18n/date.util.ts` plus the `knxDate`
+  pipe) with a fixed set of styles, and they follow the selected app language
+  (de-DE / en-GB) instead of a mix of hard-coded patterns, the browser default
+  and Angular's `date` pipe (which was stuck on en-US with 12-hour time).
+  Years are shown in full everywhere, chart time axes and tooltips are
+  localised, and the CSV export no longer hard-codes German.
+
 ## [0.9.0]
 
 ### Added

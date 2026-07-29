@@ -93,7 +93,10 @@ dotnet ef database update      --project backend/KnxMonitor.Infrastructure --sta
 ```bash
 cd frontend
 npm install
-ng serve                                                                # http://localhost:4200, hot-reload
+ng serve --proxy-config proxy.conf.json                                 # http://localhost:4200, hot-reload
+# Der Proxy ist Pflicht: environment.development.ts zeigt auf relative Pfade (/api, /hubs).
+# Ohne ihn beantwortet der Dev-Server die API-Aufrufe selbst mit index.html.
+# Zum Testen auf einem echten Gerät zusätzlich --host 0.0.0.0 (dann via LAN-IP erreichbar).
 ng build --configuration production
 ng test
 ```
