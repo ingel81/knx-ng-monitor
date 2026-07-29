@@ -4,7 +4,7 @@ import { KnxTelegram } from '../../core/services/signalr.service';
 import { messageTypeKind, messageTypeName, unitForDpt } from './knx-grid.util';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LanguageService } from '../../core/i18n/language.service';
-import { localeTag } from '../../core/i18n/locale.util';
+import { formatKnxDate } from '../../core/i18n/date.util';
 
 /** Mobile Karten-Ansicht (<768px) statt Grid-Zeilen. Tippen -> select. */
 @Component({
@@ -57,13 +57,8 @@ export class TelegramCardsComponent {
     return /^-?\d[\d.,\s]*$/.test(v) ? unitForDpt((row as { datapointType?: string }).datapointType) : '';
   }
 
+  // Karten sind schmal -> 'dayTime' (ohne Jahr) statt der vollen Tabellen-Variante.
   formatTime(ts: string | number | Date): string {
-    const d = new Date(ts);
-    if (isNaN(d.getTime())) return '–';
-    return d.toLocaleString(localeTag(this.langSvc.lang()), {
-      hour12: false,
-      day: '2-digit', month: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
+    return formatKnxDate(ts, 'dayTime', this.langSvc.lang(), '–');
   }
 }

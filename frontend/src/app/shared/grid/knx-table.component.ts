@@ -7,6 +7,7 @@ import { OverflowTitleDirective } from './overflow-title.directive';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LanguageService } from '../../core/i18n/language.service';
 import { localeTag } from '../../core/i18n/locale.util';
+import { formatKnxDateIn } from '../../core/i18n/date.util';
 
 export type ColumnKind = 'time' | 'datetime' | 'mono' | 'muted-mono' | 'name' | 'type' | 'value';
 
@@ -118,20 +119,6 @@ export class KnxTableComponent {
   }
 
   // --- Zeit ------------------------------------------------------------------
-  formatTime(v: unknown): string {
-    const d = new Date(v as string);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleTimeString(this.locale, {
-      hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3
-    });
-  }
-  formatDateTime(v: unknown): string {
-    const d = new Date(v as string);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleString(this.locale, {
-      hour12: false,
-      year: '2-digit', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3
-    });
-  }
+  formatTime(v: unknown): string { return formatKnxDateIn(this.locale, v, 'time'); }
+  formatDateTime(v: unknown): string { return formatKnxDateIn(this.locale, v, 'dateTimeMs'); }
 }

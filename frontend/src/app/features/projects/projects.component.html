@@ -41,7 +41,7 @@
           <tr [class.is-active-row]="project.isActive">
             <td><span class="proj-name">{{ project.name }}</span></td>
             <td><span class="proj-file">{{ project.fileName }}</span></td>
-            <td><span class="proj-date">{{ project.importDate | date:'short' }}</span></td>
+            <td><span class="proj-date">{{ project.importDate | knxDate:'dateTimeMin' }}</span></td>
             <td>
               <div class="proj-stats">
                 <span class="proj-stat"><mat-icon svgIcon="knx:sitemap"></mat-icon><b>{{ project.groupAddressCount }}</b> {{ 'projects.gas' | translate }}</span>

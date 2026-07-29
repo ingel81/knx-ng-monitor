@@ -10,6 +10,7 @@ import { DiagnosticsService } from '../../core/services/diagnostics.service';
 import { LogsSignalrService, LogEntry } from '../../core/services/logs-signalr.service';
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { KnxDatePipe } from '../../core/i18n/date.pipe';
 import { ToastService } from '../../core/services/toast.service';
 import { LoggerService } from '../../core/logging/logger.service';
 
@@ -26,7 +27,7 @@ const MAX_ENTRIES = 2000;
  */
 @Component({
   selector: 'app-logs',
-  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, ScrollingModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, ScrollingModule, TranslatePipe, KnxDatePipe],
   templateUrl: './logs.component.html',
   styleUrl: './logs.component.scss'
 })

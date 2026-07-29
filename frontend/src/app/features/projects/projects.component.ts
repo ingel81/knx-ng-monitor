@@ -16,6 +16,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/confirm-
 import { KeyringUploadDialogComponent, KeyringUploadResult } from './keyring-upload-dialog.component';
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { KnxDatePipe } from '../../core/i18n/date.pipe';
 import { LoggerService } from '../../core/logging/logger.service';
 
 @Component({
@@ -31,7 +32,8 @@ import { LoggerService } from '../../core/logging/logger.service';
     MatProgressSpinnerModule,
     MatExpansionModule,
     MatDialogModule,
-    TranslatePipe
+    TranslatePipe,
+    KnxDatePipe
   ],
   templateUrl: './projects.component.html',
   styleUrl: './projects.component.scss'
