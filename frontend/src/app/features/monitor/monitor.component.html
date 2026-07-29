@@ -71,7 +71,11 @@
         }
       </div>
 
-      @if (!isMobile) {
+      <!-- Bleibt bis 1280px stehen: zwischen 1280 und 1560 sind alle Spalten echt
+           schaltbar. Darunter greift der §9-Zuschnitt und der Manager hätte nichts
+           mehr anzubieten — dann lieber weg als tot. Ins Kebab passt er nicht, er
+           bringt sein eigenes Menü mit. -->
+      @if (!hideColumnManager) {
         <app-column-manager [columns]="columnOptions" storageKey="knx.cols.monitor" [locked]="lockedCols"
                             [defaultHidden]="defaultHiddenCols" (hiddenChange)="onHiddenChange($event)"></app-column-manager>
       }
@@ -87,7 +91,7 @@
           {{ 'monitor.export' | translate }}
         </button>
 
-        <!-- Mobile: collapse Clear + Export into a kebab menu -->
+        <!-- Mobil und Tablet / schmaler Desktop: Auto-Scroll, Export und Leeren im Kebab -->
         <button class="knx-btn knx-btn--ghost knx-btn--icon only-mobile" [matMenuTriggerFor]="liveMenu"
                 [matTooltip]="'monitor.moreActions' | translate" [attr.aria-label]="'monitor.moreActions' | translate">
           <mat-icon>more_vert</mat-icon>
@@ -97,13 +101,15 @@
             <mat-icon>{{ autoScroll ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
             <span>{{ 'monitor.autoScroll' | translate }}</span>
           </button>
-          <button mat-menu-item (click)="clearTelegrams()">
-            <mat-icon svgIcon="knx:clear"></mat-icon>
-            <span>{{ 'monitor.clear' | translate }}</span>
-          </button>
           <button mat-menu-item (click)="exportLiveCsv()" [disabled]="filtered.length === 0">
             <mat-icon svgIcon="knx:download"></mat-icon>
             <span>{{ 'monitor.export' | translate }}</span>
+          </button>
+          <!-- Leeren verwirft den Puffer: ans Ende, abgesetzt und rot, damit es nicht
+               beim Griff nach Export erwischt wird. -->
+          <button mat-menu-item class="cd-danger-item menu-sep" (click)="clearTelegrams()">
+            <mat-icon svgIcon="knx:clear"></mat-icon>
+            <span>{{ 'monitor.clear' | translate }}</span>
           </button>
         </mat-menu>
       } @else {
@@ -117,14 +123,16 @@
           <mat-icon>more_vert</mat-icon>
         </button>
         <mat-menu #moreMenu="matMenu">
-          <!-- Mobile: Export CSV lives in the kebab (its toolbar button is hidden) -->
-          @if (isMobile) {
+          <!-- Export CSV lives in the kebab wherever its toolbar button is hidden -->
+          @if (compactActions) {
             <button mat-menu-item (click)="exportArchiveCsv()" [disabled]="isExporting">
               <mat-icon svgIcon="knx:download"></mat-icon>
               <span>{{ (isExporting ? 'monitor.exporting' : 'monitor.exportCsv') | translate }}</span>
             </button>
           }
-          <button mat-menu-item class="cd-danger-item" (click)="clearHistory()" [disabled]="totalCount === 0">
+          <!-- Trenner nur, wenn Export darüber steht — sonst hinge er über dem ersten Eintrag. -->
+          <button mat-menu-item class="cd-danger-item" [class.menu-sep]="compactActions"
+                  (click)="clearHistory()" [disabled]="totalCount === 0">
             <mat-icon svgIcon="knx:trash"></mat-icon>
             <span>{{ (isClearing ? 'monitor.clearing' : 'monitor.clearHistory') | translate }}</span>
           </button>

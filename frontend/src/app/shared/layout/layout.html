@@ -7,43 +7,59 @@
       </a>
 
       <nav class="main-nav" role="navigation" [attr.aria-label]="'nav.mainNav' | translate">
-        <a routerLink="/monitor" routerLinkActive="active" class="nav-link">
-          <mat-icon svgIcon="knx:monitor"></mat-icon>
-          <span>{{ 'nav.monitor' | translate }}</span>
-        </a>
-        <a routerLink="/charts" routerLinkActive="active" class="nav-link">
-          <mat-icon>show_chart</mat-icon>
-          <span>{{ 'nav.charts' | translate }}</span>
-        </a>
-        <a routerLink="/stats" routerLinkActive="active" class="nav-link">
-          <mat-icon>bar_chart</mat-icon>
-          <span>{{ 'nav.stats' | translate }}</span>
-        </a>
-        <a routerLink="/projects" routerLinkActive="active" class="nav-link">
-          <mat-icon svgIcon="knx:folder"></mat-icon>
-          <span>{{ 'nav.projects' | translate }}</span>
-        </a>
-        <a routerLink="/topology" routerLinkActive="active" class="nav-link">
-          <mat-icon>account_tree</mat-icon>
-          <span>{{ 'nav.topology' | translate }}</span>
-        </a>
-        <a routerLink="/group-addresses" routerLinkActive="active" class="nav-link">
-          <mat-icon>lan</mat-icon>
-          <span>{{ 'nav.groupAddresses' | translate }}</span>
-        </a>
-        <a routerLink="/graph" routerLinkActive="active" class="nav-link">
-          <mat-icon>hub</mat-icon>
-          <span>{{ 'nav.graph' | translate }}</span>
-          <span class="nav-alpha">ALPHA</span>
-        </a>
-        <a routerLink="/logs" routerLinkActive="active" class="nav-link">
-          <mat-icon>subject</mat-icon>
-          <span>{{ 'nav.logs' | translate }}</span>
-        </a>
-        <a routerLink="/settings" routerLinkActive="active" class="nav-link">
-          <mat-icon svgIcon="knx:settings"></mat-icon>
-          <span>{{ 'nav.settings' | translate }}</span>
-        </a>
+        <!-- Ab 1560px passen alle neun Einträge ausgeschrieben nebeneinander. -->
+        <span class="nav-set nav-set-full">
+          @for (item of navItems; track item.route) {
+            <a [routerLink]="item.route" routerLinkActive="active" class="nav-link">
+              <ng-container *ngTemplateOutlet="navIcon; context: { $implicit: item }"></ng-container>
+              <span class="nav-label">{{ item.label | translate }}</span>
+              @if (item.alpha) {
+                <span class="nav-alpha">ALPHA</span>
+              }
+            </a>
+          }
+        </span>
+
+        <!-- 768–1559px: dieselben vier Kern-Items wie die Bottom-Nav + Überlauf.
+             Unter 1024px fallen die Labels weg (siehe layout.scss), deshalb trägt
+             jeder Link hier ein aria-label mit dem vollen Namen — hier steht der
+             ausgeschriebene Name auch sichtbar, der Accessible Name deckt ihn also. -->
+        <span class="nav-set nav-set-compact">
+          @for (item of tabItems; track item.route) {
+            <a [routerLink]="item.route" routerLinkActive="active" class="nav-link"
+               [attr.aria-label]="item.label | translate">
+              <ng-container *ngTemplateOutlet="navIcon; context: { $implicit: item }"></ng-container>
+              <span class="nav-label">{{ item.label | translate }}</span>
+            </a>
+          }
+
+          <span class="nav-more">
+            <button #navMoreTrigger type="button" class="nav-link nav-more-trigger"
+                    [class.active]="moreActive() || navMoreOpen()"
+                    [attr.aria-expanded]="navMoreOpen()" aria-haspopup="menu" aria-controls="nav-more-menu"
+                    [attr.aria-label]="'nav.moreMenu' | translate" (click)="toggleNavMore()">
+              <mat-icon>more_horiz</mat-icon>
+              <span class="nav-label">{{ 'nav.more' | translate }}</span>
+              <mat-icon class="caret">expand_more</mat-icon>
+            </button>
+
+            @if (navMoreOpen()) {
+              <div class="nav-more-menu" id="nav-more-menu" role="menu"
+                   cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (keydown.escape)="closeNavMore()">
+                @for (item of moreItems; track item.route) {
+                  <a class="more-item" role="menuitem" [routerLink]="item.route" routerLinkActive="active"
+                     (click)="closeNavMore()">
+                    <ng-container *ngTemplateOutlet="navIcon; context: { $implicit: item }"></ng-container>
+                    <span>{{ item.label | translate }}</span>
+                    @if (item.alpha) {
+                      <span class="nav-alpha">ALPHA</span>
+                    }
+                  </a>
+                }
+              </div>
+            }
+          </span>
+        </span>
       </nav>
 
       <div class="user-info">
@@ -99,43 +115,49 @@
     </div>
   </main>
 
+  @if (anyMoreOpen()) {
+    <div class="more-backdrop" (click)="closeMoreOverlays()"></div>
+  }
+
   <nav class="bottom-nav" role="navigation" [attr.aria-label]="'nav.mainNav' | translate">
-    <a routerLink="/monitor" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.monitor' | translate">
-      <mat-icon svgIcon="knx:monitor"></mat-icon>
-      <span>{{ 'nav.monitor' | translate }}</span>
-    </a>
-    <a routerLink="/charts" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.charts' | translate">
-      <mat-icon>show_chart</mat-icon>
-      <span>{{ 'nav.charts' | translate }}</span>
-    </a>
-    <a routerLink="/stats" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.stats' | translate">
-      <mat-icon>bar_chart</mat-icon>
-      <span>{{ 'nav.stats' | translate }}</span>
-    </a>
-    <a routerLink="/projects" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.projects' | translate">
-      <mat-icon svgIcon="knx:folder"></mat-icon>
-      <span>{{ 'nav.projects' | translate }}</span>
-    </a>
-    <a routerLink="/topology" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.topology' | translate">
-      <mat-icon>account_tree</mat-icon>
-      <span>{{ 'nav.topology' | translate }}</span>
-    </a>
-    <a routerLink="/group-addresses" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.groupAddresses' | translate">
-      <mat-icon>lan</mat-icon>
-      <span>{{ 'nav.groupAddresses' | translate }}</span>
-    </a>
-    <a routerLink="/graph" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.graph' | translate">
-      <mat-icon>hub</mat-icon>
-      <span>{{ 'nav.graph' | translate }}</span>
-      <span class="nav-alpha">α</span>
-    </a>
-    <a routerLink="/logs" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.logs' | translate">
-      <mat-icon>subject</mat-icon>
-      <span>{{ 'nav.logs' | translate }}</span>
-    </a>
-    <a routerLink="/settings" routerLinkActive="active" class="bottom-link" [attr.aria-label]="'nav.settings' | translate">
-      <mat-icon svgIcon="knx:settings"></mat-icon>
-      <span>{{ 'nav.settings' | translate }}</span>
-    </a>
+    @for (item of tabItems; track item.route) {
+      <a [routerLink]="item.route" routerLinkActive="active" class="bottom-link" [attr.aria-label]="tabAriaLabel(item)">
+        <ng-container *ngTemplateOutlet="navIcon; context: { $implicit: item }"></ng-container>
+        <span>{{ (item.short ?? item.label) | translate }}</span>
+      </a>
+    }
+
+    <button #moreTrigger type="button" class="bottom-link more-trigger"
+            [class.active]="moreActive() || moreOpen()"
+            [attr.aria-expanded]="moreOpen()" aria-haspopup="menu" aria-controls="nav-more-sheet"
+            [attr.aria-label]="'nav.moreMenu' | translate" (click)="toggleMore()">
+      <mat-icon>more_horiz</mat-icon>
+      <span>{{ 'nav.more' | translate }}</span>
+    </button>
+
+    @if (moreOpen()) {
+      <div class="more-sheet" id="nav-more-sheet" role="menu"
+           cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (keydown.escape)="closeMore()">
+        @for (item of moreItems; track item.route) {
+          <a class="more-item" role="menuitem" [routerLink]="item.route" routerLinkActive="active" (click)="closeMore()">
+            <ng-container *ngTemplateOutlet="navIcon; context: { $implicit: item }"></ng-container>
+            <span>{{ item.label | translate }}</span>
+            @if (item.alpha) {
+              <span class="nav-alpha">ALPHA</span>
+            }
+          </a>
+        }
+      </div>
+    }
   </nav>
 </div>
+
+<!-- Ein Icon-Renderer für alle fünf Listen (Top-Nav voll/kompakt, Kopf-Menü,
+     Bottom-Tabs, Bottom-Sheet): SVG-Icon hat Vorrang, sonst Material-Ligatur. -->
+<ng-template #navIcon let-item>
+  @if (item.svgIcon; as svgIcon) {
+    <mat-icon [svgIcon]="svgIcon"></mat-icon>
+  } @else {
+    <mat-icon>{{ item.icon }}</mat-icon>
+  }
+</ng-template>

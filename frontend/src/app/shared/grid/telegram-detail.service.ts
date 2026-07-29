@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { TelegramDetailComponent, TelegramDetailData } from './telegram-detail.component';
+import { SHEET_MOBILE_BREAKPOINT, TelegramDetailComponent, TelegramDetailData } from './telegram-detail.component';
 
 /**
  * Oeffnet das Telegramm-Detail-Sheet: Desktop -> rechts angedocktes Panel,
@@ -11,7 +11,7 @@ export class TelegramDetailService {
   private dialog = inject(MatDialog);
 
   open(data: TelegramDetailData): void {
-    const isMobile = window.innerWidth < 768;
+    const isMobile = window.innerWidth < SHEET_MOBILE_BREAKPOINT;
     this.dialog.open(TelegramDetailComponent, {
       data,
       autoFocus: false,
@@ -20,7 +20,9 @@ export class TelegramDetailService {
       width: isMobile ? '100vw' : '400px',
       maxWidth: '100vw',
       height: isMobile ? 'auto' : '100vh',
-      maxHeight: isMobile ? '85vh' : '100vh',
+      // dvh, nicht vh: Android Chrome rechnet vh gegen den largest viewport (ohne Adressleiste),
+      // 85vh sind sichtbar also ~100 % -> das Sheet wirkt wie Vollbild.
+      maxHeight: isMobile ? '85dvh' : '100vh',
     });
   }
 }

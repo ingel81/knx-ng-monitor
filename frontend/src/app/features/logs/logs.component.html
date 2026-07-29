@@ -46,7 +46,7 @@
   <div class="logs-body">
     @if (loading) {
       <div class="empty-state">
-        <mat-icon class="spin">progress_activity</mat-icon>
+        <mat-icon class="spin">autorenew</mat-icon>
         <p>{{ 'logs.loading' | translate }}</p>
       </div>
     } @else if (error) {
@@ -62,7 +62,13 @@
     } @else {
       <cdk-virtual-scroll-viewport itemSize="30" class="log-viewport">
         <div *cdkVirtualFor="let e of filtered; trackBy: trackEntry" class="log-row" [ngClass]="levelClass(e.level)">
-          <span class="col-time">{{ e.timestamp | date:'yyyy-MM-dd HH:mm:ss.SSS' }}</span>
+          <!-- Zwei Schreibweisen, per CSS umgeschaltet: mobil ist die Spalte zu
+               schmal für 'dateTimeMs' und würde Sekunden + Millisekunden
+               kommentarlos abschneiden. -->
+          <span class="col-time">
+            <span class="time-full">{{ e.timestamp | knxDate:'dateTimeMs' }}</span>
+            <span class="time-compact">{{ e.timestamp | knxDate:'dayTime' }}</span>
+          </span>
           <span class="col-level"><span class="level-pill">{{ e.level }}</span></span>
           <span class="col-source" [matTooltip]="e.source || ''">{{ e.source || '—' }}</span>
           <span class="col-msg" [matTooltip]="e.exception ? e.message + '\n\n' + e.exception : e.message"

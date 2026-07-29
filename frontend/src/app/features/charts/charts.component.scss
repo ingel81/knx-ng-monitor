@@ -14,6 +14,10 @@
   justify-content: space-between;
   gap: var(--sp-3);
   flex-wrap: wrap;
+  // Anker für das Options-Panel. Bewusst hier statt am Trigger: sobald die
+  // Leiste umbricht, rutscht der Options-Button nach links und ein am Button
+  // verankertes 300px-Panel läuft über den linken Bildschirmrand hinaus.
+  position: relative;
   padding: var(--sp-3) var(--sp-5);
   background: var(--surface);
   border-bottom: 1px solid var(--line);
@@ -156,6 +160,47 @@
   flex: none;
 }
 
+// Wrapper around the range group. `display: contents` means it produces no box on desktop —
+// its children stay direct flex items of .tb-right, keeping the gap and the order untouched.
+// Only the mobile media query promotes it to a real (collapsible) box.
+.tb-range { display: contents; }
+
+// Tablet-only kebab holding Refresh / PNG / CSV; `.tb-action` marks the buttons it replaces.
+.tb-overflow { display: none; }
+
+// Trigger for the collapsed range box (tablet and below); the dot marks a custom range.
+.range-toggle {
+  display: none;
+  position: relative;
+
+  .filter-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--brand);
+    flex: none;
+  }
+}
+
+// Carries the "pick both dates" message. Stays in the DOM and in the accessibility tree at all
+// times — a live region that appears together with its text is not announced — so outside the
+// mobile layout it is only visually hidden, never `display: none`.
+.range-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  font-size: var(--fs-2xs);
+  color: var(--err);
+}
+
+.knx-input.is-missing {
+  border-color: var(--err);
+  box-shadow: 0 0 0 3px var(--err-tint);
+}
+
 // Filter controls all share the same height + vertical centre so the row reads
 // as one aligned strip even when it wraps.
 .tb-right {
@@ -194,6 +239,9 @@
   background: var(--paper-sunk);
   border-bottom: 1px solid var(--line-2);
 }
+
+// Long/short wording of the same note — the media query swaps which one is visible.
+.note-short { display: none; }
 
 // Incomplete data is a different class of problem than thinned-out data — it must not read
 // like a routine footnote.
@@ -279,6 +327,16 @@
   .num { font-family: var(--font-mono); text-align: right; font-feature-settings: 'tnum' 1; }
   .unit { color: var(--ink-3); margin-left: 2px; font-size: .9em; }
   .muted { color: var(--ink-3); }
+}
+
+// Holds the chart and the summary table. Plain flex column on desktop (nothing scrolls, the
+// chart fills what is left); the mobile query turns it into the scroll container.
+.chart-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .chart-host {
@@ -458,10 +516,9 @@
   .mat-mdc-option.mat-mdc-option-disabled { opacity: .45; }
 }
 
-// Display-options popover. Anchored to its trigger button; the backdrop sits below the
-// panel and above everything else so any outside click closes it.
+// Display-options popover. Anchored to the toolbar (see there), not to its trigger;
+// the backdrop sits below the panel and above everything else so any outside click closes it.
 .chart-opts {
-  position: relative;
   display: inline-flex;
 }
 
@@ -474,7 +531,8 @@
 .opts-panel {
   position: absolute;
   top: calc(100% + var(--sp-2));
-  right: 0;
+  // Fluchtet mit dem Innenabstand der Toolbar statt mit deren Außenkante.
+  right: var(--sp-5);
   z-index: 41;
   width: 300px;
   padding: var(--sp-4);
@@ -530,27 +588,218 @@
   }
 }
 
-// Mobile: stack the toolbar cleanly — no orphan dividers, full-width controls.
+// Mobile: the toolbar collapses to two rows — GA picker + range toggle, then a strip of
+// icon-only actions. The range controls only appear when the toggle is on. Stacking them all
+// vertically (the previous approach) produced nine full-width rows before the chart started.
+// ---------------------------------------------------------------------------
+// Collapse the range group behind .range-toggle — same band that switches the header to the
+// compact nav set (layout.scss), so the two leading rows change character together.
+//
+// The group is by far the widest thing in the toolbar. Measured from the IBM Plex metrics and
+// the box model, German needs 273px of presets + 194px + 190px of date fields + 103px for
+// Anwenden, i.e. ~778px of the ~1683px the full row wants (English: ~1544px). An iPad in
+// landscape is exactly 1024px and therefore just missed a 1023.98 cut-off — with the full row
+// three deep on the device, which is what pushed the threshold up to here.
+//
+// Caveat this does not fix: between 1560px and ~1683px the uncollapsed German row still wraps.
+// Closing that would need a fourth breakpoint; deliberately not introduced.
+// ---------------------------------------------------------------------------
+@media (max-width: 1559.98px) {
+  // Both dividers frame the range group; with it collapsed they would lead the row as orphans.
+  .tb-divider { display: none; }
+
+  // 44px all the way up to 1560, not only in the phone/tablet band: iPad landscape widths run
+  // from 1024 (iPad) over 1180 (Air) to 1366 (Pro 12.9"), all inside this band. The price is
+  // that the toggle stands 8px taller than the 36px GA picker next to it on a mouse laptop.
+  .range-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+
+    .filter-dot { position: absolute; top: 4px; right: 4px; }
+  }
+
+  .tb-range {
+    display: none;
+
+    // `order: 2` puts the opened block below the button row instead of above it. The cap keeps
+    // the panel from stretching across a 1440px toolbar — at 560px each date column is ~276px,
+    // comfortably above the ~165px the datetime field needs, and it stays under the widths the
+    // narrower bands hand out anyway, so nothing below tablet changes.
+    &.is-open {
+      display: grid;
+      order: 2;
+      flex: 1 1 100%;
+      max-width: 560px;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-2);
+    }
+
+    > .knx-seg,
+    > .knx-btn,
+    > .range-hint { grid-column: 1 / -1; }
+
+    // Explicit height: the shared `.tb-right .knx-seg { height: 36px }` would clip the taller
+    // touch targets inside. 44px matches every other target in this panel.
+    .knx-seg { width: 100%; height: 44px; }
+    .knx-seg button { flex: 1; justify-content: center; }
+    > .knx-btn { height: 44px; }
+
+    // Undo the visually-hidden treatment — here the hint is a normal line under the grid.
+    .range-hint {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow: visible;
+      clip-path: none;
+      white-space: normal;
+    }
+
+    // Label above the input so From and To end up the same width. `min-width: 0` is required —
+    // datetime-local has an intrinsic minimum around 200px that would otherwise burst the grid.
+    .range-field {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+      min-width: 0;
+
+      > span {
+        font-size: var(--fs-2xs);
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: var(--ink-3);
+      }
+
+      .knx-input {
+        width: 100%;
+        min-width: 0;
+        height: 44px;
+        font-size: var(--fs-sm);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tablet only (the band that also strips the nav labels in layout.scss): the desktop shell
+// stays — 320px GA picker on the left, buttons on the right — but the three point actions
+// move into a kebab. Live keeps its own button: it is a state indicator, not just an action.
+//
+// Deliberately NOT widened along with the collapse band above: once the range group is behind
+// its toggle, the row needs only 372px (picker + toggle) + 485px (five buttons) + 52px of
+// padding and gap = ~909px in German, ~874px in English. From 1024px up everything therefore
+// fits without a kebab, and mouse users keep Refresh / PNG / CSV as direct buttons.
+// ---------------------------------------------------------------------------
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  // Content-sized, .tb-right would be ~190px wide and the opened range panel with it
+  // (its flex-basis of 100% resolves against this box). Let it take the free width instead.
+  .tb-right {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+
+    // Touch band: 36px is under the 44px target size.
+    .knx-btn { height: 44px; }
+  }
+
+  .tb-action { display: none; }
+
+  .tb-overflow {
+    display: inline-flex;
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 767px) {
   .toolbar { padding: var(--sp-3) var(--sp-4); }
-  .tb-left, .tb-right { width: 100%; }
-  .tb-divider { display: none; }
-  .ga-picker { width: 100%; }
+
+  // GA picker takes the row, the range toggle sits beside it as a fixed 44px square.
+  .tb-left { width: 100%; }
+
+  .ga-picker { flex: 1; min-width: 0; }
   .ga-select { width: 100%; min-width: 0; max-width: none; }
 
+  // One wrapping row: five 44px touch targets fit in 5×44 + 4×8 = 252px. The flex/wrap/gap
+  // come from the .toolbar base rule — the point here is that nothing switches it to a column.
   .tb-right {
-    flex-direction: column;
-    align-items: stretch;
+    width: 100%;
 
-    .knx-seg { width: 100%; }
-    .knx-seg button { flex: 1; }
-    .range-field { width: 100%; }
-    .range-field .knx-input { flex: 1; width: 100%; }
-    > .knx-btn { width: 100%; justify-content: center; }
+    > .knx-btn,
+    .chart-opts > .knx-btn {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      justify-content: center;
+    }
 
-    // Full-width trigger, and a panel that cannot run off the screen edge.
-    .chart-opts { width: 100%; }
-    .chart-opts > .knx-btn { width: 100%; justify-content: center; }
-    .opts-panel { width: auto; left: 0; right: 0; }
+    .lbl { display: none; }
+
+    // No longer the full-width block it was — just one more icon in the strip.
+    .chart-opts {
+      flex: 0 0 auto;
+      width: auto;
+    }
+  }
+
+  .note {
+    padding: var(--sp-1) var(--sp-4);
+    font-size: var(--fs-2xs);
+  }
+
+  .note-full { display: none; }
+  .note-short { display: inline; }
+
+  // Fixed chart height: with a stretched chart the x-axis labels collided with the summary
+  // table header. The bottom padding is the scroll buffer above the bottom nav.
+  .chart-scroll {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chart-host {
+    flex: none;
+    height: 46vh;
+    min-height: 260px;
+  }
+
+  // The table is wider than the viewport and scrolls horizontally inside .series-stats (which
+  // already carries `overflow-x: auto`); .chart-scroll stays `overflow-x: hidden`. Without
+  // `width: max-content` the `width: 100%` on the table plus on the name column squeezed
+  // everything into the container and cut LAST and POINTS off. Horizontal padding moves onto
+  // the edge cells — on a scroll container the right-hand padding is dropped when it overflows.
+  .series-stats {
+    flex: none;
+    padding: var(--sp-3) 0 var(--sp-8);
+    font-size: var(--fs-xs);
+
+    table { width: max-content; min-width: 100%; }
+    th.col-name, td.col-name { width: auto; }
+    // The cap keeps a verbose group-address name from pushing the numeric columns hundreds of
+    // pixels out; `knxOverflowTitle` still exposes the full text as a title on the ellipsis.
+    td.col-name .name { min-width: 0; max-width: 40vw; }
+
+    td, th { padding: var(--sp-1) var(--sp-2); }
+    th:first-child, td:first-child { padding-left: var(--sp-4); }
+    th:last-child,  td:last-child  { padding-right: var(--sp-4); }
+  }
+
+  // The trigger is only 44px wide now, so an anchored popover would be unusable — turn the
+  // panel into a bottom sheet. The bottom nav sits at z-index 1000 and neither .app-main nor
+  // .charts-container opens a stacking context, so the old 40/41 would render underneath it.
+  // The backdrop has to clear the nav too, or a tap there would navigate instead of closing.
+  .opts-backdrop { z-index: 1001; }
+
+  .opts-panel {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: auto;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: var(--sh-3);
+    padding-bottom: calc(var(--sp-6) + env(safe-area-inset-bottom, 0px));
+    z-index: 1002;
   }
 }

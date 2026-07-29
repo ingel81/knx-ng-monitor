@@ -49,6 +49,7 @@ const PALETTE = [
 const HUB_GREY = { building: '#475569', floor: '#64748B', room: '#94A3B8' };
 // Tasteful, well-separated floor colours (few floors → stay distinct + calm).
 const FLOOR_PALETTE = ['#3B82F6', '#10B981', '#F59E0B', '#A855F7', '#EC4899', '#14B8A6', '#EF4444'];
+const LEGEND_KEY = 'knx.graph.legend';
 
 /**
  * Force-directed building map: Building → Floor → Room → GA. Floors/rooms bind
@@ -76,6 +77,9 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
   nodeCount = 0;
   linkCount = 0;
   legend: { label: string; color: string }[] = [];
+  /** Legende ein-/ausblendbar: auf Mobil verdeckt sie sonst ~40 % der Zeichenfläche.
+   *  Gespeicherte Wahl gewinnt, sonst Viewport-Default (Desktop an, Mobil aus). */
+  showLegend = GraphComponent.readLegendPref();
 
   private gas: GroupAddressDto[] = [];
   private devices: DeviceDto[] = [];
@@ -570,6 +574,34 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!m) return color;
     const n = parseInt(m[1], 16);
     return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+  }
+
+  // --- legend ----------------------------------------------------------------
+  /** Statisch, damit der Field-Initializer sie nutzen kann — die Wahl steht damit
+   *  vor dem ersten Render fest und die Legende flackert beim Laden nicht auf. */
+  private static readLegendPref(): boolean {
+    try {
+      const raw = localStorage.getItem(LEGEND_KEY);
+      if (raw === 'on') return true;
+      if (raw === 'off') return false;
+    } catch { /* Private Mode / Storage aus — Viewport-Default ist immer okay. */ }
+    // Ohne `matchMedia` (jsdom, alte WebViews) liefert die Kette `undefined`; `!undefined`
+    // ist `true` und damit der gewollte Desktop-Default. Absichtlich, kein Versehen —
+    // die Methode läuft aus einem Field-Initializer, ein Wurf hier würde die ganze
+    // Komponente nicht konstruieren lassen statt nur den Viewport-Default zu kosten.
+    return !window.matchMedia?.('(max-width: 767px)')?.matches;
+  }
+
+  /** Ohne Legendeneinträge gibt es nichts zu togglen — Button bleibt dann disabled. */
+  get canToggleLegend(): boolean {
+    return this.legend.length > 0 && !this.loading && this.hasActiveProject;
+  }
+
+  toggleLegend(): void {
+    this.showLegend = !this.showLegend;
+    try {
+      localStorage.setItem(LEGEND_KEY, this.showLegend ? 'on' : 'off');
+    } catch { /* Nicht merken zu können ist kein Fehler, den der Nutzer sehen muss. */ }
   }
 
   zoomToFit(): void { this.graph?.zoomToFit(400, 40); }

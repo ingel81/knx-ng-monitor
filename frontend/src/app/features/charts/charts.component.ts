@@ -1,9 +1,10 @@
-import { Component, ElementRef, NgZone, OnInit, OnDestroy, ViewChild, effect, inject } from '@angular/core';
+import { Component, ElementRef, HostListener, NgZone, OnInit, OnDestroy, ViewChild, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute } from '@angular/router';
 import { NgxEchartsDirective } from 'ngx-echarts';
@@ -59,7 +60,7 @@ interface LiveSeries {
   selector: 'app-charts',
   imports: [
     CommonModule, FormsModule, MatIconModule, MatSelectModule, MatFormFieldModule,
-    MatTooltipModule, NgxEchartsDirective, TranslatePipe, OverflowTitleDirective
+    MatMenuModule, MatTooltipModule, NgxEchartsDirective, TranslatePipe, OverflowTitleDirective
   ],
   templateUrl: './charts.component.html',
   styleUrl: './charts.component.scss'
@@ -102,6 +103,14 @@ export class ChartsComponent implements OnInit, OnDestroy {
   customFrom = '';
   customTo = '';
   readonly presets: RangePreset[] = ['1h', '24h', '7d', '30d'];
+
+  /** Mobile only: the range controls are collapsed behind a toolbar toggle. */
+  rangeOpen = false;
+  /** Apply was pressed with an incomplete custom range — marks the empty field. */
+  rangeHint = false;
+  isMobile = window.innerWidth < 768;
+  @ViewChild('fromInput') private fromInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('toInput') private toInput?: ElementRef<HTMLInputElement>;
 
   // --- State -----------------------------------------------------------------
   loading = false;
@@ -328,13 +337,34 @@ export class ChartsComponent implements OnInit, OnDestroy {
 
   // --- Time range ------------------------------------------------------------
   setPreset(p: RangePreset): void {
+    // A preset supersedes the custom range, so a pending "pick both dates" hint is stale.
+    this.rangeHint = false;
     this.preset = p;
     this.load();
   }
 
+  /**
+   * Validates here instead of disabling the button: on touch a disabled control gives no
+   * feedback at all, so a tap now says what is missing and jumps to that field.
+   */
   applyCustom(): void {
+    if (!this.customFrom || !this.customTo) {
+      this.rangeHint = true;
+      (this.customFrom ? this.toInput : this.fromInput)?.nativeElement.focus();
+      return;
+    }
+    this.rangeHint = false;
     this.preset = 'custom';
     this.load();
+  }
+
+  /** Chart paddings differ per breakpoint; the canvas size itself is handled by [autoResize]. */
+  @HostListener('window:resize')
+  onResize(): void {
+    const mobile = window.innerWidth < 768;
+    if (mobile === this.isMobile) return;
+    this.isMobile = mobile;
+    if (this.series.length) this.rebuildChart();
   }
 
   toggleLive(): void {
@@ -662,10 +692,13 @@ export class ChartsComponent implements OnInit, OnDestroy {
         data: this.series.map((s) => s.name),
         selected: Object.fromEntries(this.series.map((s) => [s.name, !this.hiddenSeries.has(s.name)]))
       },
-      grid: { left: 56, right: axisUnits.length > 1 ? 72 : 24, top: opts.showLegend ? 40 : 16, bottom: 92 },
-      xAxis: timeAxis(skin),
+      // Tighter margins on mobile so axes, legend and the dataZoom slider still fit the 46vh box.
+      grid: this.isMobile
+        ? { left: 42, right: axisUnits.length > 1 ? 46 : 10, top: opts.showLegend ? 34 : 20, bottom: 84 }
+        : { left: 56, right: axisUnits.length > 1 ? 72 : 24, top: opts.showLegend ? 40 : 16, bottom: 92 },
+      xAxis: timeAxis(skin, localeTag(this.lang.lang())),
       yAxis,
-      dataZoom: dataZoom(skin),
+      dataZoom: dataZoom(skin, this.isMobile),
       series: echartsSeries
     };
   }

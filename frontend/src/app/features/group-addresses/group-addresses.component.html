@@ -26,7 +26,7 @@
   <div class="ga-body">
     @if (loading) {
       <div class="empty-state">
-        <mat-icon class="spin">progress_activity</mat-icon>
+        <mat-icon class="spin">autorenew</mat-icon>
         <p>{{ 'ga.loading' | translate }}</p>
       </div>
     } @else if (error) {
@@ -84,39 +84,59 @@
                             <div class="leaf-info">
                               <span class="leaf-addr mono">{{ leaf.address }}</span>
                               <span class="leaf-name">{{ leaf.name || ('detail.unknown' | translate) }}</span>
-                              @if (leaf.datapointType) {
-                                <span class="leaf-dpt mono">{{ leaf.datapointType }}</span>
-                              }
+                              <!-- Desktop: display:contents, so DPT + flags stay direct flex children.
+                                   Mobile: their own grid row below address/name/value. -->
+                              <div class="leaf-tags">
+                                @if (leaf.datapointType) {
+                                  <span class="leaf-dpt mono">{{ leaf.datapointType }}</span>
+                                }
 
-                              <!-- KNX flags, aggregated over the linked communication objects. -->
-                              @if (leaf.flags?.length) {
-                                <span class="leaf-flags">
-                                  @for (f of leaf.flags; track f) {
-                                    <span class="flag" [attr.title]="flagTitle(f, leaf)">{{ flagLabel(f) }}</span>
-                                  }
-                                </span>
-                              }
+                                <!-- KNX flags, aggregated over the linked communication objects. -->
+                                @if (leaf.flags?.length) {
+                                  <span class="leaf-flags">
+                                    @for (f of leaf.flags; track f) {
+                                      <span class="flag" [attr.title]="flagTitle(f, leaf)">{{ flagLabel(f) }}</span>
+                                    }
+                                  </span>
+                                }
+                              </div>
 
                               <!-- Filled from the live telegram stream; empty until this address
-                                   is seen on the bus. -->
+                                   is seen on the bus. The @else placeholder keeps the value cell of
+                                   the mobile card stable and is hidden on desktop. -->
                               @if (leaf.pendingRead) {
                                 <span class="leaf-value is-waiting">{{ 'ga.waiting' | translate }}</span>
                               } @else if (leaf.liveValue !== undefined) {
                                 <span class="leaf-value" [attr.title]="liveValueTitle(leaf)">{{ leaf.liveValue }}</span>
                               } @else if (leaf.noAnswer) {
                                 <span class="leaf-value is-muted">{{ 'ga.noAnswer' | translate }}</span>
+                              } @else {
+                                <span class="leaf-value is-empty" role="img"
+                                      [attr.aria-label]="'ga.noValueYet' | translate">–</span>
                               }
                             </div>
                             <div class="leaf-actions">
                               <div class="slot slot-read">
-                                <button class="knx-btn knx-btn--outline knx-btn--sm" (click)="read(leaf)" [disabled]="leaf.busy">
+                                <button class="knx-btn knx-btn--outline knx-btn--sm" (click)="read(leaf)"
+                                        [disabled]="leaf.busy" [attr.aria-label]="'detail.read' | translate">
                                   <mat-icon svgIcon="knx:download"></mat-icon>
-                                  {{ 'detail.read' | translate }}
+                                  <span class="btn-label">{{ 'detail.read' | translate }}</span>
                                 </button>
 
                               </div>
 
-                              <div class="slot slot-write">
+                              <!-- Mobile only: unfolds the value input so a bus write always takes a
+                                   deliberate second tap. -->
+                              <button class="knx-btn knx-btn--ghost knx-btn--sm leaf-write-toggle"
+                                      [class.is-open]="leaf.writeOpen"
+                                      [attr.aria-expanded]="!!leaf.writeOpen"
+                                      [attr.aria-label]="'ga.writeToggle' | translate"
+                                      [attr.title]="'ga.writeToggle' | translate"
+                                      [disabled]="leaf.busy" (click)="toggleWrite(leaf)">
+                                <mat-icon svgIcon="knx:upload"></mat-icon>
+                              </button>
+
+                              <div class="slot slot-write" [class.is-open]="leaf.writeOpen">
                                 @if (leaf.isBool) {
                                   <select class="knx-input knx-input--sm" [(ngModel)]="leaf.writeValue">
                                     <option value="1">{{ 'detail.on' | translate }}</option>
@@ -134,12 +154,16 @@
                                 </button>
                               </div>
 
-                              <div class="slot slot-chart">
+                              <!-- The slot keeps its width on desktop even when empty, so the action
+                                   columns stay aligned; on mobile the empty slot is removed instead
+                                   of leaving a gap in the button row. -->
+                              <div class="slot slot-chart" [class.is-hidden]="!leaf.chartable">
                                 @if (leaf.chartable) {
                                   <button class="knx-btn knx-btn--ghost knx-btn--sm" (click)="openChart(leaf)"
-                                          [attr.title]="'ga.openChart' | translate">
+                                          [attr.title]="'ga.openChart' | translate"
+                                          [attr.aria-label]="'ga.openChart' | translate">
                                     <mat-icon>show_chart</mat-icon>
-                                    {{ 'ga.chart' | translate }}
+                                    <span class="btn-label">{{ 'ga.chart' | translate }}</span>
                                   </button>
                                 }
                               </div>

@@ -5,6 +5,8 @@
  * Re-read (and the chart rebuilt) whenever the app theme toggles.
  */
 
+import { formatKnxDateIn } from '../../core/i18n/date.util';
+
 export interface ChartSkin {
   series: string;
   ink: string;
@@ -60,8 +62,6 @@ export function readSkin(): ChartSkin {
   };
 }
 
-const pad = (n: number) => String(n).padStart(2, '0');
-
 /** "nice scale" value axis: rounded steps, ~7 ticks, mono tick labels (§1.1). */
 export function valueAxis(skin: ChartSkin, extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -78,8 +78,8 @@ export function valueAxis(skin: ChartSkin, extra: Record<string, unknown> = {}):
   };
 }
 
-/** Time axis: no boundary gap, midnight rendered as a bold day number (§1.1). */
-export function timeAxis(skin: ChartSkin): Record<string, unknown> {
+/** Time axis: no boundary gap, midnight rendered as a bold day label (§1.1). */
+export function timeAxis(skin: ChartSkin, locale = 'en-GB'): Record<string, unknown> {
   return {
     type: 'time',
     boundaryGap: false,
@@ -90,8 +90,10 @@ export function timeAxis(skin: ChartSkin): Record<string, unknown> {
       fontSize: 11,
       formatter: (val: number) => {
         const d = new Date(val);
-        if (d.getHours() === 0 && d.getMinutes() === 0) return `{day|${d.getDate()}}`;
-        return `{t|${pad(d.getHours())}:${pad(d.getMinutes())}}`;
+        if (d.getHours() === 0 && d.getMinutes() === 0) {
+          return `{day|${formatKnxDateIn(locale, d, 'dayMonth')}}`;
+        }
+        return `{t|${formatKnxDateIn(locale, d, 'hourMinute')}}`;
       },
       rich: {
         day: { fontWeight: 700, color: skin.ink, fontFamily: skin.mono, fontSize: 11 },
@@ -126,18 +128,14 @@ export function tooltipCfg(
         value: [number, number]; color: string; seriesName: string;
       }>;
       if (!arr.length) return '';
-      const t = new Date(arr[0].value[0]);
-      const stamp = t.toLocaleString(locale, {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-      });
+      const stamp = formatKnxDateIn(locale ?? 'en-GB', arr[0].value[0], 'dateTime');
       const head =
         `<div style="font-family:${skin.mono};font-size:11px;color:${skin.ink3};` +
         `margin-bottom:6px;letter-spacing:.02em">${stamp}</div>`;
       const rows = arr.map((p) => {
         const unit = units[p.seriesName] || '';
         const v = typeof p.value[1] === 'number'
-          ? p.value[1].toLocaleString(undefined, { maximumFractionDigits: 2 })
+          ? p.value[1].toLocaleString(locale, { maximumFractionDigits: 2 })
           : p.value[1];
         const unitHtml = unit
           ? ` <span style="color:${skin.ink3};font-weight:500;font-size:11px">${unit}</span>`
@@ -156,10 +154,17 @@ export function tooltipCfg(
   };
 }
 
-/** Inside + slider dataZoom, slider styled with brand handles / teal frame (§1.3). */
-export function dataZoom(skin: ChartSkin): Array<Record<string, unknown>> {
+/**
+ * Inside + slider dataZoom, slider styled with brand handles / teal frame (§1.3).
+ *
+ * `isMobile` drops the `inside` roam: its RoamController calls `preventDefault()` on every
+ * touchmove it turns into a pan (`preventDefaultMouseMove` defaults to true), which swallows
+ * the one-finger drag the page needs to scroll past the chart. The slider stays, so the range
+ * is still adjustable there.
+ */
+export function dataZoom(skin: ChartSkin, isMobile = false): Array<Record<string, unknown>> {
   return [
-    { type: 'inside' },
+    ...(isMobile ? [] : [{ type: 'inside' }]),
     {
       type: 'slider',
       bottom: 40,

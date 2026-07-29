@@ -12,7 +12,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  // dvh statt vh, sonst überragt der Auth-Screen auf Mobil den sichtbaren
+  // Bereich (body hat overflow:hidden) — siehe .app-layout.
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--paper);
   padding: 2rem;
 

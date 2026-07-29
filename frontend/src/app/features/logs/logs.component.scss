@@ -121,10 +121,18 @@
   white-space: nowrap;
   box-sizing: border-box;
 
+  // 'dateTimeMs' (28.07.2026, 15:04:05.123) sind 24 Zeichen; IBM Plex Mono hat
+  // 0.6em Vorschub, bei --fs-sm (13px) also 24 × 7,8px = 187,2px. 184px kappten
+  // die letzte Millisekundenstelle still weg. Der overflow-Guard bleibt, damit
+  // ein längeres Locale nicht in die Level-Spalte läuft.
   .col-time {
     flex: none;
-    width: 168px;
+    width: 190px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--ink-3);
+
+    .time-compact { display: none; }
   }
 
   .col-level {
@@ -226,7 +234,9 @@
 }
 
 // Mobile: stack the toolbar; drop the fixed source column to save width.
-@media (max-width: 767px) {
+// .98 statt 767px, damit gebrochene Viewport-Breiten (Zoom, DPR-Rundung) nicht
+// zwischen die Raster fallen — gleiche Grenze wie im Layout.
+@media (max-width: 767.98px) {
   .toolbar { padding: var(--sp-3) var(--sp-4); }
   .tb-left, .tb-right { width: 100%; }
   .tb-divider { display: none; }
@@ -241,6 +251,17 @@
     padding-left: var(--sp-4);
     padding-right: var(--sp-4);
     .col-source { display: none; }
-    .col-time { width: 124px; font-size: var(--fs-xs, 11px); }
+
+    // 132px bei --fs-xs (12px) fassen 18 Zeichen — 'dateTimeMs' bräuchte 24 und
+    // verlöre Sekunden + Millisekunden unmarkiert. 'dayTime' (28.07., 15:04:05)
+    // sind 16 Zeichen = 115,2px und passt; die Millisekunden sind hier der
+    // entbehrlichere Teil, das Datum bleibt beim Zurückscrollen wichtig.
+    .col-time {
+      width: 132px;
+      font-size: var(--fs-xs, 11px);
+
+      .time-full { display: none; }
+      .time-compact { display: inline; }
+    }
   }
 }

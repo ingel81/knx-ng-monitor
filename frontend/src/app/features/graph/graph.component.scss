@@ -26,6 +26,13 @@
     flex-wrap: wrap;
   }
 
+  // Legenden-Toggle: aktiver Zustand wie die Segmented-/Filter-Buttons im Monitor.
+  .knx-btn.is-active {
+    background: var(--brand-tint);
+    border-color: var(--brand);
+    color: var(--brand);
+  }
+
   .page-title {
     margin: 0;
     font-size: var(--fs-lg, 16px);
@@ -133,5 +140,7 @@
   .toolbar .tb-left, .toolbar .tb-right { width: 100%; }
   .toolbar .knx-seg { flex: 1; }
   .toolbar .knx-seg button { flex: 1; }
-  .graph-legend { max-width: 160px; font-size: var(--fs-2xs); }
+  // Style Guide §9: Touch-Targets ≥44px — die 36px der Basis-Klasse sind auf Touch zu klein.
+  .toolbar .tb-right .knx-btn { height: 44px; min-width: 44px; }
+  .graph-legend { max-width: 160px; max-height: 32%; font-size: var(--fs-2xs); }
 }

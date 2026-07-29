@@ -1,7 +1,14 @@
 .app-layout {
   display: flex;
   flex-direction: column;
+  // 100vh ist auf mobilen Browsern (Android Chrome, iOS Safari) die *large*
+  // Viewport-Höhe — also inklusive des Bereichs, den die eingeblendete
+  // URL-Leiste verdeckt. Das Layout wird dadurch höher als die sichtbare
+  // Fläche und overflow:hidden schneidet das letzte Flex-Child ab: die
+  // Bottom-Nav. dvh folgt dem tatsächlich sichtbaren Viewport.
+  // 100vh bleibt als Fallback für Browser ohne dvh stehen.
   height: 100vh;
+  height: 100dvh;
   width: 100%;
   overflow: hidden; // No scrolling at layout level
 }
@@ -69,6 +76,47 @@
   flex: 1;
   justify-content: flex-start;
   margin-left: var(--sp-10);
+  // Ohne min-width: 0 ist das Flex-Minimum der Nav ihre min-content-Breite.
+  // Sie kann dann nicht nachgeben, die Zeile läuft über und schiebt den
+  // Account-Trigger aus der Leiste — genau der gemeldete Fehler. Mit 0 gibt
+  // die Nav nach und der Account behält seinen Platz.
+  min-width: 0;
+}
+
+// Zwei Ausbaustufen derselben Navigation; welche sichtbar ist, entscheiden die
+// Breakpoints ganz unten. Immer nur eine von beiden ist im Layout.
+.nav-set {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+// Letztes Sicherheitsnetz, falls die Rechnung unten doch einmal danebenliegt
+// (fremde Schriftfallbacks, Browser-Zoom): die volle Leiste schneidet ihren
+// eigenen Überhang ab, statt ihn in den Account-Bereich zu schieben.
+// Bewusst nur hier — .nav-set-compact enthält das Aufklappmenü, das aus dem
+// Kasten herausragen muss und von overflow: hidden abgeschnitten würde.
+.nav-set-full {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nav-set-compact { display: none; }
+
+// Im Label-Band bleiben bei 1024px nur ~12px Puffer (1012px nötig, DE). Solange
+// der Webfont noch nicht da ist, rendert wegen `font-display: swap` ein Fallback
+// mit anderer Breite — 2 % Mehrbreite reichen, um den Puffer aufzubrauchen.
+// Deshalb dürfen die Labels hier kürzen: ein „Gruppenadres…" für ein paar
+// hundert Millisekunden ist harmlos, Navigationstext unter dem Account-Trigger
+// nicht. Ein Clip wie bei .nav-set-full geht hier nicht — das Aufklappmenü muss
+// aus dem Kasten herausragen dürfen.
+.nav-set-compact .nav-link {
+  min-width: 0;
+
+  .nav-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .nav-link {
@@ -86,11 +134,25 @@
   font-size: var(--fs-md);
   font-weight: var(--fw-medium);
 
+  // Button-Reset für den Überlauf-Trigger, der dieselbe Klasse trägt.
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-ui);
+  cursor: pointer;
+
   mat-icon {
     font-size: 18px;
     width: 18px;
     height: 18px;
+    // Darf beim Kürzen der Labels nicht mitschrumpfen.
+    flex: none;
   }
+
+  // Der eigentliche Auslöser des gemeldeten Fehlers: ohne nowrap bricht
+  // "Group addresses" / "Gruppenadressen" zweizeilig um und drückt die
+  // gesamte Leiste auseinander.
+  .nav-label { white-space: nowrap; }
 
   &:hover { color: var(--header-ink); }
 
@@ -116,9 +178,26 @@
   }
 }
 
+// Anker für das Kopf-Überlaufmenü. Muss am Trigger hängen (nicht an der Nav),
+// damit das Menü linksbündig unter dem Trigger aufklappt.
+.nav-more {
+  position: relative;
+  display: inline-flex;
+}
+
+.nav-more-trigger .caret {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  opacity: 0.7;
+}
+
 .user-info {
   display: flex;
   align-items: center;
+  // Der Account-Zugang (Sprache, Theme, Logout) darf unter keinen Umständen
+  // weichen — weder schrumpfen noch verdrängt werden. Nachgeben muss die Nav
+  // (siehe min-width an .main-nav).
   flex-shrink: 0;
 }
 
@@ -143,7 +222,10 @@
   &:hover { color: var(--header-ink); background: rgba(255, 255, 255, 0.06); }
 
   mat-icon { width: 20px; height: 20px; font-size: 20px; flex: none; }
-  .username { white-space: nowrap; }
+  // Deckel, damit der Trigger eine bekannte Maximalbreite hat — sonst wäre die
+  // Breakpoint-Rechnung unten von der Länge des Benutzernamens abhängig.
+  // Der vollständige Name steht ohnehin im Kopf des geöffneten Menüs (.um-head).
+  .username { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 6rem; }
   .caret { width: 18px; height: 18px; font-size: 18px; opacity: 0.7; }
 }
 
@@ -171,13 +253,129 @@
 }
 
 // ---------------------------------------------------------------------------
+// Überlauf-Menü — eine Optik, zwei Anker: in der Kopfleiste klappt es unter
+// dem Trigger nach unten (.nav-more-menu), in der Bottom-Nav nach oben
+// (.more-sheet). Gemeinsam sind Fläche und Zeilen, verschieden nur Position,
+// Rundung und Einblendrichtung.
+// ---------------------------------------------------------------------------
+@keyframes nav-more-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nav-more-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.nav-more-menu,
+.more-sheet {
+  position: absolute;
+  z-index: 1001;
+  background: var(--surface);
+  box-shadow: var(--sh-pop);
+  padding: var(--sp-2) 0;
+  overflow: hidden;
+
+  .more-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-height: 48px;
+    padding: 0 var(--sp-4);
+    color: var(--ink-2);
+    font-size: var(--fs-md);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color var(--t-fast), background var(--t-fast);
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      color: var(--ink-3);
+      transition: color var(--t-fast);
+    }
+
+    &:hover {
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+
+    &.active {
+      color: var(--brand);
+      background: var(--brand-tint);
+
+      mat-icon { color: var(--brand); }
+    }
+  }
+
+  // Inline-Pille am Zeilenende — nichts Absolutes, das herausragen könnte.
+  // Der Abstand zum Label kommt aus dem gap des .more-item.
+  .nav-alpha {
+    margin-left: auto;
+    padding: 2px var(--sp-2);
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-bold);
+    line-height: 1;
+    letter-spacing: 0.06em;
+    border-radius: var(--r-full);
+    background: var(--brand-tint);
+    color: var(--brand);
+  }
+}
+
+// Kopfleiste: hängt am Trigger, nicht an der Nav — sonst wandert es beim
+// Sprachwechsel mit der Item-Breite.
+.nav-more-menu {
+  top: 100%;
+  left: 0;
+  margin-top: var(--sp-2);
+  // Gleiche Breite wie das Account-Menü daneben (_design.scss: .user-menu).
+  min-width: 220px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  animation: nav-more-down var(--t-base);
+}
+
+// Bottom-Nav: wächst nach oben (bottom: 100%), damit es unabhängig von der
+// Nav-Höhe immer bündig aufsitzt.
+.more-sheet {
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--line);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  animation: nav-more-up var(--t-base);
+}
+
+// Fängt Klicks außerhalb ab. Unter Header/Bottom-Nav (z-index 1000), damit der
+// aktive Trigger sichtbar bleibt. Auf Tablet bewusst durchsichtig — den halben
+// Bildschirm für ein kleines Kopfmenü abzudunkeln wäre zu schwer; auf Mobil
+// ist die Abdunklung dagegen das erwartete Sheet-Muster (siehe unten).
+.more-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-more-menu,
+  .more-sheet { animation: none; }
+}
+
+// ---------------------------------------------------------------------------
 // Bottom-Nav (nur Mobil)
 // ---------------------------------------------------------------------------
 .bottom-nav {
   display: none;
 }
 
-@media (max-width: 767px) {
+// .98 statt glatter Grenzen: bei gebrochenen Viewport-Breiten (Zoom, DPR-Rundung)
+// fiele 767,5px sonst durch beide Raster — weder max-width: 767px noch
+// min-width: 768px greifen, die Leiste stünde ungebändigt da.
+@media (max-width: 767.98px) {
   // Top-Nav + User-Text auf Mobil ausblenden
   .main-nav { display: none; }
   .user-info .username { display: none; }
@@ -193,6 +391,8 @@
     border-top: 1px solid var(--line);
     box-shadow: var(--sh-2);
     z-index: 1000;
+    // Anker für das More-Sheet, das nach oben aus der Nav herauswächst.
+    position: relative;
 
     .bottom-link {
       position: relative;
@@ -205,47 +405,84 @@
       gap: 3px;
       min-height: 56px;
 
-      .nav-alpha {
-        position: absolute;
-        top: 4px;
-        left: 50%;
-        margin-left: 6px;
-        font-size: 9px;
-        font-weight: var(--fw-bold);
-        color: var(--brand);
-        line-height: 1;
-      }
+      // Button-Reset, damit der "Mehr"-Trigger exakt wie die <a>-Tabs aussieht.
+      appearance: none;
+      border: 0;
+      background: transparent;
+      font-family: var(--font-ui);
+      cursor: pointer;
+
       padding: 6px 2px;
       text-decoration: none;
       color: var(--ink-3);
+      // WICHTIG: nur color transitionen — nie `all`.
       transition: color var(--t-fast);
 
       mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+        font-size: 21px;
+        width: 21px;
+        height: 21px;
       }
 
-      // 7 tabs at 375px: wrap labels to max 2 lines inside their own slot
-      // instead of letting them bleed into neighbours. EN wraps on the space
-      // ("Group addresses"); long German compounds break mid-word but stay
-      // contained.
+      // 4 Tabs + "Mehr": die (teils gekürzten) Labels passen einzeilig.
+      // Falls doch nicht, lieber Ellipse als Wortumbruch mitten im Wort.
       span {
-        width: 100%;
-        font-size: 9px;
-        line-height: 1.12;
+        font-size: var(--fs-2xs);
+        line-height: 1.2;
         font-weight: var(--fw-medium);
-        text-align: center;
-        overflow-wrap: anywhere;
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
+        white-space: nowrap;
         overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
       }
 
       &.active {
         color: var(--brand);
       }
     }
+  }
+
+  // Auf Mobil verdeckt das Sheet einen guten Teil der Seite — hier ist die
+  // Abdunklung die etablierte Erwartung.
+  .more-backdrop { background: rgba(0, 0, 0, 0.42); }
+}
+
+// ---------------------------------------------------------------------------
+// Kopf-Navigation: Ausbaustufen
+//
+// Gerechnet mit den echten Font-Metriken (IBM Plex Sans 500 @14px, hmtx-Tabelle
+// der ausgelieferten WOFF) über Brand (148px) + Navigation + Account-Trigger
+// (gedeckelt 166px) + 2 × 24px Kopf-Padding:
+//
+//   Nav-Breite      9 Einträge    EN 1020px · DE 1092px
+//                   4 + Mehr      EN  583px · DE  626px
+//                   4 + Mehr, Icons          226px
+//   nötiger Viewport 9 Einträge   EN 1422px · DE 1494px
+//                   4 + Mehr      EN  970px · DE 1012px
+//                   4 + Mehr, Icons          613px
+//
+// Maßgeblich ist Deutsch (Labels ~7 % länger). Daraus 1560px für die volle
+// Leiste (66px Puffer) und 1024px für die Labels — letzteres bewusst auf die
+// Breite des iPad im Querformat gelegt, das mit 1012px nötiger Breite sonst um
+// Haaresbreite ins Icon-Band fiel. Dort bleiben nur 12px Puffer; die trägt die
+// Ellipse an .nav-set-compact ab, nicht die Zahl (siehe dort).
+// ---------------------------------------------------------------------------
+@media (min-width: 768px) and (max-width: 1559.98px) {
+  .nav-set-full { display: none; }
+  .nav-set-compact { display: flex; }
+  .main-nav { margin-left: var(--sp-6); }
+}
+
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .nav-set-compact {
+    // Labels weg, Name steckt im aria-label. Bewusst kein Tooltip: dieses Band
+    // ist Touch-Gebiet, dort erscheint kein Hover-Tooltip — er wäre genau da
+    // wirkungslos, wo er gebraucht würde.
+    .nav-label { display: none; }
+    .nav-more-trigger .caret { display: none; }
+
+    // Ohne Label bleibt nur das Icon — auf Touch-Geräten etwas größer fassen.
+    // (Breite bleibt bei 42px: 18px Icon + 2 × var(--sp-3).)
+    .nav-link { height: 40px; }
   }
 }

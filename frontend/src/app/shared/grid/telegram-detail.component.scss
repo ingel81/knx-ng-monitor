@@ -1,3 +1,13 @@
+// Scroll-Kette: mobil ist die Dialoghöhe 'auto', .knx-sheet hat aber height:100%.
+// Ohne diese Regel hängt es vom Flex-Verhalten der .mat-mdc-dialog-surface ab, ob
+// .knx-sheet überhaupt der Scroller ist — und nur dann klebt der sticky Header.
+:host {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  min-height: 0;
+}
+
 .knx-sheet {
   display: flex;
   flex-direction: column;
@@ -17,6 +27,12 @@
 }
 
 .knx-sheet-head {
+  // Scroller ist .knx-sheet selbst, der Header ein direktes Kind -> sticky greift ohne Umbau.
+  // Der Hintergrund ist Pflicht: sonst scrollt der Inhalt sichtbar darunter durch.
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -117,10 +133,10 @@
     }
     dd.mono { color: var(--ink); }
   }
-}
 
-@media (max-width: 767px) {
-  .knx-sheet-grid { grid-template-columns: 1fr; }
+  // Zeitstempel (24 Mono-Zeichen mit Millisekunden) und Quelle (Adresse + Gerätename)
+  // passen in keine halbe Spalte — sie bekommen die volle Breite, auch auf Desktop.
+  .field--wide { grid-column: 1 / -1; }
 }
 
 // ---- Shared block treatment for delimited sections -------------------------
@@ -197,3 +213,80 @@
 // Device-name annotations behind physical addresses (#6)
 .dd-extra { color: var(--ink-2); font-family: inherit; }
 .usedby-devname { color: var(--ink-2); font-size: var(--fs-xs); }
+
+// ---- Bottom-Sheet auf Mobil ------------------------------------------------
+// Steht bewusst am Dateiende: Media Queries erhöhen die Spezifität nicht,
+// die Overrides unten (z. B. .knx-sheet-actions margin-top) brauchen die Quellreihenfolge.
+@media (max-width: 767px) {
+  // Bus-Aktionen nach oben — reine Flex-Reihenfolge, kein DOM-Umbau.
+  // .knx-sheet-value und .knx-sheet-grid enthalten nichts Fokussierbares, die
+  // Tab-Reihenfolge bleibt X -> Read -> Chart -> Eingabe -> Write (WCAG 2.4.3).
+  .knx-sheet-head { order: 0; }
+  .knx-sheet-value { order: 1; }
+  .knx-sheet-grid { order: 3; }
+  .knx-sheet-usedby { order: 4; }
+
+  .knx-sheet-head {
+    padding: var(--sp-5) var(--sp-4) var(--sp-3);
+    align-items: center;
+
+    // Ziehbereich der Swipe-to-dismiss-Geste. touch-action: none, damit der Browser
+    // die Bewegung nicht selbst als Scroll deutet; user-select, damit beim Ziehen mit
+    // Maus oder Stift kein Text markiert wird. Nur hier, nicht auf dem ganzen Sheet —
+    // sonst kollidierte die Geste mit dem vertikalen Scrollen des Inhalts.
+    touch-action: none;
+    user-select: none;
+    cursor: grab;
+
+    // Griff als Pseudo-Element: keine Markup-Änderung, kein Screenreader-Rauschen.
+    // Er kündigt die Wischgeste an, die der Header oben trägt; X, Backdrop und Esc
+    // bleiben daneben bestehen.
+    &::before {
+      content: '';
+      position: absolute;
+      top: var(--sp-2);
+      left: 50%;
+      transform: translateX(-50%);
+      width: 36px;
+      height: 4px;
+      border-radius: var(--r-full);
+      background: var(--line-strong);
+    }
+
+    // Kurze GA-Namen sparen so eine Zeile, lange brechen weiter um.
+    .knx-sheet-title { flex-direction: row; align-items: center; flex-wrap: wrap; }
+
+    // 44 px Touch-Target über das Material-Token, nicht über width/height:
+    // Material rechnet sein Padding aus dem Token (size - icon-size) / 2 — bei
+    // rohem width/height bliebe das Padding bei 8 px und das Icon säße schief.
+    button.mat-mdc-icon-button { --mat-icon-button-state-layer-size: 44px; }
+  }
+
+  .knx-sheet-value { padding: var(--sp-5) var(--sp-4); }
+
+  // Kopf, Hero und Feld-Grid stehen mobil auf sp-4 — die gerahmten Blöcke
+  // ziehen nach, sonst sitzen sie 4 px weiter innen als der übrige Inhalt.
+  .knx-sheet-actions,
+  .knx-sheet-usedby { margin-left: var(--sp-4); margin-right: var(--sp-4); }
+
+  // Kleineres Gap gewinnt Spaltenbreite; bei 360 px bleiben 156 px je Spalte.
+  .knx-sheet-grid {
+    padding: var(--sp-4);
+    gap: var(--sp-4);
+
+    .field dd { overflow-wrap: anywhere; } // lange RAW-Hex-Werte (DPT16)
+  }
+
+  .knx-sheet-actions {
+    order: 2;
+    margin-top: var(--sp-4);
+
+    .knx-btn--sm { height: 44px; }
+    .knx-input { height: 44px; font-size: var(--fs-base); }
+    .actions-row { flex-wrap: wrap; }
+    .write-row .knx-btn { flex: none; }
+  }
+
+  // 10 px Scrollbar-Breite sind bei 360 px Viewport zu teuer.
+  .knx-sheet::-webkit-scrollbar { width: 0; }
+}

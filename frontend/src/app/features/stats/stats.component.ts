@@ -1,4 +1,4 @@
-import { Component, OnInit, effect, inject } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -42,6 +42,14 @@ export class StatsComponent implements OnInit {
   customTo = '';
   readonly presets: RangePreset[] = ['1h', '24h', '7d', '30d'];
 
+  /** Mobile only: the range controls are collapsed behind a toolbar toggle. */
+  rangeOpen = false;
+  /** Apply was pressed with an incomplete custom range — marks the empty field. */
+  rangeHint = false;
+  isMobile = window.innerWidth < 768;
+  @ViewChild('fromInput') private fromInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('toInput') private toInput?: ElementRef<HTMLInputElement>;
+
   // --- State -----------------------------------------------------------------
   loading = false;
   error = false;
@@ -57,13 +65,35 @@ export class StatsComponent implements OnInit {
   }
 
   setPreset(p: RangePreset): void {
+    // A preset supersedes the custom range, so a pending "pick both dates" hint is stale.
+    this.rangeHint = false;
     this.preset = p;
     this.load();
   }
 
+  /**
+   * Validates here instead of disabling the button: on touch a disabled control gives no
+   * feedback at all, so a tap now says what is missing and jumps to that field.
+   */
   applyCustom(): void {
+    if (!this.customFrom || !this.customTo) {
+      this.rangeHint = true;
+      (this.customFrom ? this.toInput : this.fromInput)?.nativeElement.focus();
+      return;
+    }
+    this.rangeHint = false;
     this.preset = 'custom';
     this.load();
+  }
+
+  /** Chart paddings differ per breakpoint; the canvas size itself is handled by [autoResize]. */
+  @HostListener('window:resize')
+  onResize(): void {
+    const mobile = window.innerWidth < 768;
+    if (mobile === this.isMobile) return;
+    this.isMobile = mobile;
+    if (this.lastData) this.buildChart(this.lastData);
+    if (this.lastGrid) this.buildHeatmap(this.lastGrid);
   }
 
   load(): void {
@@ -122,10 +152,21 @@ export class StatsComponent implements OnInit {
         formatter: (p: { value: [number, number, number] }) =>
           `<b>${days[p.value[1]]} ${hours[p.value[0]]}:00</b><br>${p.value[2]} ${this.lang.translate('stats.telegrams')}`,
       },
-      grid: { left: 44, right: 16, top: 10, bottom: 30 },
+      // The legend sits below the plot, so `bottom` has to clear the hour labels *and* the
+      // visualMap bar — at 30 they shared one band and overlapped.
+      grid: {
+        left: this.isMobile ? 30 : 44,
+        right: this.isMobile ? 6 : 16,
+        top: 10,
+        bottom: this.isMobile ? 46 : 44
+      },
       xAxis: {
         type: 'category', data: hours, splitArea: { show: true },
-        axisLabel: { color: skin.ink3, fontFamily: skin.mono, fontSize: 10, interval: 1 },
+        // All 24 hour labels overlap on a narrow screen — show every 4th there.
+        axisLabel: {
+          color: skin.ink3, fontFamily: skin.mono, fontSize: 10,
+          interval: this.isMobile ? 3 : 1
+        },
         axisLine: { lineStyle: { color: skin.line2 } }, axisTick: { show: false },
       },
       yAxis: {
@@ -134,9 +175,10 @@ export class StatsComponent implements OnInit {
         axisLine: { lineStyle: { color: skin.line2 } }, axisTick: { show: false },
       },
       visualMap: {
-        min: 0, max: Math.max(1, max), calculable: true, orient: 'horizontal', left: 'center', bottom: -4,
+        min: 0, max: Math.max(1, max), calculable: true, orient: 'horizontal', left: 'center', bottom: 0,
         inRange: { color: [skin.surface, skin.series] },
         textStyle: { color: skin.ink3, fontSize: 10 },
+        ...(this.isMobile ? { itemWidth: 10, itemHeight: 60 } : {}),
       },
       series: [{
         type: 'heatmap', data, progressive: 0,
@@ -161,10 +203,19 @@ export class StatsComponent implements OnInit {
     const skin = readSkin();
     this.chartOption = {
       tooltip: tooltipCfg(skin, {}, localeTag(this.lang.lang())),
-      grid: { left: 56, right: 24, top: 24, bottom: 92 },
-      xAxis: timeAxis(skin),
-      yAxis: valueAxis(skin, { min: 0, name: this.lang.translate('stats.bucketCount') }),
-      dataZoom: dataZoom(skin),
+      grid: {
+        left: this.isMobile ? 44 : 56,
+        right: this.isMobile ? 12 : 24,
+        top: 24,
+        bottom: this.isMobile ? 84 : 92
+      },
+      xAxis: timeAxis(skin, localeTag(this.lang.lang())),
+      // The axis name overlaps the left edge at 360px, so it is dropped on mobile.
+      yAxis: valueAxis(skin, {
+        min: 0,
+        name: this.isMobile ? undefined : this.lang.translate('stats.bucketCount')
+      }),
+      dataZoom: dataZoom(skin, this.isMobile),
       series: [
         {
           name: this.lang.translate('stats.overTime'),

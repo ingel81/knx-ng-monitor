@@ -10,6 +10,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ProjectService, GroupAddressDto, GroupRangeDto } from '../../core/services/project.service';
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { formatKnxDate } from '../../core/i18n/date.util';
 import { LoggerService } from '../../core/logging/logger.service';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/confirm-dialog.component';
 import { SignalrService, KnxTelegram } from '../../core/services/signalr.service';
@@ -28,6 +29,8 @@ interface GaLeaf extends GroupAddressDto {
   chartable: boolean;
   /** Bound value of the per-row write input (booleans default to On). */
   writeValue: string;
+  /** Mobile only: the write controls start folded away so a bus write takes a deliberate second tap. */
+  writeOpen?: boolean;
   busy: boolean;
 
   /** Most recent value seen on the bus for this address, filled from the live stream. */
@@ -200,7 +203,7 @@ export class GroupAddressesComponent implements OnInit, OnDestroy {
   /** Absolute timestamp of the shown value, for the row tooltip. */
   liveValueTitle(leaf: GaLeaf): string | null {
     if (!leaf.liveAt) return null;
-    return new Date(leaf.liveAt).toLocaleString();
+    return formatKnxDate(leaf.liveAt, 'dateTime', this.lang.lang()) || null;
   }
 
   async load(): Promise<void> {
@@ -373,6 +376,11 @@ export class GroupAddressesComponent implements OnInit, OnDestroy {
 
   setAllOpen(open: boolean): void {
     this.allOpen = open;
+    // Collapsing folds the mobile write rows away too — otherwise expanding again brings back
+    // an open write row with a value already typed into it.
+    if (!open) {
+      for (const leaf of this.allLeaves) leaf.writeOpen = false;
+    }
   }
 
   get hasGroupAddresses(): boolean {
@@ -421,6 +429,14 @@ export class GroupAddressesComponent implements OnInit, OnDestroy {
     }, READ_ANSWER_TIMEOUT_MS));
   }
 
+  /**
+   * Mobile: folds a leaf's value input open or shut. On desktop the input is always visible,
+   * where the CSS simply ignores the flag.
+   */
+  toggleWrite(leaf: GaLeaf): void {
+    leaf.writeOpen = !leaf.writeOpen;
+  }
+
   async write(leaf: GaLeaf): Promise<void> {
     if (leaf.writeValue === '') return;
 
@@ -437,7 +453,9 @@ export class GroupAddressesComponent implements OnInit, OnDestroy {
     };
 
     const confirmed = await this.dialog
-      .open(ConfirmDialogComponent, { data, width: '420px' })
+      // Without maxWidth, Material's 80vw default shrinks the warning dialog to 288px
+      // on 360px devices and the warning text breaks apart.
+      .open(ConfirmDialogComponent, { data, width: 'min(420px, calc(100vw - 32px))', maxWidth: '100vw' })
       .afterClosed()
       .toPromise();
 
@@ -449,7 +467,11 @@ export class GroupAddressesComponent implements OnInit, OnDestroy {
       datapointType: leaf.datapointType ?? null,
       value: leaf.writeValue
     }).subscribe({
-      next: () => { leaf.busy = false; this.toast(this.lang.translate('detail.written', { address: leaf.address, value: shown })); },
+      next: () => {
+        leaf.busy = false;
+        leaf.writeOpen = false;
+        this.toast(this.lang.translate('detail.written', { address: leaf.address, value: shown }));
+      },
       error: () => { leaf.busy = false; this.toast(this.lang.translate('detail.writeFailed')); }
     });
   }

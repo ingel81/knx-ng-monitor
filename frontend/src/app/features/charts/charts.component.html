@@ -66,30 +66,58 @@
           </mat-select>
         </mat-form-field>
       </div>
+
+      <!-- Mobile only: the whole range group collapses behind this toggle. No matTooltip —
+           a hover tooltip never shows on touch, so the name lives in aria-label instead. -->
+      <button
+        class="knx-btn knx-btn--outline range-toggle"
+        [class.is-active]="rangeOpen"
+        (click)="rangeOpen = !rangeOpen; rangeHint = false"
+        [attr.aria-label]="'range.title' | translate"
+        [attr.aria-expanded]="rangeOpen"
+        aria-controls="range-panel"
+      >
+        <mat-icon>date_range</mat-icon>
+        @if (preset === 'custom') { <span class="filter-dot"></span> }
+      </button>
     </div>
 
     <div class="tb-right">
-      <div class="knx-seg" role="group">
-        @for (p of presets; track p) {
-          <button type="button" [class.is-active]="preset === p" (click)="setPreset(p)">
-            {{ 'range.' + p | translate }}
-          </button>
-        }
+      <!-- `display: contents` on desktop, so these stay direct flex items of .tb-right and the
+           row is unchanged; only the mobile media query turns the wrapper into a real box. -->
+      <div class="tb-range" id="range-panel" [class.is-open]="rangeOpen">
+        <div class="knx-seg" role="group">
+          @for (p of presets; track p) {
+            <button type="button" [class.is-active]="preset === p" (click)="setPreset(p)">
+              {{ 'range.' + p | translate }}
+            </button>
+          }
+        </div>
+
+        <span class="tb-divider"></span>
+
+        <label class="range-field">
+          <span>{{ 'range.from' | translate }}</span>
+          <input #fromInput class="knx-input" type="datetime-local"
+                 [class.is-missing]="rangeHint && !customFrom"
+                 [attr.aria-invalid]="rangeHint && !customFrom"
+                 [ngModel]="customFrom" (ngModelChange)="customFrom = $event; rangeHint = false" />
+        </label>
+        <label class="range-field">
+          <span>{{ 'range.to' | translate }}</span>
+          <input #toInput class="knx-input" type="datetime-local"
+                 [class.is-missing]="rangeHint && !customTo"
+                 [attr.aria-invalid]="rangeHint && !customTo"
+                 [ngModel]="customTo" (ngModelChange)="customTo = $event; rangeHint = false" />
+        </label>
+        <button class="knx-btn knx-btn--outline" (click)="applyCustom()">
+          {{ 'range.apply' | translate }}
+        </button>
+
+        <!-- Always rendered, only the text is switched: a live region that is inserted together
+             with its content is not announced. Visually hidden outside the mobile layout. -->
+        <span class="range-hint" role="status" aria-live="polite">{{ rangeHint ? ('range.applyHint' | translate) : '' }}</span>
       </div>
-
-      <span class="tb-divider"></span>
-
-      <label class="range-field">
-        <span>{{ 'range.from' | translate }}</span>
-        <input class="knx-input" type="datetime-local" [(ngModel)]="customFrom" />
-      </label>
-      <label class="range-field">
-        <span>{{ 'range.to' | translate }}</span>
-        <input class="knx-input" type="datetime-local" [(ngModel)]="customTo" />
-      </label>
-      <button class="knx-btn knx-btn--outline" (click)="applyCustom()" [disabled]="!customFrom || !customTo">
-        {{ 'range.apply' | translate }}
-      </button>
 
       <span class="tb-divider"></span>
 
@@ -98,35 +126,69 @@
         [class.is-active]="liveAppend"
         (click)="toggleLive()"
         [matTooltip]="liveTooltip()"
+        [attr.aria-label]="'charts.live' | translate"
       >
         <mat-icon>{{ liveAppend ? 'sensors' : 'sensors_off' }}</mat-icon>
-        {{ 'charts.live' | translate }}
-      </button>
-
-      <button class="knx-btn knx-btn--outline" (click)="load()" [disabled]="selectedAddresses.length === 0">
-        <mat-icon>refresh</mat-icon>
-        {{ 'charts.refresh' | translate }}
+        <span class="lbl">{{ 'charts.live' | translate }}</span>
       </button>
 
       <button
-        class="knx-btn knx-btn--outline"
+        class="knx-btn knx-btn--outline tb-action"
+        (click)="load()"
+        [disabled]="selectedAddresses.length === 0"
+        [attr.aria-label]="'charts.refresh' | translate"
+      >
+        <mat-icon>refresh</mat-icon>
+        <span class="lbl">{{ 'charts.refresh' | translate }}</span>
+      </button>
+
+      <button
+        class="knx-btn knx-btn--outline tb-action"
         (click)="exportPng()"
         [disabled]="!hasData"
         [matTooltip]="'charts.exportPngTooltip' | translate"
+        [attr.aria-label]="'charts.exportPng' | translate"
       >
         <mat-icon>image</mat-icon>
-        {{ 'charts.exportPng' | translate }}
+        <span class="lbl">{{ 'charts.exportPng' | translate }}</span>
       </button>
 
       <button
-        class="knx-btn knx-btn--outline"
+        class="knx-btn knx-btn--outline tb-action"
         (click)="exportCsv()"
         [disabled]="!hasData"
         [matTooltip]="'charts.exportCsvTooltip' | translate"
+        [attr.aria-label]="'charts.exportCsv' | translate"
       >
         <mat-icon>table_view</mat-icon>
-        {{ 'charts.exportCsv' | translate }}
+        <span class="lbl">{{ 'charts.exportCsv' | translate }}</span>
       </button>
+
+      <!-- Tablet only: the three .tb-action buttons above collapse into this kebab. MatMenu
+           brings aria-haspopup/-expanded/-controls, roving focus and Esc-to-close with it, and
+           needs no styling of ours — so nothing has to leak into the global stylesheet.
+           No matTooltip: this band is touch territory (same reasoning as in layout.scss). -->
+      <button
+        class="knx-btn knx-btn--outline tb-overflow"
+        [matMenuTriggerFor]="chartActions"
+        [attr.aria-label]="'monitor.moreActions' | translate"
+      >
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #chartActions="matMenu">
+        <button mat-menu-item (click)="load()" [disabled]="selectedAddresses.length === 0">
+          <mat-icon>refresh</mat-icon>
+          <span>{{ 'charts.refresh' | translate }}</span>
+        </button>
+        <button mat-menu-item (click)="exportPng()" [disabled]="!hasData">
+          <mat-icon>image</mat-icon>
+          <span>{{ 'charts.exportPng' | translate }}</span>
+        </button>
+        <button mat-menu-item (click)="exportCsv()" [disabled]="!hasData">
+          <mat-icon>table_view</mat-icon>
+          <span>{{ 'charts.exportCsv' | translate }}</span>
+        </button>
+      </mat-menu>
 
       <div class="chart-opts">
         <button
@@ -134,6 +196,7 @@
           [class.is-active]="optionsOpen"
           (click)="optionsOpen = !optionsOpen"
           [matTooltip]="'charts.options' | translate"
+          [attr.aria-label]="'charts.options' | translate"
         >
           <mat-icon>tune</mat-icon>
         </button>
@@ -198,90 +261,97 @@
     </div>
   </div>
 
+  <!-- Both wordings are rendered; CSS picks the one that fits the viewport. Keeping it in the
+       template (rather than switching on isMobile) means no reflow work on resize. -->
   @if (truncated) {
     <div class="note note--warn">
       <mat-icon>warning</mat-icon>
-      {{ 'charts.truncatedNote' | translate }}
+      <span class="note-full">{{ 'charts.truncatedNote' | translate }}</span>
+      <span class="note-short">{{ 'charts.truncatedNoteShort' | translate }}</span>
     </div>
   }
   @if (downSampled) {
     <div class="note">
-      {{ 'charts.downSampledNote' | translate: { shown: formatCount(shownPoints), total: formatCount(totalPoints) } }}
+      <span class="note-full">{{ 'charts.downSampledNote' | translate: { shown: formatCount(shownPoints), total: formatCount(totalPoints) } }}</span>
+      <span class="note-short">{{ 'charts.downSampledNoteShort' | translate: { shown: formatCount(shownPoints), total: formatCount(totalPoints) } }}</span>
     </div>
   }
 
-  <div class="chart-host">
-    @if (!hasActiveProject) {
-      <div class="empty-state">
-        <mat-icon>show_chart</mat-icon>
-        <p>{{ 'charts.emptyNoProject' | translate }}</p>
+  <!-- Chart + summary scroll together on mobile; on desktop this is a plain flex column. -->
+  <div class="chart-scroll">
+    <div class="chart-host">
+      @if (!hasActiveProject) {
+        <div class="empty-state">
+          <mat-icon>show_chart</mat-icon>
+          <p>{{ 'charts.emptyNoProject' | translate }}</p>
+        </div>
+      } @else if (availableGas.length === 0) {
+        <div class="empty-state">
+          <mat-icon>show_chart</mat-icon>
+          <p>{{ 'charts.noNumericGas' | translate }}</p>
+        </div>
+      } @else if (selectedAddresses.length === 0) {
+        <div class="empty-state">
+          <mat-icon>show_chart</mat-icon>
+          <p>{{ 'charts.emptyNoSelection' | translate: { max: maxSeries } }}</p>
+        </div>
+      } @else if (loading) {
+        <div class="empty-state">
+          <mat-icon class="spin">autorenew</mat-icon>
+          <p>{{ 'charts.loading' | translate }}</p>
+        </div>
+      } @else if (error) {
+        <div class="empty-state">
+          <mat-icon>error_outline</mat-icon>
+          <p>{{ 'charts.loadFailed' | translate }}</p>
+        </div>
+      } @else if (!hasData) {
+        <div class="empty-state">
+          <mat-icon>show_chart</mat-icon>
+          <p>{{ 'charts.emptyNoData' | translate }}</p>
+        </div>
+      } @else {
+        <div echarts [options]="chartOption" class="echart" [autoResize]="true"
+             (chartInit)="onChartInit($event)"></div>
+      }
+    </div>
+
+    @if (stats.length) {
+      <div class="series-stats">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-name">{{ 'charts.stat.series' | translate }}</th>
+              <th>{{ 'charts.stat.min' | translate }}</th>
+              <th>{{ 'charts.stat.max' | translate }}</th>
+              <th>{{ 'charts.stat.avg' | translate }}</th>
+              <th>{{ 'charts.stat.last' | translate }}</th>
+              <th>{{ 'charts.stat.count' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of stats; track s.name) {
+              <tr
+                class="stat-row"
+                [class.is-hidden]="isHidden(s.name)"
+                (click)="toggleSeries(s.name)"
+                [attr.title]="'charts.stat.toggleHint' | translate"
+              >
+                <td class="col-name">
+                  <span class="dot" [style.background]="s.color"></span>
+                  <span class="addr">{{ s.address }}</span>
+                  <span class="name" knxOverflowTitle>{{ s.name }}</span>
+                </td>
+                <td class="num">{{ formatValue(s.min) }}<span class="unit">{{ s.unit }}</span></td>
+                <td class="num">{{ formatValue(s.max) }}<span class="unit">{{ s.unit }}</span></td>
+                <td class="num">{{ formatValue(s.avg) }}<span class="unit">{{ s.unit }}</span></td>
+                <td class="num">{{ formatValue(s.last) }}<span class="unit">{{ s.unit }}</span></td>
+                <td class="num muted">{{ formatCount(s.count) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-    } @else if (availableGas.length === 0) {
-      <div class="empty-state">
-        <mat-icon>show_chart</mat-icon>
-        <p>{{ 'charts.noNumericGas' | translate }}</p>
-      </div>
-    } @else if (selectedAddresses.length === 0) {
-      <div class="empty-state">
-        <mat-icon>show_chart</mat-icon>
-        <p>{{ 'charts.emptyNoSelection' | translate: { max: maxSeries } }}</p>
-      </div>
-    } @else if (loading) {
-      <div class="empty-state">
-        <mat-icon class="spin">progress_activity</mat-icon>
-        <p>{{ 'charts.loading' | translate }}</p>
-      </div>
-    } @else if (error) {
-      <div class="empty-state">
-        <mat-icon>error_outline</mat-icon>
-        <p>{{ 'charts.loadFailed' | translate }}</p>
-      </div>
-    } @else if (!hasData) {
-      <div class="empty-state">
-        <mat-icon>show_chart</mat-icon>
-        <p>{{ 'charts.emptyNoData' | translate }}</p>
-      </div>
-    } @else {
-      <div echarts [options]="chartOption" class="echart" [autoResize]="true"
-           (chartInit)="onChartInit($event)"></div>
     }
   </div>
-
-  @if (stats.length) {
-    <div class="series-stats">
-      <table>
-        <thead>
-          <tr>
-            <th class="col-name">{{ 'charts.stat.series' | translate }}</th>
-            <th>{{ 'charts.stat.min' | translate }}</th>
-            <th>{{ 'charts.stat.max' | translate }}</th>
-            <th>{{ 'charts.stat.avg' | translate }}</th>
-            <th>{{ 'charts.stat.last' | translate }}</th>
-            <th>{{ 'charts.stat.count' | translate }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (s of stats; track s.name) {
-            <tr
-              class="stat-row"
-              [class.is-hidden]="isHidden(s.name)"
-              (click)="toggleSeries(s.name)"
-              [attr.title]="'charts.stat.toggleHint' | translate"
-            >
-              <td class="col-name">
-                <span class="dot" [style.background]="s.color"></span>
-                <span class="addr">{{ s.address }}</span>
-                <span class="name" knxOverflowTitle>{{ s.name }}</span>
-              </td>
-              <td class="num">{{ formatValue(s.min) }}<span class="unit">{{ s.unit }}</span></td>
-              <td class="num">{{ formatValue(s.max) }}<span class="unit">{{ s.unit }}</span></td>
-              <td class="num">{{ formatValue(s.avg) }}<span class="unit">{{ s.unit }}</span></td>
-              <td class="num">{{ formatValue(s.last) }}<span class="unit">{{ s.unit }}</span></td>
-              <td class="num muted">{{ formatCount(s.count) }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  }
 </div>

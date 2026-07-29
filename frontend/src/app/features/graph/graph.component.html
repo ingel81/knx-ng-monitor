@@ -8,7 +8,16 @@
     </div>
 
     <div class="tb-right">
-      <button class="knx-btn knx-btn--outline" (click)="zoomToFit()" [matTooltip]="'graph.fit' | translate">
+      <button type="button" class="knx-btn knx-btn--outline knx-btn--icon legend-toggle"
+              [class.is-active]="showLegend"
+              [attr.aria-pressed]="showLegend"
+              [attr.aria-label]="'graph.legend' | translate"
+              [matTooltip]="(showLegend ? 'graph.legendHide' : 'graph.legendShow') | translate"
+              [disabled]="!canToggleLegend"
+              (click)="toggleLegend()">
+        <mat-icon>legend_toggle</mat-icon>
+      </button>
+      <button class="knx-btn knx-btn--outline knx-btn--icon" (click)="zoomToFit()" [matTooltip]="'graph.fit' | translate">
         <mat-icon>fit_screen</mat-icon>
       </button>
     </div>
@@ -17,7 +26,7 @@
   <div class="graph-body">
     @if (loading) {
       <div class="empty-state">
-        <mat-icon class="spin">progress_activity</mat-icon>
+        <mat-icon class="spin">autorenew</mat-icon>
         <p>{{ 'graph.loading' | translate }}</p>
       </div>
     } @else if (!hasActiveProject) {
@@ -29,7 +38,7 @@
 
     <div #host class="graph-host" [class.hidden]="loading || !hasActiveProject"></div>
 
-    @if (legend.length && !loading && hasActiveProject) {
+    @if (showLegend && legend.length && !loading && hasActiveProject) {
       <div class="graph-legend">
         @for (item of legend; track item.label) {
           <div class="legend-item">

@@ -1,4 +1,4 @@
-import { Component, Inject, inject, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Inject, inject, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -11,11 +11,24 @@ import { Router } from '@angular/router';
 import { messageTypeKind, messageTypeName, unitForDpt } from './knx-grid.util';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LanguageService } from '../../core/i18n/language.service';
-import { localeTag } from '../../core/i18n/locale.util';
+import { formatKnxDate } from '../../core/i18n/date.util';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog.component';
 import { ProjectService, CommunicationObjectDto, DeviceDto } from '../../core/services/project.service';
 import { LoggerService } from '../../core/logging/logger.service';
 import { environment } from '../../../environments/environment.development';
+
+/** Unterhalb dieser Breite ist das Sheet ein Bottom-Sheet (darüber ein rechts angedocktes Panel).
+ *  Hier deklariert, damit Service und Geste dieselbe Schwelle benutzen. */
+export const SHEET_MOBILE_BREAKPOINT = 768;
+
+/** Gezogener Anteil der Sheet-Höhe, ab dem Loslassen schließt. */
+const DISMISS_RATIO = 0.25;
+/** Abwärtsgeschwindigkeit in px/ms, ab der unabhängig von der Strecke geschlossen wird. */
+const DISMISS_VELOCITY = 0.5;
+/** Ist die letzte Bewegung älter, zählt sie nicht mehr als Schwung (Finger lag still). */
+const VELOCITY_MAX_AGE_MS = 100;
+/** Spiegelt --t-base (0.2s) — Fallback, weil transitionend beim Schließen ausbleiben kann. */
+const SHEET_ANIM_MS = 200;
 
 /** Zeilen-Datensatz (Live + History teilen dieselben Felder). */
 export interface TelegramDetailData {
@@ -37,7 +50,7 @@ export interface TelegramDetailData {
   imports: [CommonModule, FormsModule, MatIconModule, MatButtonModule, MatTooltipModule, MatDialogModule, TranslatePipe],
   template: `
     <div class="knx-sheet">
-      <header class="knx-sheet-head">
+      <header class="knx-sheet-head" #head>
         <div class="knx-sheet-title">
           <span class="name" [class.empty]="!data.groupAddressName">
             {{ data.groupAddressName || ('detail.unknown' | translate) }}
@@ -61,8 +74,8 @@ export interface TelegramDetailData {
       </div>
 
       <dl class="knx-sheet-grid">
-        <div class="field"><dt>{{ 'detail.timestamp' | translate }}</dt><dd class="mono">{{ formatTime(data.timestamp) }}</dd></div>
-        <div class="field"><dt>{{ 'detail.source' | translate }}</dt><dd class="mono">{{ data.sourceAddress || '–' }}@if (sourceDevice?.name) {<span class="dd-extra"> · {{ sourceDevice!.name }}</span>}</dd></div>
+        <div class="field field--wide"><dt>{{ 'detail.timestamp' | translate }}</dt><dd class="mono">{{ formatTime(data.timestamp) }}</dd></div>
+        <div class="field field--wide"><dt>{{ 'detail.source' | translate }}</dt><dd class="mono">{{ data.sourceAddress || '–' }}@if (sourceDevice?.name) {<span class="dd-extra"> · {{ sourceDevice!.name }}</span>}</dd></div>
         <div class="field"><dt>{{ 'detail.destGa' | translate }}</dt><dd class="mono">{{ data.destinationAddress || '–' }}</dd></div>
         <div class="field"><dt>{{ 'detail.dpt' | translate }}</dt><dd class="mono">{{ data.datapointType || '–' }}</dd></div>
         <div class="field"><dt>{{ 'detail.raw' | translate }}</dt><dd class="mono">{{ data.value || '–' }}</dd></div>
@@ -144,7 +157,7 @@ export interface TelegramDetailData {
   `,
   styleUrl: './telegram-detail.component.scss'
 })
-export class TelegramDetailComponent implements OnInit {
+export class TelegramDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: TelegramDetailData,
     private ref: MatDialogRef<TelegramDetailComponent>
@@ -153,6 +166,10 @@ export class TelegramDetailComponent implements OnInit {
     this.writeValue = this.isBoolDpt ? '1' : '';
   }
 
+  @ViewChild('head') private headRef?: ElementRef<HTMLElement>;
+
+  private host: ElementRef<HTMLElement> = inject(ElementRef);
+  private zone = inject(NgZone);
   private http = inject(HttpClient);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
@@ -269,7 +286,9 @@ export class TelegramDetailComponent implements OnInit {
     };
 
     const confirmed = await this.dialog
-      .open(ConfirmDialogComponent, { data, width: '420px' })
+      // Ohne maxWidth greift Materials Default 80vw und der Warndialog schrumpft
+      // auf 360-px-Geräten auf 288 px zusammen.
+      .open(ConfirmDialogComponent, { data, width: 'min(420px, calc(100vw - 32px))', maxWidth: '100vw' })
       .afterClosed()
       .toPromise();
 
@@ -297,14 +316,143 @@ export class TelegramDetailComponent implements OnInit {
   }
 
   formatTime(ts: string | number | Date | undefined): string {
-    if (!ts) return '–';
-    const d = new Date(ts);
-    if (isNaN(d.getTime())) return '–';
-    return d.toLocaleString(localeTag(this.lang.lang()), {
-      hour12: false,
-      year: '2-digit', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-      fractionalSecondDigits: 3
+    return formatKnxDate(ts, 'dateTimeMs', this.lang.lang(), '–');
+  }
+
+  // ---- Swipe-to-dismiss (nur Bottom-Sheet) ---------------------------------
+  // Der Griff im Kopf liest sich als "nach unten wegwischbar"; ohne Geste wirkt er defekt.
+  // Bewegt wird die Dialog-Surface, also die sichtbare Karte samt Schatten und Radius —
+  // würde nur .knx-sheet wandern, bliebe die Surface als leere Fläche stehen.
+  // Ergänzung, kein Ersatz: X, Backdrop und Esc bleiben unverändert.
+
+  private isMobileSheet = window.innerWidth < SHEET_MOBILE_BREAKPOINT;
+  private reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /** Die gezogene Karte. Null heißt: Geste inaktiv, alles verhält sich wie zuvor. */
+  private card: HTMLElement | null = null;
+  private dragPointerId: number | null = null;
+  private dragStartY = 0;
+  private dragY = 0;
+  private cardHeight = 0;
+  private lastMoveY = 0;
+  private lastMoveT = 0;
+  private velocity = 0;
+  private timers: number[] = [];
+
+  ngAfterViewInit(): void {
+    if (!this.isMobileSheet) return;
+
+    const head = this.headRef?.nativeElement;
+    this.card = this.host.nativeElement.closest<HTMLElement>('.mat-mdc-dialog-surface');
+    if (!head || !this.card) return;
+
+    // Außerhalb der Zone: pointermove feuert pro Frame, jede Runde Change Detection wäre
+    // reine Verschwendung — die Bewegung landet direkt als Transform auf dem Element.
+    this.zone.runOutsideAngular(() => {
+      head.addEventListener('pointerdown', this.onPointerDown);
+      head.addEventListener('pointermove', this.onPointerMove);
+      head.addEventListener('pointerup', this.onPointerUp);
+      head.addEventListener('pointercancel', this.onPointerCancel);
     });
+  }
+
+  ngOnDestroy(): void {
+    for (const id of this.timers) window.clearTimeout(id);
+    this.timers = [];
+
+    const head = this.headRef?.nativeElement;
+    if (!head) return;
+    head.removeEventListener('pointerdown', this.onPointerDown);
+    head.removeEventListener('pointermove', this.onPointerMove);
+    head.removeEventListener('pointerup', this.onPointerUp);
+    head.removeEventListener('pointercancel', this.onPointerCancel);
+  }
+
+  private onPointerDown = (ev: PointerEvent): void => {
+    const head = this.headRef?.nativeElement;
+    if (!this.card || !head || !ev.isPrimary) return;
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    // Der Schließen-Button behält seinen Klick: kein Capture, kein Drag.
+    if ((ev.target as HTMLElement | null)?.closest('button')) return;
+
+    this.dragPointerId = ev.pointerId;
+    this.dragStartY = ev.clientY;
+    this.dragY = 0;
+    this.cardHeight = this.card.getBoundingClientRect().height;
+    this.lastMoveY = ev.clientY;
+    this.lastMoveT = ev.timeStamp;
+    this.velocity = 0;
+    this.card.style.transition = 'none';
+    head.setPointerCapture(ev.pointerId);
+  };
+
+  private onPointerMove = (ev: PointerEvent): void => {
+    if (this.dragPointerId !== ev.pointerId || !this.card) return;
+
+    // Nur nach unten — negative Deltas werden geklemmt, hochziehen geht nicht.
+    this.dragY = Math.max(0, ev.clientY - this.dragStartY);
+
+    const dt = ev.timeStamp - this.lastMoveT;
+    if (dt > 0) this.velocity = (ev.clientY - this.lastMoveY) / dt;
+    this.lastMoveY = ev.clientY;
+    this.lastMoveT = ev.timeStamp;
+
+    this.card.style.transform = `translateY(${this.dragY}px)`;
+  };
+
+  private onPointerUp = (ev: PointerEvent): void => {
+    if (this.dragPointerId !== ev.pointerId) return;
+
+    const stale = ev.timeStamp - this.lastMoveT > VELOCITY_MAX_AGE_MS;
+    const flung = !stale && this.velocity > DISMISS_VELOCITY;
+    const far = this.cardHeight > 0 && this.dragY > this.cardHeight * DISMISS_RATIO;
+    this.endDrag(ev, far || flung);
+  };
+
+  private onPointerCancel = (ev: PointerEvent): void => {
+    if (this.dragPointerId !== ev.pointerId) return;
+    this.endDrag(ev, false);
+  };
+
+  private endDrag(ev: PointerEvent, dismiss: boolean): void {
+    const head = this.headRef?.nativeElement;
+    if (head?.hasPointerCapture(ev.pointerId)) head.releasePointerCapture(ev.pointerId);
+    this.dragPointerId = null;
+
+    const card = this.card;
+    if (!card) return;
+
+    if (dismiss) {
+      if (this.reducedMotion) {
+        this.closeFromGesture();
+        return;
+      }
+      card.style.transition = 'transform var(--t-base)';
+      card.style.transform = `translateY(${this.cardHeight}px)`;
+      this.after(SHEET_ANIM_MS, () => this.closeFromGesture());
+      return;
+    }
+
+    // Zurückschnappen. Das Inline-Transform fällt weg, damit wieder der CSS-Wert gilt;
+    // die Inline-Transition wird danach aufgeräumt, sonst überschriebe sie Materials
+    // eigene Schließ-Transition auf derselben Property.
+    if (this.reducedMotion) {
+      card.style.transform = '';
+      this.after(0, () => { card.style.transition = ''; });
+      return;
+    }
+    card.style.transition = 'transform var(--t-base)';
+    card.style.transform = '';
+    this.after(SHEET_ANIM_MS, () => { card.style.transition = ''; });
+  }
+
+  /** Schließt über dieselbe Dialog-Referenz wie X und Esc — kein zweiter Schließpfad. */
+  private closeFromGesture(): void {
+    this.zone.run(() => this.ref.close());
+  }
+
+  /** setTimeout außerhalb der Zone, mit Aufräumen bei Zerstörung. */
+  private after(ms: number, fn: () => void): void {
+    this.timers.push(window.setTimeout(fn, ms));
   }
 }

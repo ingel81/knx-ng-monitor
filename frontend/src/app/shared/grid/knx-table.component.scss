@@ -63,6 +63,10 @@
   min-height: 0;
   scrollbar-gutter: stable;
 
+  // Bleibt seitlich doch etwas übrig, endet der Überhang hier: kein Weiterreichen
+  // an die Seite (Swipe-back / Bounce), während man senkrecht durch die Liste wischt.
+  overscroll-behavior-x: contain;
+
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
   &::-webkit-scrollbar { width: 12px; height: 12px; }
@@ -143,6 +147,14 @@
 .val-num  { color: var(--val-num); font-family: var(--font-mono); font-feature-settings: 'tnum' 1; font-weight: var(--fw-medium); }
 .val-text { color: var(--val-text); font-family: var(--font-mono); }
 .val-unit { color: var(--ink-3); font-size: var(--fs-xs); flex: none; }
+
+// Tablet-Band (§9): Das Spalten-Set ist hier auf die Viewport-Breite zugeschnitten
+// (705 px gegen mindestens 768 px), seitlich ist also nichts zu erreichen. Der Browser
+// darf die seitlichen Anteile einer Wischgeste deshalb verwerfen — sonst driftet auf
+// dem iPad fast jede senkrechte Geste mit ab, weil sie nie exakt senkrecht ist.
+@media (min-width: 768px) and (max-width: 1279.98px) {
+  .knx-vp { touch-action: pan-y; }
+}
 
 .knx-empty {
   padding: var(--sp-8);

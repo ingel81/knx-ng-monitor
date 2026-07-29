@@ -19,11 +19,13 @@ import { environment } from '../../../environments/environment.development';
 import { ThemeService } from '../../core/services/theme.service';
 import { TelegramDetailService } from '../../shared/grid/telegram-detail.service';
 import { TelegramCardsComponent } from '../../shared/grid/telegram-cards.component';
-import { KnxTableComponent, KnxColumn, SortDir } from '../../shared/grid/knx-table.component';
+import { KnxTableComponent, KnxColumn, ColumnKind, SortDir } from '../../shared/grid/knx-table.component';
 import { ColumnManagerComponent } from '../../shared/grid/column-manager.component';
 import { messageTypeName } from '../../shared/grid/knx-grid.util';
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { localeTag } from '../../core/i18n/locale.util';
+import { formatKnxDate } from '../../core/i18n/date.util';
 import { LoggerService } from '../../core/logging/logger.service';
 import { ProjectService, LocationDto } from '../../core/services/project.service';
 
@@ -79,6 +81,27 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   mode: MonitorMode = 'live';
 
   isMobile = window.innerWidth < 768;
+
+  /** Tablet-Band aus §9 der Responsive-Strategie. Karten gibt es erst unter 768 px,
+   *  aber die volle Tabelle passt hier ebenfalls nicht — siehe tabletColumns(). */
+  isTablet = window.innerWidth >= 768 && window.innerWidth < 1280;
+
+  /**
+   * Punktuelle Aktionen (Spalten, Leeren, Export, Auto-Scroll) wandern ins Kebab.
+   * Die Live-Toolbar braucht ausgeschrieben rund 1334 px und bricht darunter zweizeilig
+   * um; 1560 px ist die nächste bestehende Bandgrenze darüber (layout.scss) und die,
+   * an der auch die Kopfleiste ihr Überlaufmenü einblendet.
+   */
+  compactActions = window.innerWidth < 1560;
+
+  /**
+   * Der Spalten-Manager entfällt genau dort, wo der §9-Zuschnitt greift: unterhalb
+   * von 1280 px bietet er nichts Schaltbares mehr an, weil tabletColumns() die
+   * abgewählten Spalten ohnehin herausfiltert — ein Bedienelement ohne Wirkung.
+   * Bewusst aus den bestehenden Flags abgeleitet statt mit einer eigenen Zahl:
+   * so kann die Kante nicht gegen den Zuschnitt verrutschen.
+   */
+  get hideColumnManager(): boolean { return this.isMobile || this.isTablet; }
 
   /** Archive filter bar collapsed by default on mobile (it would otherwise eat
    *  the whole screen); toggled via the toolbar Filters button. */
@@ -181,11 +204,37 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   get visibleColumns(): KnxColumn[] {
     return this.allColumns.filter((c) => !this.hiddenCols.has(c.key as string));
   }
+  /**
+   * Spalten, die im Tablet-Band stehen bleiben (§9: `time, dst, name, type, val`).
+   *
+   * Die volle Liste braucht mindestens 1162 px: 800 px feste Spalten (Zeitstempel 220,
+   * Quelle 105, Ziel 105, DPT 120, Typ 110, Roh 140) + 350 px Grow-Minima (Name 200,
+   * Wert 150) + 12 px Scrollbar-Gutter. Auf dem iPad (820 px hoch, 1024 px quer) läuft
+   * sie damit um 330 bzw. 126 px über — und zwar ausgerechnet über die Wert-Spalte,
+   * die als letzte im Raster steht.
+   */
+  private readonly tabletCols = ['timestamp', 'destinationAddress', 'groupAddressName', 'messageType', 'valueDecoded'];
+
   // Sort-Header nur im Archiv sinnvoll — im Live-Mode liefert der Buffer newest-first.
   get gridColumns(): KnxColumn[] {
-    if (this.mode === 'archive') return this.visibleColumns;
-    return this.visibleColumns.map((c) => (c.sortable ? { ...c, sortable: false } : c));
+    const cols = this.isTablet ? this.tabletColumns(this.visibleColumns) : this.visibleColumns;
+    if (this.mode === 'archive') return cols;
+    return cols.map((c) => (c.sortable ? { ...c, sortable: false } : c));
   }
+
+  /**
+   * Tablet-Zuschnitt. Der Zeitstempel verliert zusätzlich das Datum: mit Datum
+   * (220 px) käme das Set auf 785 px und wäre an der unteren Bandgrenze (768 px)
+   * wieder zu breit. Als reine Uhrzeit mit Millisekunden (`15:04:05.123`, 140 px)
+   * bleibt es bei 705 px — das passt über das ganze Band. Das Datum steht weiter
+   * im Detail-Sheet und in den Archiv-Filtern.
+   */
+  private tabletColumns(cols: KnxColumn[]): KnxColumn[] {
+    return cols
+      .filter((c) => this.tabletCols.includes(c.key as string))
+      .map((c) => (c.key === 'timestamp' ? { ...c, kind: 'time' as ColumnKind, width: 140 } : c));
+  }
+
   get rowHeight(): number { return this.density() === 'cozy' ? 48 : 36; }
 
   // Archive rows after the (client-side) room filter. A room maps to a set of GAs;
@@ -263,7 +312,11 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   @HostListener('window:resize')
-  onResize(): void { this.isMobile = window.innerWidth < 768; }
+  onResize(): void {
+    this.isMobile = window.innerWidth < 768;
+    this.isTablet = window.innerWidth >= 768 && window.innerWidth < 1280;
+    this.compactActions = window.innerWidth < 1560;
+  }
 
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
@@ -320,7 +373,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     const lines = [header.join(',')];
     for (const t of this.filtered) {
       lines.push([
-        new Date(t.timestamp).toLocaleString('de-DE'),
+        formatKnxDate(t.timestamp, 'dateTime', this.lang.lang()),
         t.sourceAddress, t.destinationAddress, t.groupAddressName ?? '', t.datapointType ?? '',
         messageTypeName(t.messageType), t.value, t.valueDecoded ?? ''
       ].map((v) => this.csv(String(v ?? ''))).join(','));
@@ -501,7 +554,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   clearHistory(): void {
     const total = this.totalCount;
     const countText = total != null
-      ? this.lang.translate('monitor.confirmClearCount', { count: total.toLocaleString() })
+      ? this.lang.translate('monitor.confirmClearCount', { count: total.toLocaleString(localeTag(this.lang.lang())) })
       : this.lang.translate('monitor.confirmClearAll');
     this.dialog.open(ConfirmDialogComponent, {
       autoFocus: false,
@@ -518,7 +571,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
       this.historyService.clearAll().subscribe({
         next: (res) => {
           this.isClearing = false;
-          this.toast(this.lang.translate('monitor.cleared', { count: res.deleted.toLocaleString() }));
+          this.toast(this.lang.translate('monitor.cleared', { count: res.deleted.toLocaleString(localeTag(this.lang.lang())) }));
           this.loadCount();
           this.resetArchive();
         },

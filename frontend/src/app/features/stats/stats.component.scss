@@ -42,6 +42,44 @@
   flex: none;
 }
 
+// Wrapper around the range group. `display: contents` means it produces no box on desktop —
+// its children stay direct flex items of .tb-right, keeping the gap and the order untouched.
+// Only the mobile media query promotes it to a real (collapsible) box.
+.tb-range { display: contents; }
+
+// Mobile-only trigger for that box; the dot marks a custom range being in effect.
+.range-toggle {
+  display: none;
+  position: relative;
+
+  .filter-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--brand);
+    flex: none;
+  }
+}
+
+// Carries the "pick both dates" message. Stays in the DOM and in the accessibility tree at all
+// times — a live region that appears together with its text is not announced — so outside the
+// mobile layout it is only visually hidden, never `display: none`.
+.range-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  font-size: var(--fs-2xs);
+  color: var(--err);
+}
+
+.knx-input.is-missing {
+  border-color: var(--err);
+  box-shadow: 0 0 0 3px var(--err-tint);
+}
+
 // Filter controls all share the same height + vertical centre so presets, date
 // inputs and the apply button line up on one baseline (and wrap cleanly).
 .tb-right {
@@ -178,20 +216,129 @@
   }
 }
 
-// Mobile: stack the toolbar cleanly — no orphan dividers, full-width controls.
-@media (max-width: 767px) {
-  .toolbar { padding: var(--sp-3) var(--sp-4); }
-  .tb-left, .tb-right { width: 100%; }
+// ---------------------------------------------------------------------------
+// Title and range toggle share one row, the range controls appear only when the toggle is on.
+// Measured from the IBM Plex metrics and the box model this toolbar needs ~919px in German
+// (~823px in English), so it wraps from 768px up to there — iPad portrait sits at 768px,
+// squarely inside that window.
+//
+// The band itself is wider than that requirement on purpose: it is kept in step with the
+// charts toolbar (which needs ~1683px) and with the compact nav set in layout.scss, so the
+// two toolbars never collapse at different widths.
+// ---------------------------------------------------------------------------
+@media (max-width: 1559.98px) {
   .tb-divider { display: none; }
 
-  .tb-right {
-    flex-direction: column;
-    align-items: stretch;
-
-    .knx-seg { width: 100%; }
-    .knx-seg button { flex: 1; }
-    .range-field { width: 100%; }
-    .range-field .knx-input { flex: 1; width: 100%; }
-    > .knx-btn { width: 100%; justify-content: center; }
+  .tb-left {
+    width: 100%;
+    justify-content: space-between;
   }
+
+  .range-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+
+    .filter-dot { position: absolute; top: 4px; right: 4px; }
+  }
+
+  // Nothing but the range group lives in here, so let the wrapper disappear too — a
+  // `width: 100%` box would still claim a toolbar row (and its row-gap) while collapsed.
+  // Needs the `.toolbar` prefix to outweigh the `.toolbar .tb-right` base rule above.
+  .toolbar .tb-right { display: contents; }
+
+  .tb-range {
+    display: none;
+
+    // The cap matters more here than in charts: with `.tb-right` on `display: contents` the
+    // panel is a flex item of the toolbar itself, so without it the two date columns would be
+    // ~676px wide each on a 1440px screen. At 560px they land at ~276px.
+    &.is-open {
+      display: grid;
+      flex: 1 1 100%;
+      max-width: 560px;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-2);
+    }
+
+    > .knx-seg,
+    > .knx-btn,
+    > .range-hint { grid-column: 1 / -1; }
+
+    // Explicit height: the shared `.tb-right .knx-seg { height: 36px }` would clip the taller
+    // touch targets inside. 44px matches every other target in this panel.
+    .knx-seg { width: 100%; height: 44px; }
+    .knx-seg button { flex: 1; justify-content: center; }
+    > .knx-btn { height: 44px; }
+
+    // Undo the visually-hidden treatment — here the hint is a normal line under the grid.
+    .range-hint {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow: visible;
+      clip-path: none;
+      white-space: normal;
+    }
+
+    // Label above the input so From and To end up the same width. `min-width: 0` is required —
+    // datetime-local has an intrinsic minimum around 200px that would otherwise burst the grid.
+    .range-field {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+      min-width: 0;
+
+      > span {
+        font-size: var(--fs-2xs);
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: var(--ink-3);
+      }
+
+      .knx-input {
+        width: 100%;
+        min-width: 0;
+        height: 44px;
+        font-size: var(--fs-sm);
+      }
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .toolbar { padding: var(--sp-3) var(--sp-4); }
+
+  // Bottom padding is the scroll buffer above the bottom nav.
+  .stats-body {
+    padding: var(--sp-4) var(--sp-4) calc(var(--sp-10) + env(safe-area-inset-bottom, 0px));
+    gap: var(--sp-3);
+  }
+
+  // Two KPI cards side by side instead of one per row — both numbers stay short.
+  .kpi-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-3);
+  }
+
+  .kpi-card {
+    padding: var(--sp-3);
+
+    .kpi-label { font-size: var(--fs-xs); }
+    .kpi-value { font-size: var(--fs-2xl); }
+  }
+
+  // Cards keep their natural height and scroll; stretching them squashes both charts.
+  .chart-card {
+    flex: none;
+    min-height: 300px;
+
+    .chart-head { padding: var(--sp-2) var(--sp-4); font-size: var(--fs-sm); }
+  }
+
+  .heatmap-card { min-height: 260px; }
 }

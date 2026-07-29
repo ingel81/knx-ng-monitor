@@ -367,6 +367,12 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'nav.stats': 'Statistics',
     'nav.graph': 'Graph',
     'nav.logs': 'Logs',
+    'nav.more': 'More',
+    // WCAG 2.5.3: muss den sichtbaren Text ("More") enthalten — tut es bereits.
+    'nav.moreMenu': 'More navigation',
+    // Kurzformen nur für die Bottom-Nav — die Top-Nav bleibt ausgeschrieben.
+    'nav.topologyShort': 'Topo',
+    'nav.groupAddressesShort': 'GAs',
 
     // --- Logs ---------------------------------------------------------------
     'logs.title': 'Logs',
@@ -403,6 +409,9 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'graph.causeEmpty': 'No patterns yet — waiting for telegram sequences (live + last 24 h).',
     'graph.noTopology': 'No locations in the active project.',
     'graph.fit': 'Fit to view',
+    'graph.legend': 'Legend',
+    'graph.legendShow': 'Show legend',
+    'graph.legendHide': 'Hide legend',
     'graph.loading': 'Building graph…',
     'graph.emptyNoProject': 'No active project — import and activate a project first.',
     'graph.mainGroup': 'Main group',
@@ -433,6 +442,9 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'charts.loading': 'Loading chart…',
     'charts.downSampledNote': 'Showing {{shown}} of {{total}} points — narrow the range for full resolution. Peaks and dips are preserved.',
     'charts.truncatedNote': 'The range is too large to read completely. Only the most recent part is shown — the older end is missing.',
+    // Kurzfassungen für Mobil — die Langtexte kosten dort zwei Zeilen Höhe.
+    'charts.downSampledNoteShort': '{{shown}} / {{total}} points',
+    'charts.truncatedNoteShort': 'Older data missing',
     'charts.exportCsv': 'CSV',
     'charts.exportCsvTooltip': 'Download the charted values as CSV',
     'charts.searchGa': 'Search address or name…',
@@ -485,6 +497,8 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'ga.count': 'Group addresses',
     'ga.chart': 'Chart',
     'ga.openChart': 'Open in charts',
+    'ga.writeToggle': 'Write value',
+    'ga.noValueYet': 'No value received yet',
     'ga.waiting': 'waiting…',
     'ga.noAnswer': 'no answer',
     'ga.flag.C': 'C',
@@ -506,9 +520,11 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'range.7d': '7d',
     'range.30d': '30d',
     'range.custom': 'Custom',
+    'range.title': 'Time range',
     'range.from': 'From',
     'range.to': 'To',
     'range.apply': 'Apply',
+    'range.applyHint': 'Pick a start and an end date.',
   },
   de: {
     // --- Common -------------------------------------------------------------
@@ -868,6 +884,13 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'nav.stats': 'Statistik',
     'nav.graph': 'Graph',
     'nav.logs': 'Logs',
+    'nav.more': 'Mehr',
+    // WCAG 2.5.3: der sichtbare Text ("Mehr") muss im Accessible Name vorkommen,
+    // sonst greift ihn Sprachsteuerung nicht. "Weitere Navigation" tat das nicht.
+    'nav.moreMenu': 'Mehr Navigationspunkte',
+    // Kurzformen nur für die Bottom-Nav — die Top-Nav bleibt ausgeschrieben.
+    'nav.topologyShort': 'Topo',
+    'nav.groupAddressesShort': 'GAs',
 
     // --- Logs ---------------------------------------------------------------
     'logs.title': 'Logs',
@@ -904,6 +927,9 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'graph.causeEmpty': 'Noch keine Muster — warte auf Telegramm-Folgen (live + letzte 24 h).',
     'graph.noTopology': 'Keine Standorte im aktiven Projekt.',
     'graph.fit': 'Einpassen',
+    'graph.legend': 'Legende',
+    'graph.legendShow': 'Legende einblenden',
+    'graph.legendHide': 'Legende ausblenden',
     'graph.loading': 'Graph wird aufgebaut…',
     'graph.emptyNoProject': 'Kein aktives Projekt — zuerst ein Projekt importieren und aktivieren.',
     'graph.mainGroup': 'Hauptgruppe',
@@ -934,6 +960,9 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'charts.loading': 'Diagramm wird geladen…',
     'charts.downSampledNote': '{{shown}} von {{total}} Punkten dargestellt — für volle Auflösung den Zeitraum eingrenzen. Spitzen und Einbrüche bleiben erhalten.',
     'charts.truncatedNote': 'Der Zeitraum ist zu groß, um ihn vollständig zu lesen. Gezeigt wird nur der jüngste Teil — das ältere Ende fehlt.',
+    // Kurzfassungen für Mobil — die Langtexte kosten dort zwei Zeilen Höhe.
+    'charts.downSampledNoteShort': '{{shown}} / {{total}} Punkte',
+    'charts.truncatedNoteShort': 'Ältere Daten fehlen',
     'charts.exportCsv': 'CSV',
     'charts.exportCsvTooltip': 'Dargestellte Werte als CSV herunterladen',
     'charts.searchGa': 'Adresse oder Name suchen…',
@@ -986,6 +1015,8 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'ga.count': 'Gruppenadressen',
     'ga.chart': 'Diagramm',
     'ga.openChart': 'In Diagrammen öffnen',
+    'ga.writeToggle': 'Wert schreiben',
+    'ga.noValueYet': 'Noch kein Wert empfangen',
     'ga.waiting': 'wartet…',
     'ga.noAnswer': 'keine Antwort',
     'ga.flag.C': 'K',
@@ -1007,8 +1038,10 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     'range.7d': '7 Tage',
     'range.30d': '30 Tage',
     'range.custom': 'Benutzerdef.',
+    'range.title': 'Zeitraum',
     'range.from': 'Von',
     'range.to': 'Bis',
     'range.apply': 'Anwenden',
+    'range.applyHint': 'Bitte Start- und Enddatum wählen.',
   },
 };

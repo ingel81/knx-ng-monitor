@@ -190,6 +190,12 @@
     padding: 1px 6px;
   }
 
+  // Desktop: the wrapper drops out of the layout, DPT and flags stay direct flex children
+  // of the info row. On mobile it becomes the card's second line.
+  .leaf-tags {
+    display: contents;
+  }
+
   // KNX flags. Single letters so a full set stays narrower than the DPT badge next to it.
   .leaf-flags {
     display: inline-flex;
@@ -239,7 +245,17 @@
       font-family: var(--font-ui);
       font-style: italic;
     }
+
+    // Placeholder that only exists to keep the mobile card's value column stable.
+    &.is-empty {
+      display: none;
+    }
   }
+}
+
+// Mobile only: unfolds the card's value input.
+.leaf-write-toggle {
+  display: none;
 }
 
 // Fixed-width slots so every leaf row reserves the same width for
@@ -303,24 +319,157 @@
   font-feature-settings: 'tnum' 1;
 }
 
-// Mobile: full-width toolbar, tighter tree indent, and action buttons that wrap
-// to their own rows instead of the fixed 412px Read/Write/Chart slot strip.
+// Mobile: full-width toolbar, and every group address becomes a card instead of a row —
+// line 1 address/name/value, line 2 DPT + flags, line 3 the three 44px icon buttons,
+// line 4 the write input once it has been unfolded.
 @media (max-width: 767px) {
   .toolbar { padding: var(--sp-3) var(--sp-4); }
   .tb-left, .tb-right { width: 100%; }
-  .toolbar .ga-filter { min-width: 0; flex: 1 1 100%; }
-  .tb-right .knx-btn { flex: 1 1 calc(50% - var(--sp-2)); justify-content: center; }
+  .toolbar .ga-filter { min-width: 0; flex: 1 1 100%; min-height: 44px; }
+  .tb-right .knx-btn { flex: 1 1 calc(50% - var(--sp-2)); justify-content: center; min-height: 44px; }
 
   .ga-body { padding: var(--sp-3); }
-  .ga-tree .ga-tree,
-  .ga-tree .ga-leaves { margin-left: var(--sp-2); padding-left: var(--sp-2); }
+
+  // At 360px width is the scarcest resource: the middle level keeps a small indent, but the
+  // leaves drop the guide line entirely — the address inside the card is the anchor instead.
+  .ga-tree .ga-tree { margin-left: var(--sp-2); padding-left: var(--sp-2); }
+  .ga-tree .ga-leaves { margin-left: 0; padding-left: 0; border-left: none; }
+
+  .ga-summary { min-height: 44px; padding: var(--sp-2); }
+
+  .ga-leaves {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+
+  // Same card recipe as .knx-mcard in the telegram list.
+  .ga-leaf {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-2);
+    flex-wrap: nowrap;
+    padding: var(--sp-3);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    box-shadow: var(--sh-1);
+
+    // Without the reset the hover state sticks to the card after a tap on touch devices.
+    &:hover { background: var(--surface); }
+  }
+
+  .leaf-info {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) fit-content(45%);
+    grid-template-areas: "addr name value";
+    column-gap: var(--sp-2);
+    row-gap: var(--sp-1);
+    align-items: baseline;
+
+    .leaf-addr { grid-area: addr; }
+
+    .leaf-name {
+      grid-area: name;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    // The 45 % cap sits on the track (fit-content), not on the item: a percentage max-width
+    // on a grid item resolves against its own auto-sized area and would clip every value.
+    .leaf-value {
+      grid-area: value;
+      margin-left: 0;
+      max-width: 100%;
+      font-size: var(--fs-md);
+      padding: 2px 8px;
+
+      // Plain dash, not a chip: without the reset it inherits the value badge's padding and
+      // radius and reads as a button.
+      &.is-empty {
+        display: inline-block;
+        color: var(--ink-3);
+        background: none;
+        padding: 0;
+        border-radius: 0;
+        font-weight: var(--fw-normal);
+      }
+    }
+
+    // Auto-placed into an implicit second row instead of a declared template row, so a leaf
+    // without DPT and flags does not reserve the row plus its gap.
+    .leaf-tags {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      flex-wrap: wrap;
+
+      &:empty { display: none; }
+    }
+  }
 
   .leaf-actions {
     width: 100%;
+    display: flex;
     flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: var(--sp-3);
 
-    .slot-read  { order: 1; width: auto; flex: 0 0 auto; }
-    .slot-chart { order: 2; width: auto; flex: 0 0 auto; }
-    .slot-write { order: 3; width: 100%; }
+    // Read and chart sit together on the left, the write toggle is pushed to the right edge by
+    // its own auto margin — that keeps the layout stable when the GA is not chartable and the
+    // chart slot is removed.
+    .slot-read { order: 1; width: auto; }
+    .slot-chart { order: 2; width: auto; }
+    .slot-chart.is-hidden { display: none; }
+    .leaf-write-toggle { order: 3; display: inline-flex; margin-left: auto; }
+
+    .slot-write {
+      order: 4;
+      display: none;
+      width: 100%;
+      gap: var(--sp-2);
+
+      &.is-open { display: flex; }
+    }
+
+    // Icon-only buttons, each a 44px touch target. Read is --outline and the other two are
+    // --ghost; the shared framing levels them out so the row does not look lopsided. The
+    // template classes stay as they are — desktop shares them.
+    .btn-label { display: none; }
+    .knx-btn { min-height: 44px; }
+
+    .slot-read .knx-btn,
+    .slot-chart .knx-btn,
+    .leaf-write-toggle {
+      width: 44px;
+      min-width: 44px;
+      padding: 0;
+      justify-content: center;
+      border-color: var(--line-strong);
+      background: var(--surface);
+      color: var(--ink-2);
+    }
+
+    .leaf-write-toggle.is-open {
+      background: var(--brand-tint);
+      color: var(--brand);
+    }
+
+    .slot-write .knx-input,
+    .slot-write .knx-input--sm {
+      height: 44px;
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 0;
+    }
+
+    .slot-write .knx-btn {
+      width: auto;
+      min-width: 104px;
+      min-height: 44px;
+    }
   }
 }

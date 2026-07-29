@@ -383,6 +383,51 @@
   mat-icon { color: var(--err); }
 }
 
+// Setzt eine zerstörende Aktion im Kebab von den harmlosen darüber ab.
+// Greift trotz Overlay: der Menüinhalt stammt aus diesem Template und trägt
+// dessen Encapsulation-Attribut — nur die Material-Panels selbst täten das nicht.
+.menu-sep { border-top: 1px solid var(--line); }
+
+// ---------------------------------------------------------------------------
+// Tablet + schmaler Desktop: die Live-Toolbar bliebe sonst zweizeilig.
+// Ausgeschrieben braucht sie rund 1334 px (tb-left 446 + tb-right 836 + 40 px
+// Padding + 12 px Gap), bricht also weit in den Desktop-Bereich hinein um.
+// 1560 px ist die nächste bestehende Bandgrenze (layout.scss) und zugleich die,
+// an der die Kopfleiste ihr eigenes Überlaufmenü zeigt — kein viertes Band.
+// ---------------------------------------------------------------------------
+@media (min-width: 768px) and (max-width: 1559.98px) {
+  .monitor-container {
+    .only-desktop { display: none !important; }
+    .only-mobile { display: inline-flex !important; }
+
+    // Kebab als Touch-Target (der Basis-Icon-Button misst 36 px).
+    .tb-right > .knx-btn--icon { width: 44px; height: 44px; }
+
+    // Das Suchfeld gibt seine feste Breite auf und federt ab, was die Buttons
+    // je nach Sprache an Breite fordern. Es schrumpft als einziges Element mit,
+    // die Badges und Buttons haben nowrap.
+    .tb-right .knx-field {
+      width: auto !important;
+      flex: 0 1 230px;
+      min-width: 120px;
+    }
+  }
+}
+
+// Untere Bandhälfte (iPad hochkant, 820 px): mit ausgeschriebenem Pause-Label
+// bliebe für das Suchfeld zu wenig übrig — Icon plus Tooltip trägt die Bedeutung.
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .monitor-container .pause-btn .lbl { display: none; }
+
+  // Rate und Bus-Last entfallen hier. Der Statustext daneben ist der eigentliche
+  // Wackelkandidat: er heißt nicht immer "Live", sondern ohne Verbindung
+  // "Neuverbindung…" — rund 70 px mehr, die bei 768 px die Zeile umlegen, weil das
+  // Suchfeld nicht unter seine min-width schrumpfen darf. Die Rate ist der größte
+  // Block, den man dafür opfern kann; LED und Statustext tragen die wichtigere
+  // Aussage, die Zahlen stehen weiter im Live-Zähler daneben.
+  .monitor-container .tb-right .knx-rate { display: none; }
+}
+
 // Responsive adjustments
 @media (max-width: $breakpoint-sm) {
   .monitor-container {
