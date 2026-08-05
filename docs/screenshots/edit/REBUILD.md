@@ -45,6 +45,29 @@ Quell-Recording (User): `../2026-06-24 11-27-23.mp4` (2560×1440@60, 32s; Deskto
 **Wichtig:** `publish/`-Binary war veraltet (kein `/series`-Endpoint). Screenshots gegen **aktuellen Code**:
 
 ### 2a. Backend (aktueller Code) gegen Prod-DB
+
+> **Falle:** `ConnectionStrings__DefaultConnection` als Umgebungsvariable **wirkt nicht**.
+> `backend/KnxMonitor.Api/Program.cs:93-95` überschreibt die Verbindung bewusst mit einem
+> Pfad relativ zur Programmdatei (`AppPaths.DbPath`), damit das portable Binary immer
+> dieselbe DB öffnet. Ein `dotnet run` aus `backend/` liest deshalb **immer**
+> `backend/KnxMonitor.Api/bin/Debug/net9.0/data/knxmonitor.db` — egal was die Env sagt.
+>
+> Wer die Prod-Kopie sehen will, kopiert sie an genau diese Stelle (Prozess vorher
+> stoppen, `-wal`/`-shm` mit entfernen, vorhandene Dev-DB vorher wegsichern):
+> ```bash
+> powershell -Command "Get-Process -Name KnxMonitor.Api -EA SilentlyContinue | Stop-Process -Force"
+> D=backend/KnxMonitor.Api/bin/Debug/net9.0/data
+> mv $D/knxmonitor.db $D/knxmonitor.db.devbak; rm -f $D/knxmonitor.db-wal $D/knxmonitor.db-shm
+> cp publish/data/knxmonitor.db $D/knxmonitor.db
+> ```
+> Kontrolle vor dem Schießen — die Zahl muss zum Datenbestand passen, sonst hängt man
+> an der falschen DB und die Diagramme zeigen Lücken:
+> ```bash
+> curl -s -H "Authorization: Bearer $TOK" \
+>   "localhost:8080/api/telegrams/stats?from=2026-07-29T00:00:00Z&to=2026-08-06T00:00:00Z&buckets=56"
+> ```
+> (Der Parameter heißt `buckets`, nicht `bucketMinutes`. Zeitangaben mit `Z` schicken —
+> ohne Zeitzone interpretiert `ResolveRange` sie als Server-Lokalzeit.)
 ```bash
 # alten Prozess killen
 powershell -Command "Get-Process -Name KnxMonitor.Api -EA SilentlyContinue | Stop-Process -Force"
@@ -73,6 +96,59 @@ Add-Type -Path "d:\Source\knx-ng-monitor\publish\BCrypt.Net-Next.dll"
 sqlite3 publish/data/knxmonitor.db "INSERT INTO Users (Username,PasswordHash,CreatedAt) VALUES ('demo','<HASH>','2026-06-25 00:00:00.0000000');"
 ```
 Login: `demo` / `demo12345`.
+
+### 2c-ter. Ganze Galerie in einem Rutsch
+
+`gallery.mjs` schießt alle 20 Bilder (Desktop, Mobil, Dark-Hero) und bringt
+Weichzeichnen (§2c-bis), Füll-Warten und die englische Browsersprache bereits mit:
+
+```bash
+cd docs/screenshots/edit
+FE_PORT=4321 SHOT_OUT=./qa/gen node gallery.mjs      # Port nur nötig, wenn 4200 belegt ist
+```
+Danach nach webp wandeln (Vollbild + 1040px-Thumb):
+```bash
+cd qa/gen
+for f in *.png; do n="${f%.png}"
+  ffmpeg -y -i "$f" -q:v 90 "../../$n.webp"
+  ffmpeg -y -i "$f" -vf scale=1040:-2 -q:v 82 "../../thumbs/$n.webp"
+done
+```
+
+Drei Dinge, die dabei nicht offensichtlich sind:
+- **`--lang=en-GB` beim Browser-Start**, nicht `locale` am Kontext: Der Platzhalter der
+  nativen `datetime-local`-Felder hängt an der UI-Sprache des Browsers. Ohne das steht
+  `tt.mm.jjjj` in einem sonst englischen Screenshot (siehe Issue #11).
+- **Live-Ansichten füllen sich langsam.** `waitFilled()` wartet, bis der Inhalt den
+  Viewport überfüllt, statt Zeilen zu zählen — die Tabelle ist virtualisiert und rendert
+  immer nur das Sichtbare, die Anzahl bleibt also konstant.
+- **Statistik auf 7d** stellen: im 24-h-Standard deckt sie nur den Tagesrand ab und die
+  Heatmap zeigt zwei Wochentage.
+
+### 2c-bis. PFLICHT: Personenbezug unkenntlich machen
+
+Die eigene Prod-/Dev-DB enthält echte Namen — Projektname und Gebäude/Adresse aus dem
+ETS-Projekt. Betroffen sind **`/topology`** (Gebäudename, Strasse) und **`/projects`**
+(Projektname + Dateiname, also auch `projects-detail` und `projects-import`). Alle
+anderen Ansichten waren zuletzt sauber — trotzdem jedes Mal neu prüfen, das hängt am
+importierten Projekt.
+
+**Weichzeichnen, nicht ersetzen.** So bleibt sichtbar, dass dort ein echter Wert steht,
+ohne ihn preiszugeben — und es sieht aus wie in den bisherigen Bildern. `gallery.mjs`
+erledigt das über `blurSecrets()`: es sucht Textknoten und `title`/`aria-label` nach
+`SECRET_RX` ab und legt `filter: blur(10px)` auf die Trefferelemente. Radius nicht unter
+10px setzen — bei 6px waren fette 14px-Labels noch zu erahnen.
+
+Direkt vor dem `screenshot()` aufrufen, sonst rendert Angular neu und der Inline-Stil
+ist wieder weg. Das Muster in `SECRET_RX` anpassen, wenn ein anderes Projekt importiert
+ist. Zur Kontrolle meldet der Lauf pro Bild, wie viele Elemente unkenntlich gemacht
+wurden — steht dort `(0 unkenntlich)`, wo Treffer erwartet waren, stimmt das Muster nicht.
+
+**Der Graph braucht einen anderen Weg.** Er zeichnet seine Beschriftungen auf ein Canvas,
+also gibt es keine DOM-Knoten, auf die ein Weichzeichner wirken könnte. `gallery.mjs`
+fängt dort stattdessen die API-Antworten ab (`screen(..., redactApi = true)`) und ersetzt
+die Treffer schon im JSON durch `•••••`, bevor der Graph sie rendert. Dasselbe Vorgehen
+wäre für jede künftige Canvas-Ansicht nötig.
 
 ### 2d. Playwright-Screenshot-Script
 Ort: `scratchpad/shotter/` (pw-core 1.61.1 ↔ Cache `~/AppData/Local/ms-playwright/chromium-1228`).
