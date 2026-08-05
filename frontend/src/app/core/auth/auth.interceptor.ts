@@ -40,10 +40,15 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
             return next(retryReq);
           }),
           catchError(refreshError => {
-            // Refresh failed: clear stale tokens and flip auth state to
-            // unauthenticated BEFORE redirecting, so nothing lingers.
-            authService.clearSession();
-            router.navigate(['/login']);
+            // Nur ein echtes Nein des Servers beendet die Sitzung. Bei
+            // Netzwerkfehlern (Status 0), 502 oder kurz nicht erreichbarem
+            // Server bleiben die Tokens liegen — der Refresh-Token gilt 7 Tage,
+            // ein Aussetzer darf ihn nicht wegwerfen.
+            const rejected = refreshError?.status === 401 || refreshError?.status === 403;
+            if (rejected) {
+              authService.clearSession();
+              router.navigate(['/login']);
+            }
             return throwError(() => refreshError);
           })
         );

@@ -153,7 +153,11 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings?.Issuer,
         ValidAudience = jwtSettings?.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSettings?.Secret ?? throw new InvalidOperationException("JWT Secret not configured")))
+            Encoding.UTF8.GetBytes(jwtSettings?.Secret ?? throw new InvalidOperationException("JWT Secret not configured"))),
+        // Default sind 5 Minuten: der Server akzeptiert einen 15-Minuten-Token dann
+        // faktisch 20, während das Frontend ihn nach 15 für abgelaufen hält. Beide
+        // Seiten sollen dieselbe Grenze sehen; 30 s bleiben für Uhrendrift.
+        ClockSkew = TimeSpan.FromSeconds(30)
     };
 
     // Allow JWT token in query string for SignalR (WebSockets don't support Authorization header)

@@ -1,8 +1,21 @@
 # Issue: Neuladen nach 15 Minuten Pause erzwingt Neuanmeldung
 
-**Status:** offen, Ursache belegt, Fix noch nicht gebaut
-**Gefunden:** 2026-07-28
-**Betrifft:** Produktion und Entwicklung gleichermassen — kein Dev-Artefakt
+**Status:** behoben (Punkte 1, 2 und 4 des Fixvorschlags), Punkt 3 bewusst offen
+**Gefunden:** 2026-07-28 · **Behoben:** 2026-08-05
+**Betraf:** Produktion und Entwicklung gleichermassen — kein Dev-Artefakt
+
+## Verifikation des Fixes
+
+Mit abgelaufenem Access-Token und gültigem Refresh-Token im localStorage, dann
+Neuladen auf `/monitor`:
+
+| Szenario | Ergebnis |
+|---|---|
+| Access-Token abgelaufen, Refresh-Token gültig | bleibt auf `/monitor`, ein `POST /auth/refresh` → 200, `tokenExpiry` erneuert |
+| kein Refresh-Token vorhanden | Login-Maske, wie gewünscht |
+
+Vor dem Fix landete der erste Fall auf der Anmeldung, ohne dass je ein
+Refresh-Aufruf stattfand.
 
 ## Symptom
 
@@ -53,7 +66,9 @@ Umgebungen gleich.
 Belegend auch die Datenbank: 28 Refresh-Tokens für einen Nutzer in zwei Tagen,
 davon nur 6 aus echten Rotationen — der Rest sind Neuanmeldungen.
 
-## Fix (vorgeschlagen, nicht umgesetzt)
+## Fix
+
+Umgesetzt sind 1, 2 und 4; Punkt 3 bleibt offen (siehe Begründung dort).
 
 1. **Kern:** Guard asynchron machen. Bei abgelaufenem Access-Token, aber vorhandenem
    Refresh-Token erst `refreshToken()` abwarten und nur bei dessen Fehlschlag nach
@@ -62,7 +77,10 @@ davon nur 6 aus echten Rotationen — der Rest sind Neuanmeldungen.
 2. `clearSession()` (`auth.interceptor.ts:42-47`) nur bei echtem 401 auslösen —
    aktuell verwirft jeder fehlgeschlagene Refresh die Sitzung, auch bei Netzwerkfehler
    (Status 0) oder 502.
-3. Reuse-Detection (`AuthService.cs:73-77`) um eine kurze Gnadenfrist erweitern:
+3. **Offen —** Reuse-Detection (`AuthService.cs:73-77`) um eine kurze Gnadenfrist erweitern.
+   Braucht ein `RevokedAt` an der `RefreshToken`-Entität plus Migration; der Race wird
+   durch den Guard-Fix ohnehin seltener, weil deutlich weniger Refreshes anfallen.
+   Ursprüngliche Beschreibung:
    Ein Reload mitten im laufenden Refresh verwirft die Antwort, localStorage behält
    den bereits rotierten Token — der nächste Versuch entwertet dann alle Sitzungen
    des Nutzers. Live reproduziert.

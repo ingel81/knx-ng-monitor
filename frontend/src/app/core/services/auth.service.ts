@@ -76,12 +76,31 @@ export class AuthService {
 
     this.refreshInFlight$ = this.http.post<RefreshTokenResponse>(`${this.apiUrl}/auth/refresh`, request)
       .pipe(
-        tap(response => this.storeTokens(response)),
+        tap(response => {
+          this.storeTokens(response);
+          // Ohne das bliebe der Auth-Zustand auf dem Wert vom Seitenstart stehen:
+          // nach einem Refresh aus dem Guard heraus wäre die App eingeloggt, würde
+          // sich aber weiter als abgemeldet melden (Header, Guards, SignalR).
+          this.isAuthenticatedSubject.next(true);
+          const username = this.getStoredUsername();
+          if (username && this.currentUserSubject.value !== username) {
+            this.currentUserSubject.next(username);
+          }
+        }),
         shareReplay(1),
         finalize(() => { this.refreshInFlight$ = null; })
       );
 
     return this.refreshInFlight$;
+  }
+
+  /**
+   * Ob ein Erneuerungsversuch überhaupt Sinn hat. Der Refresh-Token gilt 7 Tage,
+   * der Access-Token 15 Minuten — ein abgelaufener Access-Token allein bedeutet
+   * also nicht, dass die Sitzung vorbei ist.
+   */
+  hasRefreshToken(): boolean {
+    return !!this.getRefreshToken();
   }
 
   getAccessToken(): string | null {

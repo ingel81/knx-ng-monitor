@@ -12,6 +12,17 @@ binaries and auto-generated notes are on the
 
 ## [Unreleased]
 
+### Fixed
+- **Reloading the page logged you out after a short break.** The route guard decided
+  synchronously on the 15-minute access token and never looked at the refresh token,
+  which is valid for 7 days - so any reload after a pause (F5, browser restart, a tab
+  restored after lunch, a phone tab the browser had evicted) forced a new login. The
+  interceptor that could have refreshed never got a turn, because the guard had already
+  navigated away. It now tries to refresh before sending anyone to the login screen.
+  A failed refresh only ends the session on a real 401/403, not on a network blip, and
+  the server's clock skew is down from the default 5 minutes to 30 seconds so both sides
+  agree on when a token expires.
+
 ### Changed
 - **Mobile layout overhaul across the app.** The bottom navigation is down to four
   tabs plus a "More" sheet (Topology, Graph, Logs, Projects, Settings), with short
