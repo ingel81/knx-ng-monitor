@@ -28,7 +28,19 @@
       der API-Stand versioniert und im Diff sichtbar ist. Es ist ein reines Erzeugnis —
       niemand pflegt es von Hand, und es kann deshalb auch nicht vom Code abweichen.
     -->
+    <!--
+      Nur ohne RuntimeIdentifier: Der Generator startet die gebaute Anwendung, um das
+      Dokument abzugreifen. Beim Release wird für fremde Plattformen übersetzt
+      (linux-arm64 auf einem x64-Läufer) — dort lässt sie sich nicht ausführen und der
+      Build bricht mit "cannot open libhostpolicy.so" ab. Das Dokument entsteht beim
+      normalen Build und liegt ohnehin versioniert im Repo.
+    -->
     <OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
+    <!--
+      Ausdrücklich false, nicht bloß "nicht gesetzt": Bleibt die Eigenschaft leer,
+      setzt das Paket seinen eigenen Vorgabewert true und der Generator läuft doch.
+    -->
+    <OpenApiGenerateDocuments Condition="'$(RuntimeIdentifier)' != ''">false</OpenApiGenerateDocuments>
     <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../docs/api</OpenApiDocumentsDirectory>
     <OpenApiGenerateDocumentsOptions>--file-name openapi</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
