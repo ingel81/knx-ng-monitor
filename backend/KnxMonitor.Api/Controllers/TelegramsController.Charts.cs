@@ -23,6 +23,43 @@ public partial class TelegramsController
     /// projected to a number (leading numeric token, else On/Off-style boolean → 1/0); telegrams
     /// that yield no number are skipped. The result is down-sampled to at most maxPoints per address.
     /// </summary>
+    /// <remarks>
+    /// A number is taken from the decoded value as the first numeric token (leading minus and
+    /// decimal point or comma allowed), so "21.5 °C" becomes 21.5; failing that, a known
+    /// boolean-ish word (On/Off, True/False, Open/Closed, Up/Down, …) becomes 1 or 0. Anything
+    /// else is dropped, and an address whose telegrams yield no number at all is omitted from the
+    /// response instead of appearing empty. <c>unit</c> is whatever remains of the first chartable
+    /// sample once the number is stripped — "°C" for "21.5 °C"; for a boolean sample, which holds
+    /// no number to strip, the word itself remains.
+    /// <para>
+    /// Down-sampling keeps the minimum and the maximum of each bucket rather than every n-th
+    /// point, so spikes survive a wide range. <c>maxPoints</c> is the budget per address, not the
+    /// exact count — the result may be shorter, and <c>downSampled</c> plus <c>totalPoints</c>
+    /// (the numeric points before down-sampling) report what happened.
+    /// </para>
+    /// <para>
+    /// At most 200 000 rows are read per request. When the range holds more, the <b>newest</b>
+    /// rows win, the older end is missing and <c>truncated</c> is true — a chart is easier to
+    /// distrust when it starts late than when it ends early.
+    /// </para>
+    /// <para>
+    /// A timestamp without a zone designator (<c>from=2026-07-30T00:00:00</c>) is interpreted as
+    /// server local time, not UTC. Send ISO-8601 with a trailing <c>Z</c> to be unambiguous.
+    /// Returned point timestamps are always UTC with a trailing <c>Z</c>.
+    /// </para>
+    /// </remarks>
+    /// <param name="addresses">
+    /// Comma-separated destination group addresses (e.g. <c>1/2/3,1/2/4</c>). Duplicates are
+    /// dropped and at most the first 8 are used; the rest are silently ignored. Missing or empty
+    /// yields an empty series list rather than an error.
+    /// </param>
+    /// <param name="from">Start of the range (inclusive). Defaults to 24 hours before <c>to</c>.</param>
+    /// <param name="to">End of the range (inclusive). Defaults to now. A reversed range is swapped, not rejected.</param>
+    /// <param name="maxPoints">Maximum points returned per address after down-sampling. Default 2000, clamped to 1..10000.</param>
+    /// <returns>
+    /// One entry per requested address that has chartable data, in the order the addresses were
+    /// requested, plus a <c>truncated</c> flag for the whole request.
+    /// </returns>
     [HttpGet("series")]
     public async Task<IActionResult> GetSeries(
         [FromQuery] string? addresses,
@@ -111,6 +148,20 @@ public partial class TelegramsController
     /// Telegram volume histogram over [from,to] split into <paramref name="buckets"/> equal buckets,
     /// plus the total count. Backs the statistics "telegrams over time" / msg-per-second view.
     /// </summary>
+    /// <remarks>
+    /// Counts all telegrams in the range — there is no address, source or type filter here. Every
+    /// bucket is returned, including empty ones, so the buckets always tile the range gap-free.
+    /// <c>bucketMs</c> is the bucket width in milliseconds and is fractional: the range is divided
+    /// into equal parts rather than snapped to a round interval, and each bucket's <c>t</c> is its
+    /// start. Divide a count by <c>bucketMs</c> to get a rate.
+    /// <para>
+    /// A timestamp without a zone designator is interpreted as server local time, not UTC. Send
+    /// ISO-8601 with a trailing <c>Z</c> to be unambiguous.
+    /// </para>
+    /// </remarks>
+    /// <param name="from">Start of the range (inclusive). Defaults to 24 hours before <c>to</c>.</param>
+    /// <param name="to">End of the range (inclusive). Defaults to now. A reversed range is swapped, not rejected.</param>
+    /// <param name="buckets">Number of equal-width buckets. Default 60, clamped to 1..500.</param>
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats(
         [FromQuery] DateTime? from,
@@ -165,6 +216,24 @@ public partial class TelegramsController
     /// Binning is done in the caller's local time via <paramref name="tz"/> (minutes the local
     /// zone is behind UTC, i.e. JS getTimezoneOffset()), so "18:00 Monday" means the user's 18:00.
     /// </summary>
+    /// <remarks>
+    /// The grid is always 7 × 24 (weekday 0 = Sunday .. 6 = Saturday, then hour 0..23) and is
+    /// filled with counts, not averages: a 30-day range puts roughly four Mondays into the same
+    /// cell. Counts all telegrams in the range — there is no address, source or type filter.
+    /// <para>
+    /// A timestamp without a zone designator is interpreted as server local time, not UTC. Send
+    /// ISO-8601 with a trailing <c>Z</c> to be unambiguous. Note that <c>tz</c> shifts only the
+    /// binning, not the range boundaries.
+    /// </para>
+    /// </remarks>
+    /// <param name="from">Start of the range (inclusive). Defaults to 24 hours before <c>to</c>.</param>
+    /// <param name="to">End of the range (inclusive). Defaults to now. A reversed range is swapped, not rejected.</param>
+    /// <param name="tz">
+    /// Minutes the display zone is behind UTC, exactly as JavaScript's
+    /// <c>Date.getTimezoneOffset()</c> reports it (CEST = -120). Default 0 bins in UTC. A fixed
+    /// offset is applied to the whole range, so a range spanning a DST change is binned with one
+    /// offset throughout.
+    /// </param>
     [HttpGet("heatmap")]
     public async Task<IActionResult> GetHeatmap(
         [FromQuery] DateTime? from,
@@ -200,7 +269,6 @@ public partial class TelegramsController
         return (rangeFrom, rangeTo);
     }
 
-    /// <summary>Uniform-stride down-sampling, keeping the first and last point. Returns whether it down-sampled.</summary>
     /// <summary>
     /// Reduces a series to at most <paramref name="maxPoints"/> points by keeping the minimum and
     /// the maximum of each bucket.

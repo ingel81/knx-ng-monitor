@@ -15,6 +15,22 @@
       Only takes effect when PublishSingleFile=true; ignored otherwise.
     -->
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <!--
+      Quelle der Endpunkt-Beschreibungen in der API-Referenz (/scalar/v1): die
+      XML-Doku-Kommentare der Controller. XmlDocumentationTransformer liest die hier
+      erzeugte Datei ein. CS1591 aus: nicht jedes öffentliche Element braucht einen
+      Kommentar, nur die Endpunkte — sonst rauscht der Build voll Warnungen.
+    -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!--
+      Beim Build wird das OpenAPI-Dokument als Datei nach docs/api/ geschrieben, damit
+      der API-Stand versioniert und im Diff sichtbar ist. Es ist ein reines Erzeugnis —
+      niemand pflegt es von Hand, und es kann deshalb auch nicht vom Code abweichen.
+    -->
+    <OpenApiGenerateDocuments>true</OpenApiGenerateDocuments>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../docs/api</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name openapi</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +41,11 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="9.0.10">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Scalar.AspNetCore" Version="2.16.17" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />

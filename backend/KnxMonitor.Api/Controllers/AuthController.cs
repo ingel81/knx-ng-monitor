@@ -19,6 +19,14 @@ public class AuthController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>Authenticates a user and issues an access token plus a refresh token.</summary>
+    /// <remarks>
+    /// Open to anonymous callers and rate limited to 10 requests per minute (fixed window,
+    /// shared by all callers of the auth endpoints). Token lifetimes come from configuration:
+    /// <c>Jwt:AccessTokenExpirationMinutes</c> (15) and <c>Jwt:RefreshTokenExpirationDays</c> (7).
+    /// Only a SHA-256 hash of the refresh token is persisted, so the raw value is returned here once.
+    /// </remarks>
+    /// <returns>Access token, refresh token, the access token's UTC expiry and the username.</returns>
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting("auth")]
@@ -41,6 +49,14 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>Exchanges a refresh token for a new access token and a new refresh token.</summary>
+    /// <remarks>
+    /// Open to anonymous callers (the refresh token itself is the credential) and rate limited
+    /// like login. Refresh tokens rotate: the presented token is revoked and its replacement
+    /// stored in the same save, so a token can only be redeemed once. Presenting an already
+    /// rotated token is treated as theft and revokes every refresh token of that user.
+    /// </remarks>
+    /// <returns>A new access token, a new refresh token and the access token's UTC expiry.</returns>
     [HttpPost("refresh")]
     [AllowAnonymous]
     [EnableRateLimiting("auth")]
@@ -62,6 +78,11 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>Revokes the supplied refresh token, ending that one session.</summary>
+    /// <remarks>
+    /// Other sessions of the same user keep working. Access tokens are validated by signature
+    /// and lifetime only, so an already issued access token stays usable until it expires.
+    /// </remarks>
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request)
@@ -82,6 +103,11 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Logged out successfully" });
     }
 
+    /// <summary>Revokes every refresh token of the calling user, ending all their sessions.</summary>
+    /// <remarks>
+    /// The user is taken from the access token's subject claim. As with a single logout,
+    /// access tokens already handed out remain valid until they expire.
+    /// </remarks>
     [HttpPost("logout-all")]
     [Authorize]
     public async Task<IActionResult> LogoutAll()
@@ -98,6 +124,8 @@ public class AuthController : ControllerBase
         return Ok(new { message = "All sessions revoked" });
     }
 
+    /// <summary>Reports whether this instance still has no user account and needs the initial setup.</summary>
+    /// <returns><c>needsSetup</c> — true while not a single user exists.</returns>
     [HttpGet("needs-setup")]
     [AllowAnonymous]
     public async Task<IActionResult> NeedsInitialSetup()
@@ -106,6 +134,12 @@ public class AuthController : ControllerBase
         return Ok(new { needsSetup });
     }
 
+    /// <summary>Creates the first user account and signs it in.</summary>
+    /// <remarks>
+    /// Open to anonymous callers, but only while the instance has no user at all — once one
+    /// exists the call is rejected. The password must be at least 8 characters long.
+    /// </remarks>
+    /// <returns>The same token set as a login: access token, refresh token, expiry and username.</returns>
     [HttpPost("setup")]
     [AllowAnonymous]
     public async Task<IActionResult> InitialSetup([FromBody] InitialSetupRequest request)

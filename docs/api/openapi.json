@@ -1,0 +1,1965 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "KnxMonitor.Api | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "KnxMonitor.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Authenticates a user and issues an access token plus a refresh token.",
+        "description": "Open to anonymous callers and rate limited to 10 requests per minute (fixed window, shared by all callers of the auth endpoints). Token lifetimes come from configuration: Jwt:AccessTokenExpirationMinutes (15) and Jwt:RefreshTokenExpirationDays (7). Only a SHA-256 hash of the refresh token is persisted, so the raw value is returned here once.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Access token, refresh token, the access token's UTC expiry and the username."
+          }
+        }
+      }
+    },
+    "/api/Auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Exchanges a refresh token for a new access token and a new refresh token.",
+        "description": "Open to anonymous callers (the refresh token itself is the credential) and rate limited like login. Refresh tokens rotate: the presented token is revoked and its replacement stored in the same save, so a token can only be redeemed once. Presenting an already rotated token is treated as theft and revokes every refresh token of that user.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "A new access token, a new refresh token and the access token's UTC expiry."
+          }
+        }
+      }
+    },
+    "/api/Auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Revokes the supplied refresh token, ending that one session.",
+        "description": "Other sessions of the same user keep working. Access tokens are validated by signature and lifetime only, so an already issued access token stays usable until it expires.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Auth/logout-all": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Revokes every refresh token of the calling user, ending all their sessions.",
+        "description": "The user is taken from the access token's subject claim. As with a single logout, access tokens already handed out remain valid until they expire.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Auth/needs-setup": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Reports whether this instance still has no user account and needs the initial setup.",
+        "responses": {
+          "200": {
+            "description": "needsSetup — true while not a single user exists."
+          }
+        }
+      }
+    },
+    "/api/Auth/setup": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Creates the first user account and signs it in.",
+        "description": "Open to anonymous callers, but only while the instance has no user at all — once one exists the call is rejected. The password must be at least 8 characters long.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitialSetupRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitialSetupRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitialSetupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The same token set as a login: access token, refresh token, expiry and username."
+          }
+        }
+      }
+    },
+    "/api/Diagnostics/logs": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Recent log entries from the in-memory buffer, optionally filtered.",
+        "parameters": [
+          {
+            "name": "level",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": null
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": null
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LogEntryDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LogEntryDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LogEntryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Diagnostics/download": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Downloads a diagnostics zip: recent log files + a system-info.json.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/version": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "App version (for support / bug reports).",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Knx/status": {
+      "get": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Current state of the KNX bus link.",
+        "description": "Read-only — nothing is sent to the bus. Configuration is the configuration the live link was established with and is null while disconnected; it is not necessarily the stored configuration flagged active. ManualDisconnect is latched by a manual disconnect and keeps the auto-connect worker from reconnecting until the next connect clears it.",
+        "responses": {
+          "200": {
+            "description": "Connection flag, link state (Disconnected / Connecting / Connected), the manual-disconnect latch and the configuration currently in use."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Knx/connect": {
+      "post": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Opens the KNX bus link using the stored configuration with the given id.",
+        "description": "Touches the installation: an IP tunnel is opened (or the routing multicast group joined), and received telegrams start flowing into the live view and the history again. An existing link is torn down first. Clears the manual-disconnect latch, so the auto-connect worker may keep the link up from here on. The request body is the bare configuration id (a JSON number). Unknown id yields 404, a failed connect 400.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Knx/disconnect": {
+      "post": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Closes the KNX bus link.",
+        "description": "Ends telegram recording until the next connect. Latches manual-disconnect so the auto-connect worker does not reconnect on its own; the next connect (or enabling auto-connect) clears the latch. Succeeds even when no link is currently up.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Knx/test-connection": {
+      "post": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Probes whether a stored configuration can reach the bus. Sends no group telegram and changes nothing in the stored configuration.",
+        "description": "The probe uses a throwaway connection. If a live link is currently up it is paused for the duration of the probe (freeing the gateway's tunnel slot) and restored afterwards, so recording has a short gap — the frontend warns before triggering this while live. For routing configurations the probe additionally listens up to five seconds for real bus traffic: joining a multicast group succeeds locally even when no telegram can ever arrive. That case is reported as JoinedWithoutTraffic and counts as a warning, not a failure (Success stays true). Unknown id yields 404.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Success flag (false only for Failed), the outcome and a human-readable message."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Knx/autoconnect": {
+      "get": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Auto-connect state for the effective configuration (active one, else the first). The active project is coupled to the bus link, so this governs whether it auto-connects.",
+        "description": "Read-only. When no configuration is stored at all, Enabled is reported as true (the default for a configuration that has yet to be created).",
+        "responses": {
+          "200": {
+            "description": "The auto-connect flag and whether a bus link is currently up."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Enables or disables auto-connect for the effective configuration.",
+        "description": "Applied immediately, not merely stored: enabling opens the bus link right away when none is up (which clears the manual-disconnect latch), disabling closes an existing link. A failed immediate connect is not reported as an error — the auto-connect worker retries on its next tick (roughly every ten seconds). 404 when no configuration is stored.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAutoConnectRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAutoConnectRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAutoConnectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The stored flag and whether a bus link is up afterwards."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Knx/write": {
+      "post": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Sends a GroupValueWrite to the bus. ⚠ Writes to the real KNX installation — the frontend gates this behind an explicit confirmation dialog.",
+        "description": "This has a physical effect: the addressed actuators act on the value. The value is encoded with the given datapoint type; without a DatapointType only a raw hex string (\"0x01\", \"01 02\") is accepted, anything else is rejected. Answers 400 with Success=false when the address is missing or unparsable, when no bus link is up, or when the value could not be encoded for the given DPT.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteGroupValueRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteGroupValueRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteGroupValueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Knx/read": {
+      "post": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Sends a GroupValueRead; the response shows up as a normal telegram.",
+        "description": "Puts a telegram on the real installation, but changes no value — the addressed device answers with its current one. The answering GroupValueResponse arrives through the normal receive path and appears in the live view and the history; this endpoint itself only confirms that the request was sent, it does not return the value. Answers 400 with Success=false when the address is missing or unparsable, or when no bus link is up.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadGroupValueRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadGroupValueRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadGroupValueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Knx/configurations": {
+      "post": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Stores a new KNX interface configuration.",
+        "description": "Storing alone does not touch the bus: the entry is created inactive and no connection is opened here. Connect explicitly, or leave AutoConnect on — the auto-connect worker picks a configuration only while no link is up, preferring the active one, else the first with AutoConnect enabled. The payload carries no secure-tunnel flag, so that option stays off for new entries.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConfigRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConfigRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The stored configuration including its assigned id."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Lists all stored KNX interface configurations.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Knx/configurations/{id}": {
+      "get": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Returns a single stored KNX interface configuration.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the stored configuration; 404 when it does not exist.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Knx"
+        ],
+        "summary": "Updates a stored KNX interface configuration; may re-establish the live bus link.",
+        "description": "When the gateway endpoint actually changes (IP address, port or connection type), the configuration has AutoConnect enabled and a link is currently up, the running connection is re-opened with the new settings — that briefly interrupts recording. Changing only the physical address or the auto-connect flag does not trigger a reconnect. A failed reconnect is not an error: the response reports Reconnected=false and the auto-connect worker retries. The payload carries no secure-tunnel flag, so that setting stays as stored.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Id of the stored configuration; 404 when it does not exist.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConfigRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConfigRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The stored configuration and whether the live link was re-established."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/upload": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Uploads an ETS project file and starts the import as a background job.",
+        "description": "Returns as soon as the job exists — the parse itself runs in the background, so poll GET imports/{id} for progress. Only files ending in .knxproj are accepted, and the request body is capped at 200 MB. If the archive is password protected the job stops in WaitingForInput and lists what it needs; feed those inputs to POST imports/{id}/provide-input, then the job continues on its own. Re-uploading a project that was imported before is recognised by its ETS project id and updates the existing project in place, so recorded telegrams keep their group-address link. A genuinely new project is auto-activated when no other project is active yet.",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created import job: id, status, the step list and (once finished) the project id and counts."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/imports/{id}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Returns the current state of an import job.",
+        "description": "Jobs are held in memory only. A job that has completed, failed or been cancelled is swept an hour after it terminated (the cleanup worker runs every five minutes) and is reported as not found from then on.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Job id returned by the upload call.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status, overall progress, per-step detail and the outstanding requirements."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Marks an import job as cancelled.",
+        "description": "This flips the job state only. A parse already running in the background is not interrupted and a project it has written stays. Unknown job ids are accepted without effect.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/imports/{id}/provide-input": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Supplies one requested input — project password, keyring file or keyring password — to a waiting import job.",
+        "description": "Each call fulfils exactly the requirement named in type; the keyring file is passed Base64-encoded. The call is only accepted while the job is in WaitingForInput and rejected otherwise. Supplying the project password triggers a second look inside the now decryptable archive: if KNX Secure devices turn up, an optional keyring file and keyring password requirement are added and the job stays in WaitingForInput. As soon as every listed requirement is marked fulfilled, the import resumes in the background — poll GET imports/{id} from there. The password is not verified at this point; a wrong one surfaces as a failed job.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Job id of the waiting import.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvideInputDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvideInputDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvideInputDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Lists all imported projects.",
+        "responses": {
+          "200": {
+            "description": "Per project: name, source file name, import date, active flag and the group-address and device counts."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/{id}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Returns one project together with its group addresses and devices.",
+        "description": "Both lists come back complete and unpaged, so the response grows with the size of the project.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Deletes a project and everything parsed from it.",
+        "description": "Removes the project's group addresses, devices, locations, communication objects, group ranges and stored keyring material in one transaction. Recorded telegrams are kept but lose their group-address link and are shown undecoded from then on. Deleting the active project leaves no project active; the bus link stays up.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/{id}/activate": {
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Makes this project the active one.",
+        "description": "Activation is exclusive: any other active project is deactivated in the same transaction, so at most one project is ever active. Afterwards the group-address cache is refreshed and incoming telegrams resolve to this project's names and DPTs. The bus connection is deliberately left untouched — activating decodes, it does not connect.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/{id}/deactivate": {
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Deactivates the project, leaving no project active.",
+        "description": "The group-address cache is cleared, so telegrams are shown undecoded — raw hex, without name or DPT. Monitoring keeps running: the bus link stays up. Deactivating a project that is already inactive succeeds and changes nothing.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/{id}/delete-preview": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Reports what deleting this project would affect, for the confirmation dialog.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The project's group-address and device counts plus the number of recorded telegrams mapped to it. Those telegrams survive the deletion — they only lose their group-address mapping."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/{id}/locations": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Returns the project's locations (buildings, floors, rooms, …).",
+        "description": "A flat list, not a tree — the hierarchy is expressed through each entry's parent id. Every entry also carries the device and group addresses assigned to that location.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/{id}/commobjects": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Returns the project's communication objects, optionally only those linked to one group address.",
+        "description": "Each entry is enriched with the name, manufacturer and product name of the device behind its physical address, as far as that device is part of the project. Sorted by device address, then by object number.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Project id.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "description": "Group address (m/m/s). When set, only objects whose group-address link matches it exactly are returned.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/{id}/groupranges": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Returns the project's group ranges — the named main and middle groups — ordered by range start.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/{id}/device": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Resolves a single device of the project by its physical address.",
+        "description": "The address is matched exactly, and an unknown project id is reported the same way as an unknown device.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Project id.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "description": "Physical address (a.l.d) to look up. Required.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Projects/{id}/keyring": {
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Attaches a keyring (.knxkeys) to an already imported project.",
+        "description": "Multipart upload of the file plus its password; both are required and only files ending in .knxkeys are accepted. Any keyring material previously stored for the project is replaced — both the decrypted per-key rows and the raw keyring bytes, which KNX Data Secure needs when it loads the keyring at connect time. Because of that the keyring password is stored with the project. A wrong password or an unreadable file is reported as a client error.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Project the keyring belongs to.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "password": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "How many keys were read, split into group-address and tool keys, and whether a backbone key is present."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Recording/settings": {
+      "get": {
+        "tags": [
+          "Recording"
+        ],
+        "summary": "Current recording settings: hot-buffer size and cold-archive options.",
+        "description": "Served from the cached snapshot that the recording services themselves read, so this needs no database round-trip.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Recording"
+        ],
+        "summary": "Updates the recording settings; they take effect on the running recording.",
+        "description": "The values are persisted and swapped into the snapshot the recording workers read, so no restart is needed. What the fields do: HotBufferMaxCount is the number of telegrams kept in the database — a retention pass periodically deletes everything older than the newest HotBufferMaxCount rows, so lowering the value discards the oldest telegrams. Deletion happens chunked on the following passes, not the instant the value is saved. ArchiveEnabled toggles the additional NDJSON+gzip day-files; switching it off stops new writes but leaves existing archive files untouched. ArchiveRetentionDays deletes archive day-files older than that many days, null keeps them forever. The sweep runs at startup and at the daily file rollover, so a shortened retention only takes effect at the next sweep. Validation: HotBufferMaxCount must be greater than 0, ArchiveRetentionDays must be null or greater than 0 — otherwise 400 and nothing is changed.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingSettingsDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingSettingsDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordingSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The settings as they are now in effect."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Telegrams/series": {
+      "get": {
+        "tags": [
+          "Telegrams"
+        ],
+        "summary": "Numeric time-series per destination group address. Each telegram's decoded value is projected to a number (leading numeric token, else On/Off-style boolean → 1/0); telegrams that yield no number are skipped. The result is down-sampled to at most maxPoints per address.",
+        "description": "A number is taken from the decoded value as the first numeric token (leading minus and decimal point or comma allowed), so \"21.5 °C\" becomes 21.5; failing that, a known boolean-ish word (On/Off, True/False, Open/Closed, Up/Down, …) becomes 1 or 0. Anything else is dropped, and an address whose telegrams yield no number at all is omitted from the response instead of appearing empty. unit is whatever remains of the first chartable sample once the number is stripped — \"°C\" for \"21.5 °C\"; for a boolean sample, which holds no number to strip, the word itself remains. Down-sampling keeps the minimum and the maximum of each bucket rather than every n-th point, so spikes survive a wide range. maxPoints is the budget per address, not the exact count — the result may be shorter, and downSampled plus totalPoints (the numeric points before down-sampling) report what happened. At most 200 000 rows are read per request. When the range holds more, the newest rows win, the older end is missing and truncated is true — a chart is easier to distrust when it starts late than when it ends early. A timestamp without a zone designator (from=2026-07-30T00:00:00) is interpreted as server local time, not UTC. Send ISO-8601 with a trailing Z to be unambiguous. Returned point timestamps are always UTC with a trailing Z.",
+        "parameters": [
+          {
+            "name": "addresses",
+            "in": "query",
+            "description": "Comma-separated destination group addresses (e.g. 1/2/3,1/2/4). Duplicates are dropped and at most the first 8 are used; the rest are silently ignored. Missing or empty yields an empty series list rather than an error.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start of the range (inclusive). Defaults to 24 hours before to.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End of the range (inclusive). Defaults to now. A reversed range is swapped, not rejected.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "maxPoints",
+            "in": "query",
+            "description": "Maximum points returned per address after down-sampling. Default 2000, clamped to 1..10000.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 2000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One entry per requested address that has chartable data, in the order the addresses were requested, plus a truncated flag for the whole request."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Telegrams/stats": {
+      "get": {
+        "tags": [
+          "Telegrams"
+        ],
+        "summary": "Telegram volume histogram over [from,to] split into buckets equal buckets, plus the total count. Backs the statistics \"telegrams over time\" / msg-per-second view.",
+        "description": "Counts all telegrams in the range — there is no address, source or type filter here. Every bucket is returned, including empty ones, so the buckets always tile the range gap-free. bucketMs is the bucket width in milliseconds and is fractional: the range is divided into equal parts rather than snapped to a round interval, and each bucket's t is its start. Divide a count by bucketMs to get a rate. A timestamp without a zone designator is interpreted as server local time, not UTC. Send ISO-8601 with a trailing Z to be unambiguous.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start of the range (inclusive). Defaults to 24 hours before to.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End of the range (inclusive). Defaults to now. A reversed range is swapped, not rejected.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "buckets",
+            "in": "query",
+            "description": "Number of equal-width buckets. Default 60, clamped to 1..500.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 60
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Telegrams/heatmap": {
+      "get": {
+        "tags": [
+          "Telegrams"
+        ],
+        "summary": "Activity heatmap: telegram counts bucketed by (weekday, hour-of-day) over [from,to]. Binning is done in the caller's local time via tz (minutes the local zone is behind UTC, i.e. JS getTimezoneOffset()), so \"18:00 Monday\" means the user's 18:00.",
+        "description": "The grid is always 7 × 24 (weekday 0 = Sunday .. 6 = Saturday, then hour 0..23) and is filled with counts, not averages: a 30-day range puts roughly four Mondays into the same cell. Counts all telegrams in the range — there is no address, source or type filter. A timestamp without a zone designator is interpreted as server local time, not UTC. Send ISO-8601 with a trailing Z to be unambiguous. Note that tz shifts only the binning, not the range boundaries.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start of the range (inclusive). Defaults to 24 hours before to.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End of the range (inclusive). Defaults to now. A reversed range is swapped, not rejected.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "description": "Minutes the display zone is behind UTC, exactly as JavaScript's Date.getTimezoneOffset() reports it (CEST = -120). Default 0 bins in UTC. A fixed offset is applied to the whole range, so a range spanning a DST change is binned with one offset throughout.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Telegrams": {
+      "get": {
+        "tags": [
+          "Telegrams"
+        ],
+        "summary": "Keyset-paginated telegram history (newest first).",
+        "description": "Reads the database hot tier only — the day archive on disk is served by the archive/* endpoints. Filters: from/to, address (destination group address), source (individual address), type or types (comma-separated, OR-combined and taking precedence over type) and q (free-text LIKE across source, destination, decoded value, GA name and DPT). Paging is keyset-based over (Timestamp, Id), not offset-based: pass the nextCursor of the previous response as cursor to get the following page. The cursor is opaque; a malformed one yields 400. pageSize defaults to 100 and is clamped to 1..1000. order=asc sorts oldest first, any other value newest first — the sort direction must stay the same while paging, because the cursor is interpreted relative to it. from/to are compared against the stored UTC timestamps without any conversion (unlike the chart endpoints), so pass UTC values.",
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "Address",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Source",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Types",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Order",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of telegrams plus hasMore and nextCursor; nextCursor is null on the last page."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Telegrams"
+        ],
+        "summary": "Permanently deletes the entire telegram history (the DB hot-tier). Irreversible.",
+        "description": "Deletes every row in one statement — the request carries no filter, so there is no way to clear only part of the history. The SQLite WAL is checkpointed afterwards so the file shrinks. Archive files on disk are not touched and stay downloadable.",
+        "responses": {
+          "200": {
+            "description": "An object with a single deleted property: the number of rows removed."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Telegrams/count": {
+      "get": {
+        "tags": [
+          "Telegrams"
+        ],
+        "summary": "Number of telegrams matching a filter.",
+        "description": "Takes the same query parameters as GET /api/telegrams, but only the filtering ones have an effect — cursor, pageSize and order are ignored. Counts the database hot tier only.",
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "Address",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Source",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Types",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Order",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An object with a single count property."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Telegrams/export": {
+      "get": {
+        "tags": [
+          "Telegrams"
+        ],
+        "summary": "Server-streamed CSV export over the full filtered DB range.",
+        "description": "Accepts the same filters as GET /api/telegrams, but exports every matching row: cursor and pageSize are ignored and there is no row limit. Rows are always written chronologically (oldest first), regardless of order. The response is streamed while the query is still running, so the body starts arriving before the row count is known and no Content-Length is sent. The header line is always written, even when nothing matches. Encoding is UTF-8 without BOM; fields that contain a comma, quote or line break are quoted with doubled inner quotes. The filename is knx-telegrams-{UTC timestamp}.csv. Columns: Timestamp, SourceAddress, DestinationAddress, GroupAddressName, DatapointType, MessageType, Value, ValueDecoded. Value is the raw payload as uppercase hex without separators. Timestamp is the UTC value in ISO-8601 round-trip format but carries no zone designator — unlike the JSON responses, which end in Z. GroupAddressName and DatapointType are empty when the telegram has no linked group address.",
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "Address",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Source",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Types",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Order",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "description": "Only csv is supported; any other value yields 400.",
+            "schema": {
+              "type": "string",
+              "default": "csv"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A streamed text/csv attachment."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Telegrams/archive/days": {
+      "get": {
+        "tags": [
+          "Telegrams"
+        ],
+        "summary": "Lists the days available in the cold-tier archive, newest first.",
+        "description": "The archive holds one NDJSON file per UTC day, written independently of the database hot tier and unaffected by its retention or by DELETE /api/telegrams. Finished days are gzipped (compressed: true), the current day stays plain and is still being appended to, so its size grows between calls. sizeBytes is the size on disk, i.e. the compressed size for gzipped days. Archiving is opt-in via the recording settings, so the list is empty as long as nothing has been archived.",
+        "responses": {
+          "200": {
+            "description": "One entry per day with date (YYYY-MM-DD), fileName, sizeBytes and compressed."
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Telegrams/archive/{date}": {
+      "get": {
+        "tags": [
+          "Telegrams"
+        ],
+        "summary": "Downloads the raw archive file of one UTC day.",
+        "description": "Serves the gzipped file (application/gzip) when it exists and falls back to the plain, still-open file of the current day (application/x-ndjson); 404 when neither is present for that day. The payload is NDJSON — one JSON object per line with the keys t (UTC timestamp), s (source address), d (destination address), mt (message type), r (raw value) and v (decoded value, omitted when there is none). The current day is served while the writer still holds it open, so it can be missing the last few seconds — the writer flushes on an interval.",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "description": "Archive day as YYYY-MM-DD (UTC). Any other shape yields 400.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ConnectionType": {
+        "type": "integer"
+      },
+      "CreateConfigRequest": {
+        "required": [
+          "ipAddress",
+          "port",
+          "physicalAddress",
+          "connectionType"
+        ],
+        "type": "object",
+        "properties": {
+          "ipAddress": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "physicalAddress": {
+            "type": "string"
+          },
+          "connectionType": {
+            "$ref": "#/components/schemas/ConnectionType"
+          },
+          "autoConnect": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
+      "InitialSetupRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "LogEntryDto": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "level": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "exception": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "ProvideInputDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/RequirementType"
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          },
+          "keyringFile": {
+            "type": "string",
+            "nullable": true
+          },
+          "keyringPassword": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ReadGroupValueRequest": {
+        "required": [
+          "address"
+        ],
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          }
+        }
+      },
+      "RecordingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "hotBufferMaxCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "archiveEnabled": {
+            "type": "boolean"
+          },
+          "archiveRetentionDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "RequirementType": {
+        "type": "integer"
+      },
+      "SetAutoConnectRequest": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "WriteGroupValueRequest": {
+        "required": [
+          "address",
+          "datapointType",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "datapointType": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "Access-Token aus POST /api/Auth/login (ohne \"Bearer \"-Präfix einfügen).",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "KnxMonitor.Api"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Diagnostics"
+    },
+    {
+      "name": "Knx"
+    },
+    {
+      "name": "Projects"
+    },
+    {
+      "name": "Recording"
+    },
+    {
+      "name": "Telegrams"
+    }
+  ]
+}

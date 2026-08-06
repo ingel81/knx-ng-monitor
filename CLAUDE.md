@@ -75,7 +75,10 @@ knx-ng-monitor/
 cd backend
 dotnet restore
 dotnet build
-dotnet run --project KnxMonitor.Api                                    # http://localhost:8080 (dev: scalar/v1 docs)
+dotnet run --project KnxMonitor.Api                                    # http://localhost:8080
+# API-Referenz (nur Development): http://localhost:8080/scalar/v1 — Token oben rechts einsetzen,
+# dann lassen sich die geschützten Endpunkte direkt ausprobieren. Rohes Dokument: /openapi/v1.json.
+# Beim Build wird es zusätzlich nach docs/api/openapi.json geschrieben (versioniert, nie von Hand pflegen).
 
 # Tests — parser library carries the bulk of the coverage
 dotnet test KnxMonitor.ProjectParser.Tests/KnxMonitor.ProjectParser.Tests.csproj
@@ -145,7 +148,7 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 
 - `/api/auth/*` — login, refresh, logout
 - `/api/projects/*` — list, import (multipart), `provide-input`, activate, delete
-- `/api/groupaddresses/*` — search/list
+- Group addresses come with the project (`/api/projects/{id}` and `/{id}/groupranges`) — there is no separate controller for them
 - `/api/telegrams/*` — query, search, export
 - `/api/knx/*` — config, test-connection, status
 - `/hubs/telegram` — SignalR hub (JWT-authenticated)

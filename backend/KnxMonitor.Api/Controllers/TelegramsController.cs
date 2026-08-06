@@ -33,6 +33,28 @@ public partial class TelegramsController : ControllerBase
     }
 
     /// <summary>Keyset-paginated telegram history (newest first).</summary>
+    /// <remarks>
+    /// Reads the database hot tier only — the day archive on disk is served by the
+    /// <c>archive/*</c> endpoints. Filters: <c>from</c>/<c>to</c>, <c>address</c> (destination
+    /// group address), <c>source</c> (individual address), <c>type</c> or <c>types</c>
+    /// (comma-separated, OR-combined and taking precedence over <c>type</c>) and <c>q</c>
+    /// (free-text LIKE across source, destination, decoded value, GA name and DPT).
+    /// <para>
+    /// Paging is keyset-based over (Timestamp, Id), not offset-based: pass the <c>nextCursor</c>
+    /// of the previous response as <c>cursor</c> to get the following page. The cursor is opaque;
+    /// a malformed one yields 400. <c>pageSize</c> defaults to 100 and is clamped to 1..1000.
+    /// <c>order=asc</c> sorts oldest first, any other value newest first — the sort direction must
+    /// stay the same while paging, because the cursor is interpreted relative to it.
+    /// </para>
+    /// <para>
+    /// <c>from</c>/<c>to</c> are compared against the stored UTC timestamps without any conversion
+    /// (unlike the chart endpoints), so pass UTC values.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// One page of telegrams plus <c>hasMore</c> and <c>nextCursor</c>; <c>nextCursor</c> is null
+    /// on the last page.
+    /// </returns>
     [HttpGet]
     public async Task<IActionResult> GetHistory([FromQuery] TelegramQueryRequest request)
     {
@@ -68,6 +90,13 @@ public partial class TelegramsController : ControllerBase
         });
     }
 
+    /// <summary>Number of telegrams matching a filter.</summary>
+    /// <remarks>
+    /// Takes the same query parameters as <c>GET /api/telegrams</c>, but only the filtering ones
+    /// have an effect — <c>cursor</c>, <c>pageSize</c> and <c>order</c> are ignored. Counts the
+    /// database hot tier only.
+    /// </remarks>
+    /// <returns>An object with a single <c>count</c> property.</returns>
     [HttpGet("count")]
     public async Task<IActionResult> GetCount([FromQuery] TelegramQueryRequest request)
     {
@@ -76,6 +105,12 @@ public partial class TelegramsController : ControllerBase
     }
 
     /// <summary>Permanently deletes the entire telegram history (the DB hot-tier). Irreversible.</summary>
+    /// <remarks>
+    /// Deletes every row in one statement — the request carries no filter, so there is no way to
+    /// clear only part of the history. The SQLite WAL is checkpointed afterwards so the file
+    /// shrinks. Archive files on disk are not touched and stay downloadable.
+    /// </remarks>
+    /// <returns>An object with a single <c>deleted</c> property: the number of rows removed.</returns>
     [HttpDelete]
     public async Task<IActionResult> ClearAll()
     {
@@ -85,6 +120,28 @@ public partial class TelegramsController : ControllerBase
     }
 
     /// <summary>Server-streamed CSV export over the full filtered DB range.</summary>
+    /// <remarks>
+    /// Accepts the same filters as <c>GET /api/telegrams</c>, but exports every matching row:
+    /// <c>cursor</c> and <c>pageSize</c> are ignored and there is no row limit. Rows are always
+    /// written chronologically (oldest first), regardless of <c>order</c>.
+    /// <para>
+    /// The response is streamed while the query is still running, so the body starts arriving
+    /// before the row count is known and no <c>Content-Length</c> is sent. The header line is
+    /// always written, even when nothing matches. Encoding is UTF-8 without BOM; fields that
+    /// contain a comma, quote or line break are quoted with doubled inner quotes. The filename is
+    /// <c>knx-telegrams-{UTC timestamp}.csv</c>.
+    /// </para>
+    /// <para>
+    /// Columns: Timestamp, SourceAddress, DestinationAddress, GroupAddressName, DatapointType,
+    /// MessageType, Value, ValueDecoded. <c>Value</c> is the raw payload as uppercase hex without
+    /// separators. <c>Timestamp</c> is the UTC value in ISO-8601 round-trip format but carries no
+    /// zone designator — unlike the JSON responses, which end in <c>Z</c>. GroupAddressName and
+    /// DatapointType are empty when the telegram has no linked group address.
+    /// </para>
+    /// </remarks>
+    /// <param name="request">Same filters as the history query; see the remarks above.</param>
+    /// <param name="format">Only <c>csv</c> is supported; any other value yields 400.</param>
+    /// <returns>A streamed <c>text/csv</c> attachment.</returns>
     [HttpGet("export")]
     public async Task<IActionResult> Export([FromQuery] TelegramQueryRequest request, string format = "csv")
     {
@@ -120,12 +177,33 @@ public partial class TelegramsController : ControllerBase
         return new EmptyResult();
     }
 
+    /// <summary>Lists the days available in the cold-tier archive, newest first.</summary>
+    /// <remarks>
+    /// The archive holds one NDJSON file per UTC day, written independently of the database hot
+    /// tier and unaffected by its retention or by <c>DELETE /api/telegrams</c>. Finished days are
+    /// gzipped (<c>compressed: true</c>), the current day stays plain and is still being appended
+    /// to, so its size grows between calls. <c>sizeBytes</c> is the size on disk, i.e. the
+    /// compressed size for gzipped days. Archiving is opt-in via the recording settings, so the
+    /// list is empty as long as nothing has been archived.
+    /// </remarks>
+    /// <returns>One entry per day with <c>date</c> (YYYY-MM-DD), <c>fileName</c>, <c>sizeBytes</c> and <c>compressed</c>.</returns>
     [HttpGet("archive/days")]
     public IActionResult GetArchiveDays()
     {
         return Ok(_archive.GetArchiveDays());
     }
 
+    /// <summary>Downloads the raw archive file of one UTC day.</summary>
+    /// <remarks>
+    /// Serves the gzipped file (<c>application/gzip</c>) when it exists and falls back to the
+    /// plain, still-open file of the current day (<c>application/x-ndjson</c>); 404 when neither
+    /// is present for that day. The payload is NDJSON — one JSON object per line with the keys
+    /// <c>t</c> (UTC timestamp), <c>s</c> (source address), <c>d</c> (destination address),
+    /// <c>mt</c> (message type), <c>r</c> (raw value) and <c>v</c> (decoded value, omitted when
+    /// there is none). The current day is served while the writer still holds it open, so it can
+    /// be missing the last few seconds — the writer flushes on an interval.
+    /// </remarks>
+    /// <param name="date">Archive day as <c>YYYY-MM-DD</c> (UTC). Any other shape yields 400.</param>
     [HttpGet("archive/{date}")]
     public IActionResult DownloadArchiveDay(string date)
     {

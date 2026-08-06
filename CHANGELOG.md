@@ -12,6 +12,20 @@ binaries and auto-generated notes are on the
 
 ## [Unreleased]
 
+### Added
+- **Browsable API reference at `/scalar/v1`** (development only). The generated OpenAPI
+  document now declares the JWT bearer scheme and marks the 42 endpoints that actually
+  require it, so the reference can hold a token and call protected endpoints - the six
+  open ones (health, version, login, refresh, setup, needs-setup) stay marked as open.
+- **Endpoint descriptions come from the code.** Every controller action carries an XML doc
+  comment; a transformer feeds `summary`, `remarks`, `param` and `returns` into the OpenAPI
+  document (.NET 9 does not do this on its own - the transformer can go once we move to
+  .NET 10). 47 of 48 operations are described, including what actually happens on the bus
+  for the write and read endpoints. There is no second, hand-maintained API document that
+  could drift.
+- **`docs/api/openapi.json` is written on every build**, so the API contract is versioned
+  and any change to a route, parameter or response shows up in the diff.
+
 ### Fixed
 - **Reloading the page logged you out after a short break.** The route guard decided
   synchronously on the 15-minute access token and never looked at the refresh token,

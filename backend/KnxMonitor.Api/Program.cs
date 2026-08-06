@@ -17,6 +17,7 @@ using KnxMonitor.Infrastructure.Logging;
 using KnxMonitor.Api.Hubs;
 using KnxMonitor.Api.Services;
 using KnxMonitor.Api.Logging;
+using Scalar.AspNetCore;
 using Serilog;
 
 // Pin the process culture to English so Falcon's DPT enum labels (On/Off, Open/Close,
@@ -272,7 +273,57 @@ builder.Services.AddSignalR()
     });
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    // Ohne dieses Schema kennt die API-Referenz keinen Weg, einen Token zu setzen —
+    // jeder geschützte Aufruf käme dort als 401 zurück.
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Components ??= new Microsoft.OpenApi.Models.OpenApiComponents();
+        document.Components.SecuritySchemes["Bearer"] = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            Description = "Access-Token aus POST /api/Auth/login (ohne \"Bearer \"-Präfix einfügen)."
+        };
+        return Task.CompletedTask;
+    });
+
+    // Beschreibungen kommen aus den XML-Doku-Kommentaren an den Controller-Methoden;
+    // damit ist der Code die einzige Quelle und es gibt keine zweite, separat
+    // gepflegte API-Doku, die still veralten kann.
+    options.AddOperationTransformer<KnxMonitor.Api.OpenApi.XmlDocumentationTransformer>();
+
+    // Nur die Endpunkte als geschützt ausweisen, die es wirklich sind — sonst
+    // erscheinen Login und Health fälschlich als anmeldepflichtig.
+    options.AddOperationTransformer((operation, context, _) =>
+    {
+        var metadata = context.Description.ActionDescriptor.EndpointMetadata;
+        var anonymous = metadata.OfType<Microsoft.AspNetCore.Authorization.IAllowAnonymous>().Any();
+        var authorized = metadata.OfType<Microsoft.AspNetCore.Authorization.IAuthorizeData>().Any();
+
+        if (authorized && !anonymous)
+        {
+            operation.Security = new List<Microsoft.OpenApi.Models.OpenApiSecurityRequirement>
+            {
+                new()
+                {
+                    [new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                    {
+                        Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                        {
+                            Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                            Id = "Bearer"
+                        }
+                    }] = Array.Empty<string>()
+                }
+            };
+        }
+        return Task.CompletedTask;
+    });
+});
 
 // Controllers with JSON configuration
 builder.Services.AddControllers()
@@ -314,6 +365,16 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    // Lesbare API-Referenz über dem generierten Dokument: /scalar/v1.
+    // Nur in Development — in Produktion liegt unter "/" das Angular-Frontend,
+    // und die Endpunktliste gehört dort nicht ungefragt ins Netz.
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "KNX-NG-Monitor API";
+        // Die API ist JWT-geschützt; so kann man den Token in der Oberfläche
+        // hinterlegen und Aufrufe direkt ausprobieren.
+        options.AddPreferredSecuritySchemes("Bearer");
+    });
 }
 
 // Serve static files (Angular frontend) in Production
@@ -323,9 +384,18 @@ if (app.Environment.IsProduction())
     app.UseStaticFiles();
 }
 
+// Gebundene Adressen — leer, wenn kein echter Server dahintersteht. Genau das ist
+// beim OpenAPI-Generator der Fall, der die Anwendung nur aufbaut, um das Dokument
+// abzugreifen; ein ungeschützter Zugriff auf app.Urls lässt ihn scheitern.
+List<string> BoundUrls()
+{
+    try { return app.Urls.ToList(); }
+    catch (InvalidOperationException) { return new List<string>(); }
+}
+
 // Only use HTTPS redirection if HTTPS is configured
 var httpsPort = builder.Configuration["HTTPS_PORT"];
-if (!string.IsNullOrEmpty(httpsPort) || app.Urls.Any(u => u.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+if (!string.IsNullOrEmpty(httpsPort) || BoundUrls().Any(u => u.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
 {
     app.UseHttpsRedirection();
 }
@@ -361,53 +431,58 @@ try
 {
     Log.Information("Starting KNX Monitor API");
 
-    // Start the application in a background task
-    var runTask = Task.Run(() => app.Run());
-
-    // Wait a moment for Kestrel to start
-    await Task.Delay(500);
-
-    // Get the configured URLs and make them browser-friendly
-    var urls = app.Urls;
-    var primaryUrl = urls.FirstOrDefault() ?? "http://localhost:8080";
-
-    // Convert 0.0.0.0 to localhost for display (0.0.0.0 doesn't work in browsers)
-    var displayUrl = primaryUrl.Replace("0.0.0.0", "localhost");
-
-    // Log the URL(s) - modern terminals will make these clickable
-    Log.Information("====================================");
-    Log.Information("KNX Monitor API is running!");
-    Log.Information("Server listening on: " + primaryUrl);
-
-    if (app.Environment.IsDevelopment())
+    // Die Startmeldung hängt am ApplicationStarted-Ereignis statt an einem
+    // Hintergrund-Task mit fester Wartezeit: Erst dort stehen die tatsächlich
+    // gebundenen Adressen fest, und `app.Run()` bleibt der reguläre, synchrone
+    // Aufruf. Letzteres braucht der OpenAPI-Generator, der die Anwendung nur baut
+    // und den Start unterbindet — mit `Task.Run(() => app.Run())` lief er ins Leere.
+    app.Lifetime.ApplicationStarted.Register(() =>
     {
-        Log.Information("Backend API: {Url}", displayUrl);
-        Log.Information("Frontend Dev Server: http://localhost:4200");
-        Log.Information("Note: In Development, start the frontend separately with 'ng serve'");
-    }
-    else
-    {
-        Log.Information("Access the application at: {Url}", displayUrl);
-        if (urls.Count > 1)
+        // Ohne echten Server gibt es keine gebundenen Adressen — dann ist auch
+        // nichts zu melden.
+        var urls = BoundUrls();
+        if (urls.Count == 0)
         {
+            return;
+        }
+
+        var primaryUrl = urls[0];
+
+        // Convert 0.0.0.0 to localhost for display (0.0.0.0 doesn't work in browsers)
+        var displayUrl = primaryUrl.Replace("0.0.0.0", "localhost");
+
+        // Log the URL(s) - modern terminals will make these clickable
+        Log.Information("====================================");
+        Log.Information("KNX Monitor API is running!");
+        Log.Information("Server listening on: " + primaryUrl);
+
+        if (app.Environment.IsDevelopment())
+        {
+            Log.Information("Backend API: {Url}", displayUrl);
+            Log.Information("Frontend Dev Server: http://localhost:4200");
+            Log.Information("Note: In Development, start the frontend separately with 'ng serve'");
+        }
+        else
+        {
+            Log.Information("Access the application at: {Url}", displayUrl);
             foreach (var url in urls.Skip(1))
             {
                 var altDisplayUrl = url.Replace("0.0.0.0", "localhost");
                 Log.Information("Alternative URL: {Url}", altDisplayUrl);
             }
         }
-    }
 
-    Log.Information("====================================");
+        Log.Information("====================================");
 
-    // Check if we should open the browser (only in Production)
-    if (ShouldOpenBrowser(app.Environment))
-    {
-        Log.Information("Opening browser...");
-        OpenBrowser(primaryUrl);
-    }
+        // Check if we should open the browser (only in Production)
+        if (ShouldOpenBrowser(app.Environment))
+        {
+            Log.Information("Opening browser...");
+            OpenBrowser(primaryUrl);
+        }
+    });
 
-    await runTask;
+    await app.RunAsync();
 }
 catch (Exception ex)
 {

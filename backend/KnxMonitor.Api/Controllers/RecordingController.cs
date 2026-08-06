@@ -20,6 +20,11 @@ public class RecordingController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>Current recording settings: hot-buffer size and cold-archive options.</summary>
+    /// <remarks>
+    /// Served from the cached snapshot that the recording services themselves read, so this needs
+    /// no database round-trip.
+    /// </remarks>
     [HttpGet("settings")]
     public IActionResult GetSettings()
     {
@@ -32,6 +37,23 @@ public class RecordingController : ControllerBase
         });
     }
 
+    /// <summary>Updates the recording settings; they take effect on the running recording.</summary>
+    /// <remarks>
+    /// The values are persisted and swapped into the snapshot the recording workers read, so no
+    /// restart is needed. What the fields do:
+    /// HotBufferMaxCount is the number of telegrams kept in the database — a retention pass
+    /// periodically deletes everything older than the newest HotBufferMaxCount rows, so lowering
+    /// the value discards the oldest telegrams. Deletion happens chunked on the following passes,
+    /// not the instant the value is saved.
+    /// ArchiveEnabled toggles the additional NDJSON+gzip day-files; switching it off stops new
+    /// writes but leaves existing archive files untouched.
+    /// ArchiveRetentionDays deletes archive day-files older than that many days, null keeps them
+    /// forever. The sweep runs at startup and at the daily file rollover, so a shortened retention
+    /// only takes effect at the next sweep.
+    /// Validation: HotBufferMaxCount must be greater than 0, ArchiveRetentionDays must be null or
+    /// greater than 0 — otherwise 400 and nothing is changed.
+    /// </remarks>
+    /// <returns>The settings as they are now in effect.</returns>
     [HttpPut("settings")]
     public async Task<IActionResult> UpdateSettings([FromBody] RecordingSettingsDto dto)
     {

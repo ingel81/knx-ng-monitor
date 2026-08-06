@@ -25,6 +25,20 @@ public class ProjectsController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>Uploads an ETS project file and starts the import as a background job.</summary>
+    /// <remarks>
+    /// Returns as soon as the job exists — the parse itself runs in the background, so poll
+    /// <c>GET imports/{id}</c> for progress. Only files ending in <c>.knxproj</c> are accepted,
+    /// and the request body is capped at 200 MB.
+    ///
+    /// If the archive is password protected the job stops in <c>WaitingForInput</c> and lists what
+    /// it needs; feed those inputs to <c>POST imports/{id}/provide-input</c>, then the job continues
+    /// on its own. Re-uploading a project that was imported before is recognised by its ETS project
+    /// id and updates the existing project in place, so recorded telegrams keep their group-address
+    /// link. A genuinely new project is auto-activated when no other project is active yet.
+    /// </remarks>
+    /// <param name="file">The <c>.knxproj</c> file, sent as multipart/form-data.</param>
+    /// <returns>The created import job: id, status, the step list and (once finished) the project id and counts.</returns>
     [HttpPost("upload")]
     public async Task<IActionResult> UploadProject(IFormFile file)
     {
@@ -55,6 +69,14 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Returns the current state of an import job.</summary>
+    /// <remarks>
+    /// Jobs are held in memory only. A job that has completed, failed or been cancelled is swept
+    /// an hour after it terminated (the cleanup worker runs every five minutes) and is reported as
+    /// not found from then on.
+    /// </remarks>
+    /// <param name="id">Job id returned by the upload call.</param>
+    /// <returns>Status, overall progress, per-step detail and the outstanding requirements.</returns>
     [HttpGet("imports/{id}")]
     public IActionResult GetImportStatus(Guid id)
     {
@@ -74,6 +96,20 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Supplies one requested input — project password, keyring file or keyring password — to a waiting import job.</summary>
+    /// <remarks>
+    /// Each call fulfils exactly the requirement named in <c>type</c>; the keyring file is passed
+    /// Base64-encoded. The call is only accepted while the job is in <c>WaitingForInput</c> and
+    /// rejected otherwise.
+    ///
+    /// Supplying the project password triggers a second look inside the now decryptable archive:
+    /// if KNX Secure devices turn up, an optional keyring file and keyring password requirement are
+    /// added and the job stays in <c>WaitingForInput</c>. As soon as every listed requirement is
+    /// marked fulfilled, the import resumes in the background — poll <c>GET imports/{id}</c> from
+    /// there. The password is not verified at this point; a wrong one surfaces as a failed job.
+    /// </remarks>
+    /// <param name="id">Job id of the waiting import.</param>
+    /// <param name="input">The values for the requirements the job is waiting on.</param>
     [HttpPost("imports/{id}/provide-input")]
     public async Task<IActionResult> ProvideInput(Guid id, [FromBody] ProvideInputDto input)
     {
@@ -93,6 +129,11 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Marks an import job as cancelled.</summary>
+    /// <remarks>
+    /// This flips the job state only. A parse already running in the background is not interrupted
+    /// and a project it has written stays. Unknown job ids are accepted without effect.
+    /// </remarks>
     [HttpDelete("imports/{id}")]
     public IActionResult CancelImport(Guid id)
     {
@@ -109,6 +150,8 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Lists all imported projects.</summary>
+    /// <returns>Per project: name, source file name, import date, active flag and the group-address and device counts.</returns>
     [HttpGet]
     public async Task<IActionResult> GetAllProjects()
     {
@@ -124,6 +167,10 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Returns one project together with its group addresses and devices.</summary>
+    /// <remarks>
+    /// Both lists come back complete and unpaged, so the response grows with the size of the project.
+    /// </remarks>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetProjectDetails(int id)
     {
@@ -143,6 +190,13 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Makes this project the active one.</summary>
+    /// <remarks>
+    /// Activation is exclusive: any other active project is deactivated in the same transaction,
+    /// so at most one project is ever active. Afterwards the group-address cache is refreshed and
+    /// incoming telegrams resolve to this project's names and DPTs. The bus connection is
+    /// deliberately left untouched — activating decodes, it does not connect.
+    /// </remarks>
     [HttpPut("{id}/activate")]
     public async Task<IActionResult> ActivateProject(int id)
     {
@@ -163,6 +217,12 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Deactivates the project, leaving no project active.</summary>
+    /// <remarks>
+    /// The group-address cache is cleared, so telegrams are shown undecoded — raw hex, without name
+    /// or DPT. Monitoring keeps running: the bus link stays up. Deactivating a project that is
+    /// already inactive succeeds and changes nothing.
+    /// </remarks>
     [HttpPut("{id}/deactivate")]
     public async Task<IActionResult> DeactivateProject(int id)
     {
@@ -183,6 +243,11 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Reports what deleting this project would affect, for the confirmation dialog.</summary>
+    /// <returns>
+    /// The project's group-address and device counts plus the number of recorded telegrams mapped
+    /// to it. Those telegrams survive the deletion — they only lose their group-address mapping.
+    /// </returns>
     [HttpGet("{id}/delete-preview")]
     public async Task<IActionResult> GetDeletePreview(int id)
     {
@@ -202,6 +267,11 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Returns the project's locations (buildings, floors, rooms, …).</summary>
+    /// <remarks>
+    /// A flat list, not a tree — the hierarchy is expressed through each entry's parent id. Every
+    /// entry also carries the device and group addresses assigned to that location.
+    /// </remarks>
     [HttpGet("{id}/locations")]
     public async Task<IActionResult> GetLocations(int id)
     {
@@ -221,6 +291,14 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Returns the project's communication objects, optionally only those linked to one group address.</summary>
+    /// <remarks>
+    /// Each entry is enriched with the name, manufacturer and product name of the device behind its
+    /// physical address, as far as that device is part of the project. Sorted by device address,
+    /// then by object number.
+    /// </remarks>
+    /// <param name="id">Project id.</param>
+    /// <param name="address">Group address (<c>m/m/s</c>). When set, only objects whose group-address link matches it exactly are returned.</param>
     [HttpGet("{id}/commobjects")]
     public async Task<IActionResult> GetCommObjects(int id, [FromQuery] string? address)
     {
@@ -240,6 +318,7 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Returns the project's group ranges — the named main and middle groups — ordered by range start.</summary>
     [HttpGet("{id}/groupranges")]
     public async Task<IActionResult> GetGroupRanges(int id)
     {
@@ -259,6 +338,13 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Resolves a single device of the project by its physical address.</summary>
+    /// <remarks>
+    /// The address is matched exactly, and an unknown project id is reported the same way as an
+    /// unknown device.
+    /// </remarks>
+    /// <param name="id">Project id.</param>
+    /// <param name="address">Physical address (<c>a.l.d</c>) to look up. Required.</param>
     [HttpGet("{id}/device")]
     public async Task<IActionResult> GetDeviceByAddress(int id, [FromQuery] string? address)
     {
@@ -281,6 +367,18 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Attaches a keyring (<c>.knxkeys</c>) to an already imported project.</summary>
+    /// <remarks>
+    /// Multipart upload of the file plus its password; both are required and only files ending in
+    /// <c>.knxkeys</c> are accepted. Any keyring material previously stored for the project is
+    /// replaced — both the decrypted per-key rows and the raw keyring bytes, which KNX Data Secure
+    /// needs when it loads the keyring at connect time. Because of that the keyring password is
+    /// stored with the project. A wrong password or an unreadable file is reported as a client error.
+    /// </remarks>
+    /// <param name="id">Project the keyring belongs to.</param>
+    /// <param name="file">The <c>.knxkeys</c> keyring file.</param>
+    /// <param name="password">Password of the keyring file. Required.</param>
+    /// <returns>How many keys were read, split into group-address and tool keys, and whether a backbone key is present.</returns>
     [HttpPost("{id}/keyring")]
     public async Task<IActionResult> UploadKeyring(int id, IFormFile file, [FromForm] string? password)
     {
@@ -319,6 +417,13 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    /// <summary>Deletes a project and everything parsed from it.</summary>
+    /// <remarks>
+    /// Removes the project's group addresses, devices, locations, communication objects, group
+    /// ranges and stored keyring material in one transaction. Recorded telegrams are kept but lose
+    /// their group-address link and are shown undecoded from then on. Deleting the active project
+    /// leaves no project active; the bus link stays up.
+    /// </remarks>
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteProject(int id)
     {
