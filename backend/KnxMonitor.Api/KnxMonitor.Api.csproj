@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Default version for local/dev builds; CI overrides via -p:Version=<tag> at publish. -->
-    <Version>0.8.4</Version>
+    <Version>0.10.0</Version>
     <!--
       Single-file publish must self-extract ALL content (managed assemblies) to disk,
       not just native libs. The Knx.Falcon ApplicationData master-data loader derives its

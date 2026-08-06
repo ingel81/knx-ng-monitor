@@ -325,7 +325,27 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.9.0:** the charts view grew up - display options (line / area /
+**Current - v0.10.0:** the app is usable on a phone and a tablet, not just
+tolerable. The bottom navigation is down to four tabs plus a "More" sheet, and the
+top bar collapses the same way below 1560 px; group addresses render as cards
+instead of stacked rows; the telegram sheet lays its short fields out in two
+columns, keeps its header in place and can be swiped away; charts and statistics
+fold their time-range controls behind a toggle so the chart is visible without
+scrolling; and the telegram table drops to five columns on tablets, where the
+value column used to sit off-screen. Dates follow the selected language everywhere
+(#11) - one formatter instead of a mix of hard-coded patterns, browser defaults and
+Angular's date pipe, which was stuck on en-US with 12-hour time. **A session now
+survives a page reload:** the route guard decided on the 15-minute access token and
+never looked at the 7-day refresh token, so any reload after a short break forced a
+new login - in production too. New: a browsable API reference at `/scalar/v1` whose
+descriptions come from XML doc comments on the controllers, with the OpenAPI
+document written to `docs/api/openapi.json` on every build, so the API contract is
+versioned. Also fixed: the app shell was sized with `100vh` and hid the bottom
+navigation behind the mobile address bar, every loading spinner rendered its icon
+name as text, and the write-confirmation dialog shrank to 288 px on a phone -
+the one dialog guarding a live bus write.
+
+**Previous - v0.9.0:** the charts view grew up - display options (line / area /
 steps, data points, zero-based axis, average line), PNG and CSV export, a
 per-series summary of min / max / average / last that doubles as the interactive
 legend, a searchable group-address picker, a moving window in live mode, and the

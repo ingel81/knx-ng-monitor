@@ -10,7 +10,7 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
-## [Unreleased]
+## [0.10.0]
 
 ### Added
 - **Browsable API reference at `/scalar/v1`** (development only). The generated OpenAPI
