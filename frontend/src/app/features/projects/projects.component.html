@@ -115,7 +115,7 @@
               </ng-container>
               <ng-container matColumnDef="dpt">
                 <th mat-header-cell *matHeaderCellDef>{{ 'columns.dpt' | translate }}</th>
-                <td mat-cell *matCellDef="let ga">{{ ga.datapointType || ('common.na' | translate) }}</td>
+                <td mat-cell *matCellDef="let ga" [knxDptTitle]="ga.datapointType">{{ ga.datapointType || ('common.na' | translate) }}</td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="['address', 'name', 'dpt']"></tr>
               <tr mat-row *matRowDef="let row; columns: ['address', 'name', 'dpt'];"></tr>

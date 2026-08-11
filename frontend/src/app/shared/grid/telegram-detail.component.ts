@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { messageTypeKind, messageTypeName, unitForDpt } from './knx-grid.util';
+import { DptTitleDirective } from './dpt-title.directive';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LanguageService } from '../../core/i18n/language.service';
 import { formatKnxDate } from '../../core/i18n/date.util';
@@ -47,7 +48,7 @@ export interface TelegramDetailData {
 @Component({
   selector: 'app-telegram-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MatButtonModule, MatTooltipModule, MatDialogModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, MatIconModule, MatButtonModule, MatTooltipModule, MatDialogModule, TranslatePipe, DptTitleDirective],
   template: `
     <div class="knx-sheet">
       <header class="knx-sheet-head" #head>
@@ -77,7 +78,7 @@ export interface TelegramDetailData {
         <div class="field field--wide"><dt>{{ 'detail.timestamp' | translate }}</dt><dd class="mono">{{ formatTime(data.timestamp) }}</dd></div>
         <div class="field field--wide"><dt>{{ 'detail.source' | translate }}</dt><dd class="mono">{{ data.sourceAddress || '–' }}@if (sourceDevice?.name) {<span class="dd-extra"> · {{ sourceDevice!.name }}</span>}</dd></div>
         <div class="field"><dt>{{ 'detail.destGa' | translate }}</dt><dd class="mono">{{ data.destinationAddress || '–' }}</dd></div>
-        <div class="field"><dt>{{ 'detail.dpt' | translate }}</dt><dd class="mono">{{ data.datapointType || '–' }}</dd></div>
+        <div class="field"><dt>{{ 'detail.dpt' | translate }}</dt><dd class="mono" [knxDptTitle]="data.datapointType">{{ data.datapointType || '–' }}</dd></div>
         <div class="field"><dt>{{ 'detail.raw' | translate }}</dt><dd class="mono">{{ data.value || '–' }}</dd></div>
         <div class="field"><dt>{{ 'detail.type' | translate }}</dt><dd>{{ typeName || '–' }}</dd></div>
         @if (data.priority !== undefined && data.priority !== null && data.priority !== '') {

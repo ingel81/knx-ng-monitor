@@ -88,7 +88,7 @@
                                    Mobile: their own grid row below address/name/value. -->
                               <div class="leaf-tags">
                                 @if (leaf.datapointType) {
-                                  <span class="leaf-dpt mono">{{ leaf.datapointType }}</span>
+                                  <span class="leaf-dpt mono" [knxDptTitle]="leaf.datapointType">{{ leaf.datapointType }}</span>
                                 }
 
                                 <!-- KNX flags, aggregated over the linked communication objects. -->

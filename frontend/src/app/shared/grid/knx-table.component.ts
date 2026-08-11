@@ -4,12 +4,13 @@ import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrollin
 import { KnxTelegram } from '../../core/services/signalr.service';
 import { messageTypeKind, messageTypeName, unitForDpt } from './knx-grid.util';
 import { OverflowTitleDirective } from './overflow-title.directive';
+import { DptTitleDirective } from './dpt-title.directive';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LanguageService } from '../../core/i18n/language.service';
 import { localeTag } from '../../core/i18n/locale.util';
 import { formatKnxDateIn } from '../../core/i18n/date.util';
 
-export type ColumnKind = 'time' | 'datetime' | 'mono' | 'muted-mono' | 'name' | 'type' | 'value';
+export type ColumnKind = 'time' | 'datetime' | 'mono' | 'muted-mono' | 'dpt' | 'name' | 'type' | 'value';
 
 export interface KnxColumn {
   key: keyof KnxTelegram | string;
@@ -35,7 +36,7 @@ const BARE_NUMBER_RE = /^-?\d[\d.,\s]*$/;
 @Component({
   selector: 'knx-table',
   standalone: true,
-  imports: [CommonModule, ScrollingModule, OverflowTitleDirective, TranslatePipe],
+  imports: [CommonModule, ScrollingModule, OverflowTitleDirective, DptTitleDirective, TranslatePipe],
   templateUrl: './knx-table.component.html',
   styleUrl: './knx-table.component.scss'
 })

@@ -189,7 +189,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     { key: 'sourceAddress', header: 'columns.source', kind: 'mono', width: 105 },
     { key: 'destinationAddress', header: 'columns.dest', kind: 'mono', width: 105 },
     { key: 'groupAddressName', header: 'columns.name', kind: 'name', grow: 1.4, minWidth: 200 },
-    { key: 'datapointType', header: 'columns.dpt', kind: 'muted-mono', width: 120, align: 'right' },
+    { key: 'datapointType', header: 'columns.dpt', kind: 'dpt', width: 120, align: 'right' },
     { key: 'messageType', header: 'columns.type', kind: 'type', width: 110 },
     { key: 'value', header: 'columns.raw', kind: 'muted-mono', width: 140, align: 'right' },
     { key: 'valueDecoded', header: 'columns.value', kind: 'value', grow: 1, minWidth: 150, align: 'right' },

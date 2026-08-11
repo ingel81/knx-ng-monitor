@@ -1,3 +1,5 @@
+import { DPT_DESCRIPTIONS } from './dpt-descriptions';
+
 /** Normalisiert messageType (Enum-Zahl oder String) auf einen Kurz-Key. */
 export function messageTypeKind(type: string | number | undefined): '' | 'write' | 'read' | 'response' {
   switch (String(type).toLowerCase()) {
@@ -39,11 +41,40 @@ const DPT_UNITS: Record<string, string> = {
   '14.058': 'var', '14.065': 'm/s', '14.068': '°C', '14.076': 'm³',
 };
 
-/** Einheit zu einem DPT-String (format-agnostisch: "DPST-14-56", "DPT 9.001", "9.001"). */
+/** Zerlegt einen DPT-String (format-agnostisch: "DPST-1-1", "DPT-1", "DPT 9.001", "9.001"). */
+export function parseDpt(dpt: string | undefined | null): { main: number; sub: number | null } | null {
+  if (!dpt) return null;
+  const m = dpt.toString().match(/(\d+)(?:\D+(\d+))?/);
+  if (!m) return null;
+  return { main: parseInt(m[1], 10), sub: m[2] !== undefined ? parseInt(m[2], 10) : null };
+}
+
+/** Lookup-Key "main.sss" für einen Subtyp. */
+function dptKey(main: number, sub: number): string {
+  return `${main}.${String(sub).padStart(3, '0')}`;
+}
+
+/**
+ * Beschreibungstext zu einem DPT-String, z. B. "9.001 · Temperatur (°C) ·
+ * DPT_Value_Temp". Fällt bei unbekanntem Subtyp auf den Haupttyp zurück, sonst ''.
+ */
+export function dptDescription(dpt: string | undefined | null, lang: 'en' | 'de'): string {
+  const p = parseDpt(dpt);
+  if (!p) return '';
+  let key = p.sub !== null ? dptKey(p.main, p.sub) : String(p.main);
+  let entry = DPT_DESCRIPTIONS[key];
+  if (!entry) {
+    key = String(p.main);
+    entry = DPT_DESCRIPTIONS[key];
+  }
+  if (!entry) return '';
+  const text = entry[lang] || entry.en;
+  return [key, text, entry.n].filter(Boolean).join(' · ');
+}
+
+/** Einheit zu einem DPT-String (nur Subtypen tragen Einheiten). */
 export function unitForDpt(dpt: string | undefined | null): string {
-  if (!dpt) return '';
-  const m = dpt.toString().match(/(\d+)\D+(\d+)/);
-  if (!m) return '';
-  const key = `${parseInt(m[1], 10)}.${String(parseInt(m[2], 10)).padStart(3, '0')}`;
-  return DPT_UNITS[key] ?? '';
+  const p = parseDpt(dpt);
+  if (!p || p.sub === null) return '';
+  return DPT_UNITS[dptKey(p.main, p.sub)] ?? '';
 }

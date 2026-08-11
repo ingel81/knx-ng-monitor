@@ -10,6 +10,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ProjectService, GroupAddressDto, GroupRangeDto } from '../../core/services/project.service';
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { DptTitleDirective } from '../../shared/grid/dpt-title.directive';
 import { formatKnxDate } from '../../core/i18n/date.util';
 import { LoggerService } from '../../core/logging/logger.service';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/confirm-dialog.component';
@@ -100,7 +101,7 @@ interface MainNode {
 @Component({
   selector: 'app-group-addresses',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, MatIconModule, TranslatePipe, DptTitleDirective],
   templateUrl: './group-addresses.component.html',
   styleUrl: './group-addresses.component.scss'
 })

@@ -24,6 +24,7 @@
             @case ('datetime') { <span class="mono muted" knxOverflowTitle>{{ formatDateTime(val(row, col.key)) }}</span> }
             @case ('mono') { <span class="mono" knxOverflowTitle>{{ val(row, col.key) }}</span> }
             @case ('muted-mono') { <span class="mono muted" knxOverflowTitle>{{ val(row, col.key) || '–' }}</span> }
+            @case ('dpt') { <span class="mono muted" [knxDptTitle]="val(row, col.key)">{{ val(row, col.key) || '–' }}</span> }
             @case ('name') {
               <span class="name-text" [class.empty]="!val(row, 'groupAddressName')" knxOverflowTitle>{{ val(row, 'groupAddressName') || ('detail.unknown' | translate) }}</span>
             }
