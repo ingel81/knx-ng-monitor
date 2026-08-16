@@ -10,6 +10,18 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
+## [Unreleased]
+
+### Fixed
+- **`ASPNETCORE_URLS` is honoured again.** Setting it did nothing - neither for the
+  portable binary nor in Docker, where the image sets it itself: the app always came up
+  on 8080. The shipped `appsettings.json` pinned an explicit Kestrel endpoint, and a
+  configured endpoint outranks the address list the variable feeds. The pin is gone; the
+  default `http://0.0.0.0:8080` now lives in code and applies only when nothing else
+  configures an address. `ASPNETCORE_HTTP_PORTS` and `ASPNETCORE_HTTPS_PORTS` were just as
+  inert and now take effect too. Unchanged: the default port and interface, and
+  `Kestrel__Endpoints__Http__Url`, which was the one way around the pin and keeps winning.
+
 ## [0.10.0]
 
 ### Added

@@ -106,6 +106,17 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
 });
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = MaxUploadBytes);
 
+// Standard-Adresse 0.0.0.0:8080, aber nur wenn wirklich nichts anderes eine Adresse setzt.
+// Sie darf nicht in appsettings.json stehen: ein dort konfigurierter Kestrel-Endpunkt sticht die
+// Adressliste und machte ASPNETCORE_URLS damit wirkungslos (#9). Muss vor builder.Build() laufen —
+// app.Urls.Add() danach wirft im OpenAPI-Generator (genau dafür gibt es BoundUrls()), und
+// ConfigureKestrel(o => o.ListenAnyIP(...)) ließe app.Urls leer, womit Startmeldung und
+// Browser-Start still nichts mehr täten.
+if (HostingUrls.ResolveFallbackListenUrl(builder.Configuration) is { } fallbackUrl)
+{
+    builder.WebHost.UseUrls(fallbackUrl);
+}
+
 // Rate limiting — throttle the anonymous auth endpoints against brute force.
 builder.Services.AddRateLimiter(options =>
 {
@@ -448,8 +459,10 @@ try
 
         var primaryUrl = urls[0];
 
-        // Convert 0.0.0.0 to localhost for display (0.0.0.0 doesn't work in browsers)
-        var displayUrl = primaryUrl.Replace("0.0.0.0", "localhost");
+        // Platzhalter-Host auf localhost drehen, der Browser kann mit 0.0.0.0 nichts anfangen.
+        // Seit #9 wirkt ASPNETCORE_URLS auch im Container, und dessen http://+:8080 taucht hier
+        // als gebundenes http://[::]:8080 auf — das traf das frühere Replace("0.0.0.0", …) nicht.
+        var displayUrl = HostingUrls.ToBrowsableUrl(primaryUrl);
 
         // Log the URL(s) - modern terminals will make these clickable
         Log.Information("====================================");
@@ -467,7 +480,7 @@ try
             Log.Information("Access the application at: {Url}", displayUrl);
             foreach (var url in urls.Skip(1))
             {
-                var altDisplayUrl = url.Replace("0.0.0.0", "localhost");
+                var altDisplayUrl = HostingUrls.ToBrowsableUrl(url);
                 Log.Information("Alternative URL: {Url}", altDisplayUrl);
             }
         }
@@ -565,8 +578,9 @@ static void OpenBrowser(string url)
 {
     try
     {
-        // Convert 0.0.0.0 to localhost for browser
-        url = url.Replace("0.0.0.0", "localhost");
+        // Platzhalter-Host (0.0.0.0, [::], +, *) auf localhost drehen — sonst öffnet der Browser
+        // eine Adresse, die er nicht auflösen kann.
+        url = HostingUrls.ToBrowsableUrl(url);
 
         if (OperatingSystem.IsWindows())
         {

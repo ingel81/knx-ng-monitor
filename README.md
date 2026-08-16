@@ -241,7 +241,7 @@ types and room/building context. The two-stage wizard walks through:
 | Variable | Default | Purpose |
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | `Production` | `Development` enables CORS for `:4200`, the separate dev server and the scalar/v1 API docs |
-| `ASPNETCORE_URLS` | `http://+:8080` | Listen URL - change to use a different port |
+| `ASPNETCORE_URLS` | `http://0.0.0.0:8080` | Listen URL - change to use a different port. Up to 0.10.0 the shipped `appsettings.json` pinned the endpoint and silently outranked this variable; it is honoured now. Alternatives: `ASPNETCORE_HTTP_PORTS`, `ASPNETCORE_HTTPS_PORTS`, `Kestrel__Endpoints__Http__Url`, or a `Urls` key in `appsettings.json` - each of them wins over the default. The Docker image sets the equivalent `http://+:8080`; inside a container leave the port at 8080 (the `HEALTHCHECK` probes it) and remap on the host with `-p HOST:8080` |
 | `KNX_LOG_LEVEL` | `Information` | Log verbosity: `Verbose`, `Debug`, `Information`, `Warning`, `Error`, `Fatal` (see [Logging & diagnostics](#logging--diagnostics)) |
 
 ### Data directory
