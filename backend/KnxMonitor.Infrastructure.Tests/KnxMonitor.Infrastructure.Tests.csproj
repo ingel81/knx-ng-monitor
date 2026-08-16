@@ -26,6 +26,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The real shipped configuration, so a test can assert what it does (not) contain.
+         Deliberately linked into a subfolder: dropped into the output root the test host would
+         pick it up as its own configuration. -->
+    <None Include="..\KnxMonitor.Api\appsettings.json" Link="ApiConfig\appsettings.json"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\KnxMonitor.Core\KnxMonitor.Core.csproj" />
     <ProjectReference Include="..\KnxMonitor.Infrastructure\KnxMonitor.Infrastructure.csproj" />
   </ItemGroup>

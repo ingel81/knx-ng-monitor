@@ -124,10 +124,9 @@ jobs:
           if [ -f "$EXE.exe" ]; then EXE="$EXE.exe"; else chmod +x "$EXE"; fi
 
           export ASPNETCORE_ENVIRONMENT=Production
-          # appsettings.json pins an explicit Kestrel endpoint, which outranks ASPNETCORE_URLS.
-          # Environment variables do outrank appsettings, so bind the probe port this way and
-          # stay off 8080 in case something else on the runner holds it.
-          export Kestrel__Endpoints__Http__Url=http://127.0.0.1:8099
+          # Bind the probe port through the documented variable — that is exactly what proves it
+          # reaches Kestrel. Deliberately off 8080 in case something else on the runner holds it.
+          export ASPNETCORE_URLS=http://127.0.0.1:8099
           # Mirror the container: a separate bundle extraction directory, so a data directory
           # resolved from AppContext.BaseDirectory would land there and be caught below.
           export DOTNET_BUNDLE_EXTRACT_BASE_DIR="$EXTRACT"

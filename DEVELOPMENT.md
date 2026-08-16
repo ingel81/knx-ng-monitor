@@ -127,6 +127,12 @@ backend on `http://localhost:8080`, and CORS for `:4200` is enabled. In
 `Production` the backend serves the prebuilt Angular bundle directly (single
 port).
 
+The `:8080` default now lives in code and steps aside for anything that
+configures an address - a local (gitignored) `Properties/launchSettings.json`
+with an `applicationUrl` among it. If yours points somewhere else, `dotnet run`
+comes up on that port and the Angular proxy finds nothing: either drop the key,
+set it to `http://localhost:8080`, or run with `--no-launch-profile`.
+
 ### Local production build (mirrors GitHub Actions)
 
 ```bash

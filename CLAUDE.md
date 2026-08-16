@@ -82,6 +82,7 @@ dotnet run --project KnxMonitor.Api                                    # http://
 
 # Tests — parser library carries the bulk of the coverage
 dotnet test KnxMonitor.ProjectParser.Tests/KnxMonitor.ProjectParser.Tests.csproj
+dotnet test KnxMonitor.Infrastructure.Tests/KnxMonitor.Infrastructure.Tests.csproj
 
 # Coverage (cobertura → coverage-tmp/, ignored by git)
 dotnet test KnxMonitor.ProjectParser.Tests/KnxMonitor.ProjectParser.Tests.csproj \
@@ -200,7 +201,7 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 | Variable | Default | Purpose |
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | `Production` | `Development` enables CORS for `:4200` and Scalar OpenAPI docs |
-| `ASPNETCORE_URLS` | `http://+:8080` | Listen URL |
+| `ASPNETCORE_URLS` | `http://0.0.0.0:8080` | Listen URL. Der Default kommt aus `HostingUrls.ResolveFallbackListenUrl` und greift nur, wenn weder `urls`/`ASPNETCORE_HTTP_PORTS`/`ASPNETCORE_HTTPS_PORTS` noch ein `Kestrel:Endpoints`-Abschnitt gesetzt sind — er darf **nicht** zurück in `appsettings.json` wandern (das stach die Adressliste, #9). Das Docker-Image setzt das äquivalente `http://+:8080` |
 
 `./data/.jwt-secret` is auto-generated on first start; never commit it.
 
