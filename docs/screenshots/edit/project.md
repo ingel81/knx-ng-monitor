@@ -72,3 +72,38 @@
 - **Datenschutz-Blur (in-place, betrifft auch README/GitHub):** Name **Ingelfinger** + Adresse **Kilianstraße 7** in 5 webp mosaik-geblurrt (PIL, `scratchpad/blur.py`, Boxen in Original-3840-Koords): `topology` (2 Boxen), `graph` (2 Node-Labels mittig), `projects-import` (NAME+FILE), `projects` (NAME+FILE), `projects-detail` (Dialog-Titel + Hintergrund-Zeile). Thumbs (1040×585) mit-regeneriert. Übrige Screens (monitor/charts/stats/group-addresses/settings) enthielten den Namen nicht. Originale gesichert in `scratchpad/preblur/`.
 - Rebuild **238.5 s**, ~25 MB, Kopie auf G:. Alle 3 Video-Beats (topology/graph/import) per Frame-Extract auf Blur geprüft = sauber.
 - **Nachtrag (gleiche Session):** Musik-Track gewechselt `track03`→**`track04.mp3`** + `MUSVOL` 0.06→**0.04** (noch leiser). atempo 0.80 + Sidechain bleiben. Dann „zu leise" → `MUSVOL` 0.04→**0.10** (track04 lauter), Gesamt-Audio mean -32.5 dB. Rebuild + G:-Kopie.
+
+## Session 7 — 2026-08-17 (Bildmaterial auf den aktuellen Stand, plus YouTube-Short)
+
+**Auftrag:** Video inhaltlich lassen, aber alles Gezeigte gegen die aktuelle UI und eine
+frische Prod-DB tauschen; zusätzlich ein Short fürs Hochformat. Datenschutz-Blur wie gehabt.
+
+- **Datenbasis:** neue Prod-Kopie `publish/data/knxmonitor.db` (140 MB, **1.000.001 Telegramme**,
+  08.08.–17.08.2026, Projekt `Ingelfinger_iob_import`, 843 GAs). Wie in §2a beschrieben nach
+  `backend/KnxMonitor.Api/bin/Debug/net9.0/data/` kopiert (die Env-Variable wirkt nicht),
+  Dev-DB als `knxmonitor.db.devbak-20260817` gesichert, `demo`/`demo12345` per BCrypt nachgetragen.
+  Backend `dotnet run` (Dev, :8080) + `ng serve --port 4321 --proxy-config proxy.conf.json`.
+  4200 war von einem fremden Projekt belegt — deshalb 4321.
+- **Screenshots:** alle **27** neu via `gallery.mjs` (20 wie bisher + 7 neue Phone-Ansichten
+  für den Short), Chart-Range auf `2026-08-14 … 2026-08-16` gezogen (drei Tag/Nacht-Zyklen).
+  Blur meldete Treffer auf topology (2), logs (4), projects (2), projects-detail (3),
+  projects-import (2), topology-mobile (2), projects-mobile (2) — Graph weiter über
+  API-Redaction. `projects`, `projects-detail`, `settings`, `topology` sind byte-identisch
+  zum 6.8. geblieben (statische Ansichten, gleiches Projekt).
+- **Bewegte Beats neu:** `rec_clips.mjs` (neu) nimmt s01 und s12 headless per CDP-Screencast
+  auf, statt sie aus einer alten Bildschirmaufnahme zu schneiden. Wichtigster Fund:
+  `--force-device-scale-factor=2` beim Browserstart, sonst liefert der Screencast beim Phone
+  nur CSS-Pixel (390×844 statt 780×1688). Weichzeichner läuft während der Aufnahme im Intervall.
+  Mobile-Composite jetzt je Sprache (`clips_mobile_beat.mp4` / `_en`), build.py wählt über `VLANG`.
+- **Langvideo:** `final.mp4` **227.6 s / 25.3 MB**, `final_en.mp4` **235.2 s / 25.8 MB**
+  (VO unverändert, nur Bildmaterial neu).
+- **Short (neu):** `generate_short_assets.py` + `tts_short.mjs` + `build_short.py` →
+  `short.mp4` **49.9 s / 4.7 MB**, `short_en.mp4`. 1080×1920, acht Beats, sechs davon aus
+  Phone-Ansichten — im Hochformat trägt der Desktop-Screenshot nur als Ausschnitt neben
+  einem dunklen Phone. Details in REBUILD.md §10.
+- **Datenschutz-Nachbesserung:** Im ersten Durchgang stand im Graph-Beat noch „•••••straße 7" —
+  die API-Redaction traf nur den Stamm `kilian`. Muster auf ganzes Wort + Hausnummer erweitert,
+  `graph` per neuem `ONLY=`-Schalter nachgeschossen, beide Videos neu gerendert.
+- **Offen:** Hero-Animation (`hero.gif`/`hero.webm`) ist weiter vom 24.06. und zeigt die alte
+  UI; ließe sich jetzt aus `clips_live_desktop.mp4` erzeugen. README verlinkt die Videos als
+  GitHub-user-attachments — die müssen nach dem Rebuild neu hochgeladen und die URLs getauscht werden.

@@ -106,12 +106,31 @@ Weichzeichnen (§2c-bis), Füll-Warten und die englische Browsersprache bereits 
 cd docs/screenshots/edit
 FE_PORT=4321 SHOT_OUT=./qa/gen node gallery.mjs      # Port nur nötig, wenn 4200 belegt ist
 ```
-Danach nach webp wandeln (Vollbild + 1040px-Thumb):
+`gallery.mjs` braucht `playwright-core` — im Repo liegt kein `node_modules`. Einmalig in
+einem Scratchpad installieren und das Skript dorthin kopieren (Node löst Importe relativ
+zur **Skriptdatei** auf, `NODE_PATH` hilft bei ESM nicht):
+```bash
+mkdir -p <scratchpad>/shotter && cd <scratchpad>/shotter
+echo '{"name":"shotter","private":true,"type":"module"}' > package.json
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright-core@1.61.1   # passt zu chromium-1228
+cp docs/screenshots/edit/gallery.mjs . && node gallery.mjs
+```
+
+Seit 2026-08-17 schießt der Lauf zusätzlich sieben Phone-Ansichten für den Short
+(`hero-dark-mobile`, `monitor-archive-mobile`, `monitor-detail-mobile`,
+`group-addresses-mobile`, `topology-mobile`, `settings-mobile`, `projects-mobile`).
+`SHORT_SHOTS=0` schaltet sie ab, wenn nur die README-Galerie gebraucht wird.
+
+Danach nach webp wandeln (Vollbild + 1040px-Thumb). **Pfad-Falle:** von `qa/gen` aus
+sind es *drei* Ebenen zurück nach `docs/screenshots/`, nicht zwei:
 ```bash
 cd qa/gen
-for f in *.png; do n="${f%.png}"
-  ffmpeg -y -i "$f" -q:v 90 "../../$n.webp"
-  ffmpeg -y -i "$f" -vf scale=1040:-2 -q:v 82 "../../thumbs/$n.webp"
+for f in *.png; do n="${f%.png}"; ffmpeg -y -i "$f" -q:v 90 "../../../$n.webp"; done
+# Thumbs nur für die 20 README-Bilder (die Short-Extras brauchen keine)
+for n in login monitor-live monitor-archive monitor-detail hero-dark charts charts-temp \
+         stats stats-heatmap topology group-addresses settings graph logs projects \
+         projects-detail projects-import monitor-live-mobile charts-mobile stats-mobile; do
+  ffmpeg -y -i "$n.png" -vf scale=1040:-2 -q:v 82 "../../../thumbs/$n.webp"
 done
 ```
 
@@ -150,6 +169,14 @@ fängt dort stattdessen die API-Antworten ab (`screen(..., redactApi = true)`) u
 die Treffer schon im JSON durch `•••••`, bevor der Graph sie rendert. Dasselbe Vorgehen
 wäre für jede künftige Canvas-Ansicht nötig.
 
+Dabei muss das **ganze Wort** fallen, nicht nur der Treffer: mit einem Muster auf den
+Stamm blieb aus „Kilianstraße 7" ein gut lesbares „•••••straße 7" stehen (gefunden am
+2026-08-17 in `graph.webp`). Die Ersetzung greift deshalb umgebende Wortzeichen und eine
+folgende Hausnummer mit ab. Nach jedem Lauf am Graph-Bild nachsehen — es ist die einzige
+Ansicht ohne sichtbare Trefferzählung.
+
+Einzelne Bilder nachschießen, ohne den ganzen Lauf zu wiederholen: `ONLY=graph,topology node gallery.mjs`.
+
 ### 2d. Playwright-Screenshot-Script
 Ort: `scratchpad/shotter/` (pw-core 1.61.1 ↔ Cache `~/AppData/Local/ms-playwright/chromium-1228`).
 Setup einmalig:
@@ -177,15 +204,20 @@ ffmpeg -y -i charts-temp_new.png -q:v 90 charts-temp.webp
 
 ---
 
-## 3. Mobile-Beat-Clip neu (nur wenn Text/bg ändert)
-`clips_mobile_beat.mp4` ist ein fertiges Composite — Text ist eingebrannt! Bei Textänderung neu:
+## 3. Mobile-Beat-Clip neu (nach jeder Neuaufnahme und bei Textänderung)
+`clips_mobile_beat.mp4` ist ein fertiges Composite — Text ist eingebrannt, also gibt es
+je Sprache eine Datei (`clips_mobile_beat.mp4` / `clips_mobile_beat_en.mp4`; build.py wählt
+über `VLANG`):
 ```bash
 cd docs/screenshots/edit
-ffmpeg -y -loop 1 -i cards/mobile_live_bg.png -i clips_mobile_live.mp4 \
- -filter_complex "[1:v]scale=-2:920[p];[p]pad=iw+12:ih+12:6:6:0x4FE0A8[pb];[0:v][pb]overlay=1294:74,fps=30,setsar=1,format=yuv420p[v]" \
- -map "[v]" -t 7 -r 30 -c:v libx264 -crf 18 -preset medium -pix_fmt yuv420p clips_mobile_beat.mp4
+for L in "" "_en"; do
+  ffmpeg -y -loop 1 -i "cards${L}/mobile_live_bg.png" -i clips_mobile_live.mp4 \
+   -filter_complex "[1:v]scale=-2:920:flags=lanczos[p];[p]pad=iw+12:ih+12:6:6:0x4FE0A8[pb];[0:v][pb]overlay=1294:74,fps=30,setsar=1,format=yuv420p[v]" \
+   -map "[v]" -t 12 -r 30 -c:v libx264 -crf 18 -preset medium -pix_fmt yuv420p "clips_mobile_beat${L}.mp4"
+done
 ```
-(0x4FE0A8 = Mint-Border. Phone-Crop aus Recording: `crop=496:1108:1032:84`.)
+(0x4FE0A8 = Mint-Border. Quelle ist seit 2026-08-17 die Playwright-Aufnahme aus §9 mit
+780×1688 — der alte Weg war ein Crop `crop=496:1108:1032:84` aus einer Bildschirmaufnahme.)
 
 ---
 
@@ -257,3 +289,64 @@ Beat-Startzeiten (T=0.5): s_i start = Σ(dauer_j - 0.5) für j<i.
 - **Pegel aktuell:** `MUSVOL=0.13`, `sidechaincompress=threshold=0.04:ratio=14:attack=5:release=400` (User: Musik leiser). Prüfen: `ffmpeg -i final.mp4 -af volumedetect -f null -`.
 - **Rebuild VO:** `node tts_vo.mjs` (nur bei Skript/Stimm-Änderung) → `python build.py` → Kopie nach G:.
 - Gesamt aktuell **239 s**. Track03 (180 s) loopt unter VO (geduckt, unauffällig).
+
+---
+
+## 9. Bewegte Beats neu aufnehmen (`rec_clips.mjs`, Stand 2026-08-17)
+
+s01 (Desktop-Live) und s12 (Mobile) sind die einzigen Beats mit echter Bewegung. Bis
+Session 6 kamen sie aus einer Bildschirmaufnahme vom Juni — nach jedem UI-Umbau zeigen
+sie also eine Oberfläche, die es nicht mehr gibt. `rec_clips.mjs` nimmt beide headless neu auf:
+
+```bash
+cp docs/screenshots/edit/rec_clips.mjs <scratchpad>/shotter/ && cd <scratchpad>/shotter
+FE_PORT=4321 API_PORT=8080 node rec_clips.mjs          # beide Clips
+REC_ONLY=phone REC_PHONE=13 node rec_clips.mjs         # nur das Phone, 13 s
+```
+Ergebnis: `clips_live_desktop.mp4` (1920×1080) und `clips_mobile_live.mp4` (780×1688).
+Danach **immer** §3 laufen lassen, sonst bleibt das alte Mobile-Composite stehen.
+
+Drei Punkte, die nicht offensichtlich sind:
+- **Aufgenommen wird per CDP-Screencast**, nicht mit Playwrights `recordVideo`. Letzteres
+  liefert VP8 mit fester Bitrate; der Tabellentext franst sichtbar aus, während alle
+  anderen Beats aus verlustfreien Screenshots stammen. Die JPEG-Frames des Screencasts
+  kommen mit ~96 fps herein und werden über ihre Zeitstempel auf konstante 30 fps montiert.
+- **`--force-device-scale-factor=2` beim Browserstart ist Pflicht für das Phone.** Ohne
+  das Flag rastert der Screencast in CSS-Pixeln, also 390×844 statt 780×1688 — im fertigen
+  Video sichtbar weich. `deviceScaleFactor` am Kontext genügt dafür **nicht** (der Wert
+  steuert Screenshots, nicht den Screencast). Für den Desktop bleibt das Flag weg, sonst
+  entstehen 3840×2160-Frames ohne Gewinn.
+- **Der Weichzeichner muss nachgelegt werden.** Ein einmaliger Aufruf reicht nur beim
+  Standbild; die Liste rendert während der Aufnahme ständig neu, deshalb legt
+  `keepBlurred()` den Filter alle 400 ms wieder auf.
+
+---
+
+## 10. YouTube-Short (9:16, Stand 2026-08-17)
+
+Eigene Pipeline neben dem Langvideo, gleiche Handschrift (Farben, Stimme, Musik):
+
+| Datei | Zweck |
+|---|---|
+| `generate_short_assets.py` | 1080×1920-Beats (gerendert 2160×3840) → `short/` bzw. `short_en/` |
+| `tts_short.mjs` | 8 kurze VO-Sätze → `vo_short/s0..s7.mp3` (`VLANG=en` → `vo_short_en/`) |
+| `build_short.py` | Segmente → xfade → `short.mp4` / `short_en.mp4` |
+
+```bash
+cd docs/screenshots/edit
+python generate_short_assets.py && VLANG=en python generate_short_assets.py
+node tts_short.mjs && VLANG=en node tts_short.mjs        # nur bei Textänderung
+python build_short.py && VLANG=en python build_short.py
+```
+
+Aufbau: Intro-Karte → Live (Phone-Video im Rahmen) → Archiv → Charts → Statistik →
+ETS-Import → Desktop+Phone → Beta-Karte. Beat-Dauer = VO + 0.95 s, Übergang 0.35 s.
+
+- **Phone-Ansichten tragen das Format.** Ein 16:9-Screenshot wird im Hochformat zum
+  Briefschlitz und seine Schrift am Handy unlesbar. Deshalb kommen sechs von acht Beats
+  aus Phone-Screenshots; der Desktop-Beat zeigt nur einen **Ausschnitt** der Tabelle
+  (`crop=(0,100,1980,1500)` in 3840×2160-Koordinaten) plus ein dunkles Phone daneben.
+- Der Live-Beat lässt in `live_bg.png` ein Loch; `build_short.py` legt das Phone-Video
+  per `alphamerge` mit `live_mask.png` hinein, damit die Videoecken dieselbe Rundung
+  bekommen wie die Standbilder.
+- Musik/Ducking wie im Langvideo, nur etwas straffer (`MUSVOL=0.12`, `atempo=0.85`).

@@ -40,7 +40,9 @@ SEGMENTS = [
     ("s09_secure",   C("secure.png"),             None,                     1),
     ("s10_topology", P("topology.webp"),          C("label_topology.png"), -1),
     ("s11_groupadr", P("group-addresses.webp"),   C("label_groupadr.png"),  1),
-    ("s12_mobile",   V("clips_mobile_beat.mp4"),  None,                    -1),
+    # Der Text des Mobile-Beats ist in den Hintergrund eingebrannt, also gibt es je
+    # Sprache ein eigenes Composite (siehe REBUILD.md §3).
+    ("s12_mobile",   V("clips_mobile_beat%s.mp4" % _SFX), None,            -1),
     ("s13_settings", P("settings.webp"),          C("label_settings.png"),  1),
     ("s14_platform", C("platform.png"),           None,                     1),
     ("s15_graph",    P("graph.webp"),             C("label_graph.png"),    -1),

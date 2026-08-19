@@ -10,6 +10,13 @@ vo/
 vo_en/
 vo_samples/
 vo_v2_backup/
+# Short (9:16) — generate_short_assets.py / tts_short.mjs / build_short.py
+short/
+short_en/
+segments_short/
+segments_short_en/
+vo_short/
+vo_short_en/
 *.mp4
 *.mp3
 *_new.png

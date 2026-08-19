@@ -10,8 +10,8 @@ const OUT = process.env.SHOT_OUT || 'D:/Source/knx-ng-monitor/docs/screenshots/e
 fs.mkdirSync(OUT, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// Datenbestand der Prod-Kopie: 2026-07-01 bis 2026-08-05.
-const FROM = '2026-08-03T00:00', TO = '2026-08-05T22:00';  // Prod-Daten: 27.07.-05.08. durchgehend
+// Datenbestand der Prod-Kopie: 2026-08-08 bis 2026-08-17 (1 Mio. Telegramme).
+const FROM = '2026-08-14T00:00', TO = '2026-08-16T22:00';  // knapp 3 Tage - Tag/Nacht-Zyklen sichtbar
 const CHARTS = ['0/2/1', '0/2/4', '10/0/195', '10/0/90'];
 const SENSOR = ['10/3/210', '10/0/90', '10/4/46', '20/1/236', '6/0/3', '10/1/65'];
 const READ_GAS = '0/2/1,3/3/149,2/0/41,3/0/160,3/2/170,3/0/250,3/6/180,10/2/120,30/1/4,1/2/85,7/1/0,1/0/91,1/0/217,1/0/45,2/0/86,10/3/126,1/2/127,1/4/126,1/4/55,1/5/65,3/0/172,4/0/40,30/2/6,1/0/66,30/7/2,10/3/140,8/1/218,3/2/45,3/2/56,1/3/115,1/2/45,4/0/41,3/3/55,30/1/12,1/3/66,1/4/110,20/0/240,2/0/77,0/0/6,4/4/45'.split(',');
@@ -126,12 +126,18 @@ const run = async () => {
   const desk = { viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 2, locale: 'en-GB' };
   const phone = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'en-GB' };
 
+  // ONLY=graph,topology schießt gezielt einzelne Bilder nach, ohne den ganzen Lauf.
+  const only = (process.env.ONLY || '').split(',').map(s => s.trim()).filter(Boolean);
+
   async function screen(name, ctxOpts, fn, redactApi = false) {
+    if (only.length && !only.includes(name)) return;
     const ctx = await b.newContext(ctxOpts);
     if (redactApi) {
       // Nur für Canvas-Ansichten: dort greift blurSecrets() nicht, weil der Text
       // gezeichnet und nicht als DOM-Knoten gerendert wird.
-      const rx = new RegExp(SECRET_RX + '|kilianstra(ss|ß)e\s*\d*', 'gi');
+      // Das ganze Wort samt Hausnummer ersetzen, nicht nur den Treffer: sonst bleibt
+      // aus "Kilianstraße 7" ein lesbares "•••••straße 7" stehen.
+      const rx = new RegExp(`[\\wäöüÄÖÜß.\\-]*(?:${SECRET_RX})[\\wäöüÄÖÜß.\\-]*(?:\\s+\\d+[a-z]?)?`, 'gi');
       await ctx.route('**/api/**', async (route) => {
         const res = await route.fetch();
         const ct = res.headers()['content-type'] || '';
@@ -212,6 +218,30 @@ const run = async () => {
     await pickGas(p, CHARTS, false);
   });
   await screen('stats-mobile', phone, async p => { await auth(p, t); await p.goto(FE + '/stats', { waitUntil: 'networkidle' }); await sleep(3500); await pick7d(p); });
+
+  // Zusatz-Portraits nur fuer den YouTube-Short (9:16): dort fuellt eine Phone-Ansicht
+  // das Bild randlos, waehrend ein Desktop-Screenshot als schmaler Streifen enden wuerde.
+  // Nicht Teil der README-Galerie.
+  if (process.env.SHORT_SHOTS !== '0') {
+    await screen('hero-dark-mobile', phone, async p => {
+      await auth(p, t, 'dark'); await p.goto(FE + '/monitor', { waitUntil: 'networkidle' }); await sleep(2500);
+      const r = await waitFilled(p, '.knx-mcard'); log.push(`   hero-dark-mobile cards=${r.count} gefuellt=${r.filled}`);
+      await sleep(800);
+    });
+    await screen('monitor-archive-mobile', phone, async p => {
+      await auth(p, t); await p.goto(FE + '/monitor', { waitUntil: 'networkidle' }); await sleep(1500);
+      await p.getByRole('button', { name: /Archive|Archiv/i }).first().click(); await sleep(4500);
+    });
+    await screen('monitor-detail-mobile', phone, async p => {
+      await auth(p, t); await p.goto(FE + '/monitor', { waitUntil: 'networkidle' }); await sleep(1500);
+      await p.getByRole('button', { name: /Archive|Archiv/i }).first().click(); await sleep(4000);
+      await p.locator('.knx-mcard, .knx-tr').first().click({ timeout: 6000 }); await sleep(1800);
+    });
+    await screen('group-addresses-mobile', phone, async p => { await auth(p, t); await p.goto(FE + '/group-addresses', { waitUntil: 'networkidle' }); await sleep(3500); });
+    await screen('topology-mobile', phone, async p => { await auth(p, t); await p.goto(FE + '/topology', { waitUntil: 'networkidle' }); await sleep(3500); });
+    await screen('settings-mobile', phone, async p => { await auth(p, t); await p.goto(FE + '/settings', { waitUntil: 'networkidle' }); await sleep(2500); });
+    await screen('projects-mobile', phone, async p => { await auth(p, t); await p.goto(FE + '/projects', { waitUntil: 'networkidle' }); await sleep(2500); });
+  }
 
   await b.close();
   console.log(log.join('\n'));
