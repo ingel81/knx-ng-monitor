@@ -325,7 +325,26 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.10.0:** the app is usable on a phone and a tablet, not just
+**Current - v0.11.0:** a gap in the archive can now be explained instead of guessed
+about. An empty stretch of telegrams used to be ambiguous - the bus was quiet, the
+bus link was gone, or the monitor was not running at all - and nothing in the data
+told those apart; the first bug report about "missing messages" ran straight into
+that. A heartbeat is written once a minute with the link state and the telegram
+count since the last beat, which makes each stretch attributable, and it does not
+rely on a shutdown marker because the interesting cases - power loss, standby, kill -
+never write one. Time before the record begins is reported as *unknown*, never as an
+outage. You see it as an outage list under Settings > Diagnostics, as the empty-state
+text in the archive ("the monitor was not running for 11 h 45 min of this period"),
+and as `availability.json` in the diagnostics zip. Also fixed there: **telegrams
+could be dropped without a trace** - the persistence queue evicted its oldest entry
+when full, so the "queue full" warning could never fire and a stalled database
+silently thinned out the history; overflow is now counted and reported. New as well:
+the **source device name as a monitor column** (#19), opt-in via the column manager,
+included in the free-text filter and both CSV exports - the ETS group monitor shows
+it next to the address, here it only existed in the detail panel. And
+`ASPNETCORE_URLS` is honoured again (#9).
+
+**Previous - v0.10.0:** the app is usable on a phone and a tablet, not just
 tolerable. The bottom navigation is down to four tabs plus a "More" sheet, and the
 top bar collapses the same way below 1560 px; group addresses render as cards
 instead of stacked rows; the telegram sheet lays its short fields out in two
@@ -345,7 +364,7 @@ navigation behind the mobile address bar, every loading spinner rendered its ico
 name as text, and the write-confirmation dialog shrank to 288 px on a phone -
 the one dialog guarding a live bus write.
 
-**Previous - v0.9.0:** the charts view grew up - display options (line / area /
+**Earlier - v0.9.0:** the charts view grew up - display options (line / area /
 steps, data points, zero-based axis, average line), PNG and CSV export, a
 per-series summary of min / max / average / last that doubles as the interactive
 legend, a searchable group-address picker, a moving window in live mode, and the

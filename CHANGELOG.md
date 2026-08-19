@@ -10,9 +10,38 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
-## [Unreleased]
+## [0.11.0]
+
+### Added
+- **Availability report: a gap in the history can finally be explained.** An empty stretch
+  of telegrams used to be ambiguous - the bus was quiet, the bus link was gone, or the
+  monitor was not running at all - and the telegram table cannot tell those apart. A
+  heartbeat is now written once a minute with the link state and the number of telegrams
+  since the last beat, which makes each stretch attributable: a beat with a connected link
+  proves the stretch was genuinely quiet, any other state proves the link was down, and a
+  missing beat proves the process was gone. Deliberately does not rely on a shutdown
+  marker, because the interesting cases - power loss, standby, kill - never get to write
+  one. Time before the record begins (or past its 90-day retention) reports as *unknown*
+  and is never counted as an outage. Visible under Settings > Diagnostics as an outage
+  list, as the empty-state text in the archive ("the monitor was not running for 11 h 45
+  min of this period"), and as `availability.json` in the diagnostics zip, so a bug report
+  answers the question without a round of questions. New endpoint:
+  `GET /api/diagnostics/availability`.
+- **Source device name as a monitor column (#19).** The ETS group monitor shows the sender's
+  name next to its address; here the name only existed in the telegram detail panel. It is
+  now a column - opt-in via the column manager, since the full set already fills a laptop
+  screen - and it is part of the free-text filter and both CSV exports. Resolved through the
+  project cache, so it costs no query per row. Note that the sender has no stored link
+  (unlike the group address), so history rows recorded under an older project show today's
+  device names.
+- **`/api/knx/status` reports recording health**: when the current link came up, when the
+  last one dropped, and how many telegrams were discarded by each writer.
 
 ### Fixed
+- **Telegrams could be dropped without a trace.** The persistence queue was configured to
+  evict its oldest entry when full, which meant the "queue full" warning in the receive path
+  could never fire - a stalled database silently thinned out the history. Overflow is now
+  counted and reported as a running total.
 - **`ASPNETCORE_URLS` is honoured again.** Setting it did nothing - neither for the
   portable binary nor in Docker, where the image sets it itself: the app always came up
   on 8080. The shipped `appsettings.json` pinned an explicit Kestrel endpoint, and a
