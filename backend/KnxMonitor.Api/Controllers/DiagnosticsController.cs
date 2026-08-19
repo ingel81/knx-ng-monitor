@@ -4,8 +4,10 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using KnxMonitor.Core.DTOs;
+using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Infrastructure;
 using KnxMonitor.Infrastructure.Logging;
+using KnxMonitor.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,11 +18,31 @@ namespace KnxMonitor.Api.Controllers;
 [Authorize]
 public class DiagnosticsController : ControllerBase
 {
-    private readonly LogBuffer _logBuffer;
+    /// <summary>Default window of the availability report when the caller names no range.</summary>
+    private const int DefaultAvailabilityDays = 7;
 
-    public DiagnosticsController(LogBuffer logBuffer)
+    /// <summary>Window written into the diagnostics zip — wide enough to cover a stale bug report.</summary>
+    private const int BundledAvailabilityDays = 30;
+
+    /// <summary>
+    /// Bundled JSON must read like the HTTP responses, otherwise the same report shows up in two
+    /// shapes: MVC's camelCase plus string enums here as well, so "MonitorDown" stays "MonitorDown"
+    /// instead of turning into an opaque 2 in the file a reporter attaches to an issue.
+    /// </summary>
+    private static readonly JsonSerializerOptions BundleJsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+    };
+
+    private readonly LogBuffer _logBuffer;
+    private readonly IMonitorHeartbeatRepository _heartbeats;
+
+    public DiagnosticsController(LogBuffer logBuffer, IMonitorHeartbeatRepository heartbeats)
     {
         _logBuffer = logBuffer;
+        _heartbeats = heartbeats;
     }
 
     /// <summary>Recent log entries from the in-memory buffer, optionally filtered.</summary>
@@ -49,9 +71,33 @@ public class DiagnosticsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Availability of the recording: when did the monitor run, and was the bus link up.</summary>
+    /// <remarks>
+    /// Answers the question a hole in the telegram history cannot: a stretch reported as
+    /// <c>Up</c> was genuinely quiet on the bus, <c>BusDown</c> means the link was gone, and
+    /// <c>MonitorDown</c> means the process was not running (restart, standby, crash). Derived from
+    /// the one-per-minute heartbeats, so boundaries are accurate to about one minute. Stretches the
+    /// record does not cover — before the first beat was ever written, or past its retention —
+    /// report as <c>Unknown</c> and are deliberately not counted as outages.
+    /// <para>
+    /// The range is clamped to now, because the future is neither up nor down.
+    /// </para>
+    /// </remarks>
+    /// <param name="from">Start (UTC). Defaults to seven days before <paramref name="to"/>.</param>
+    /// <param name="to">End (UTC). Defaults to now; a later value is clamped to now.</param>
+    [HttpGet("availability")]
+    public async Task<ActionResult<AvailabilityResponse>> GetAvailability(
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to)
+    {
+        var ct = HttpContext.RequestAborted;
+        var (rangeFrom, rangeTo) = ResolveAvailabilityRange(from, to, DefaultAvailabilityDays);
+        return Ok(await BuildAvailabilityAsync(rangeFrom, rangeTo, ct));
+    }
+
     /// <summary>Downloads a diagnostics zip: recent log files + a system-info.json.</summary>
     [HttpGet("download")]
-    public IActionResult Download()
+    public async Task<IActionResult> Download()
     {
         var ms = new MemoryStream();
         using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
@@ -82,6 +128,19 @@ public class DiagnosticsController : ControllerBase
             }
             WriteZipText(zip, "recent-log.txt", sb.ToString());
 
+            // Availability report: turns "there is a hole in my history" into an answerable
+            // question without a round of questions to the reporter.
+            try
+            {
+                var (availFrom, availTo) = ResolveAvailabilityRange(null, null, BundledAvailabilityDays);
+                var availability = await BuildAvailabilityAsync(availFrom, availTo, HttpContext.RequestAborted);
+                WriteZipText(zip, "availability.json", JsonSerializer.Serialize(availability, BundleJsonOptions));
+            }
+            catch (Exception ex)
+            {
+                WriteZipText(zip, "availability.json", $"{{\"error\": {JsonSerializer.Serialize(ex.Message)}}}");
+            }
+
             // rolled log files from disk
             if (Directory.Exists(AppPaths.LogsDir))
             {
@@ -109,6 +168,50 @@ public class DiagnosticsController : ControllerBase
     [HttpGet("/api/version")]
     [AllowAnonymous]
     public IActionResult Version() => Ok(new { version = AssemblyVersion() });
+
+    private async Task<AvailabilityResponse> BuildAvailabilityAsync(DateTime from, DateTime to, CancellationToken ct)
+    {
+        var beats = await _heartbeats.GetRangeAsync(from, to, ct);
+        // The beat before the window decides whether the run-up to the first beat was covered.
+        var previous = await _heartbeats.GetLastBeforeAsync(from, ct);
+        // Where the record begins: everything before it is unknown rather than an outage.
+        var recordStart = await _heartbeats.GetEarliestTimestampAsync(ct);
+        return AvailabilityCalculator.Build(
+            beats, from, to, MonitorHeartbeatWorker.Interval, previous, recordStart);
+    }
+
+    private static (DateTime From, DateTime To) ResolveAvailabilityRange(DateTime? from, DateTime? to, int defaultDays)
+    {
+        var now = DateTime.UtcNow;
+        var rangeTo = to?.ToUniversalTime() ?? now;
+        var rangeFrom = from?.ToUniversalTime() ?? rangeTo.AddDays(-defaultDays);
+
+        if (rangeFrom > rangeTo)
+        {
+            (rangeFrom, rangeTo) = (rangeTo, rangeFrom);
+        }
+
+        // Clamp after the swap, not before: clamping first would let a reversed range put the
+        // future back into the result via rangeFrom.
+        if (rangeTo > now)
+        {
+            rangeTo = now;
+        }
+        if (rangeFrom > rangeTo)
+        {
+            rangeFrom = rangeTo;
+        }
+
+        // Callers pass the archive filter range straight through, so bound the scan: beyond the
+        // heartbeat retention there is nothing to read anyway.
+        var earliestUseful = rangeTo.AddDays(-MonitorHeartbeatWorker.RetentionDays);
+        if (rangeFrom < earliestUseful)
+        {
+            rangeFrom = earliestUseful;
+        }
+
+        return (rangeFrom, rangeTo);
+    }
 
     private static string AssemblyVersion()
     {

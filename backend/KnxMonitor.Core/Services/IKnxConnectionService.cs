@@ -28,6 +28,12 @@ public interface IKnxConnectionService
     /// <summary>Detailed link state for the UI (Disconnected / Connecting / Connected).</summary>
     KnxLinkState State { get; }
 
+    /// <summary>UTC instant the current link came up, or null while not connected.</summary>
+    DateTime? ConnectedSince { get; }
+
+    /// <summary>UTC instant the last established link went down, or null if none has since start.</summary>
+    DateTime? LastDisconnectedAt { get; }
+
     /// <summary>
     /// When true, manual disconnect has been requested; the auto-connect worker
     /// must not immediately reconnect. Cleared on the next manual connect.

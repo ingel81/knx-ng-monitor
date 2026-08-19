@@ -24,6 +24,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<KnxTelegram> KnxTelegrams => Set<KnxTelegram>();
     public DbSet<KnxConfiguration> KnxConfigurations => Set<KnxConfiguration>();
     public DbSet<RecordingSettings> RecordingSettings => Set<RecordingSettings>();
+    public DbSet<MonitorHeartbeat> MonitorHeartbeats => Set<MonitorHeartbeat>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -240,6 +241,17 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ArchiveEnabled).IsRequired();
             entity.Property(e => e.ArchiveRetentionDays);
             entity.Property(e => e.UpdatedAt).IsRequired();
+        });
+
+        // MonitorHeartbeat entity configuration (liveness record behind the availability report)
+        modelBuilder.Entity<MonitorHeartbeat>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Timestamp).IsRequired();
+            entity.Property(e => e.State).IsRequired().HasConversion<string>();
+            entity.Property(e => e.TelegramsSinceLast).IsRequired();
+            // Every read is a range scan over time, and retention deletes by the same key.
+            entity.HasIndex(e => e.Timestamp);
         });
     }
 }

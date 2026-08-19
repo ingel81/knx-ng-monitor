@@ -18,7 +18,7 @@ namespace KnxMonitor.Infrastructure.KnxConnection;
 public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<KnxConnectionService> _logger;
-    private readonly IGroupAddressCacheService _groupAddressCache;
+    private readonly IProjectCacheService _groupAddressCache;
     private readonly ITelegramQueue _telegramQueue;
     // Scope factory lets this singleton reach scoped repos (active project + keyring blob)
     // at connect time, mirroring KnxAutoConnectWorker. Used ONLY for secure setup.
@@ -26,6 +26,11 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     private KnxBus? _knxBus;
     private KnxConfiguration? _activeConfiguration;
     private volatile KnxLinkState _state = KnxLinkState.Disconnected;
+    // Stored as ticks, not DateTime?: a Nullable<DateTime> is a 16-byte struct, so a status request
+    // reading it while the Falcon callback thread writes could observe HasValue paired with a
+    // half-written value. A long is read and written atomically via Interlocked; 0 means "none".
+    private long _connectedSinceTicks;
+    private long _lastDisconnectedAtTicks;
     private volatile bool _manualDisconnect;
     private volatile bool _testInProgress;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -39,12 +44,14 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     public event EventHandler<KnxTelegram>? TelegramReceived;
     public bool IsConnected => _state == KnxLinkState.Connected;
     public KnxLinkState State => _state;
+    public DateTime? ConnectedSince => ReadInstant(ref _connectedSinceTicks);
+    public DateTime? LastDisconnectedAt => ReadInstant(ref _lastDisconnectedAtTicks);
     public bool ManualDisconnect => _manualDisconnect;
     public bool TestInProgress => _testInProgress;
 
     public KnxConnectionService(
         ILogger<KnxConnectionService> logger,
-        IGroupAddressCacheService groupAddressCache,
+        IProjectCacheService groupAddressCache,
         ITelegramQueue telegramQueue,
         IServiceScopeFactory scopeFactory)
     {
@@ -86,7 +93,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         {
             // A manual ConnectAsync clears any prior manual-disconnect latch.
             _manualDisconnect = false;
-            _state = KnxLinkState.Connecting;
+            SetState(KnxLinkState.Connecting);
 
             // Tear down a previous bus without latching manual-disconnect.
             await CleanupBusConnection();
@@ -115,7 +122,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             await _knxBus.ConnectAsync(_cancellationTokenSource.Token);
 
             _activeConfiguration = configuration;
-            _state = KnxLinkState.Connected;
+            SetState(KnxLinkState.Connected);
 
             _logger.LogInformation("Successfully connected to KNX bus. InterfaceAddress: {IndividualAddress}",
                 _knxBus.InterfaceConfiguration.IndividualAddress);
@@ -125,7 +132,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to connect to KNX bus");
-            _state = KnxLinkState.Disconnected;
+            SetState(KnxLinkState.Disconnected);
             await CleanupBusConnection();
             return false;
         }
@@ -160,7 +167,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         {
             _logger.LogInformation("Pausing live link for test probe (freeing tunnel)");
             await CleanupBusConnection();
-            _state = KnxLinkState.Disconnected;
+            SetState(KnxLinkState.Disconnected);
         }
 
         KnxBus? probe = null;
@@ -476,7 +483,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             // User-initiated disconnect: latch so the auto-connect worker stays away.
             _manualDisconnect = true;
             await CleanupBusConnection();
-            _state = KnxLinkState.Disconnected;
+            SetState(KnxLinkState.Disconnected);
             _activeConfiguration = null;
 
             _logger.LogInformation("Disconnected from KNX bus");
@@ -622,12 +629,10 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             // Raise event for SignalR broadcasting (now with GroupAddressId set!)
             TelegramReceived?.Invoke(this, telegram);
 
-            // Enqueue for batched persistence. Channel drops oldest on overflow,
-            // so a stalled DB can never block the bus thread or blow memory.
-            if (!_telegramQueue.TryEnqueue(telegram))
-            {
-                _logger.LogWarning("Telegram persistence queue full, dropping telegram for {Address}", telegram.DestinationAddress);
-            }
+            // Enqueue for batched persistence. Never blocks the bus thread: a full queue drops the
+            // telegram and TelegramPersistenceService counts it, reporting the running total in one
+            // aggregated warning instead of one line per lost telegram.
+            _telegramQueue.TryEnqueue(telegram);
         }
         catch (Exception ex)
         {
@@ -645,10 +650,46 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             // Map Falcon's bus state onto our link state. A drop here (Closed/Broken/
             // MediumFailure, not user-initiated) leaves State=Disconnected, which the
             // auto-connect worker picks up to reconnect.
-            _state = state == BusConnectionState.Connected
+            SetState(state == BusConnectionState.Connected
                 ? KnxLinkState.Connected
-                : KnxLinkState.Disconnected;
+                : KnxLinkState.Disconnected);
         }
+    }
+
+    /// <summary>
+    /// Single point of truth for link-state transitions, so the connect/disconnect timestamps
+    /// cannot drift apart from the state itself.
+    /// </summary>
+    private void SetState(KnxLinkState next)
+    {
+        var previous = _state;
+
+        // Timestamps first, state last: a reader that sees Connected must already be able to see
+        // the matching ConnectedSince, otherwise the status endpoint can report a connection with
+        // no start time.
+        if (next == KnxLinkState.Connected)
+        {
+            if (previous != KnxLinkState.Connected)
+            {
+                Interlocked.Exchange(ref _connectedSinceTicks, DateTime.UtcNow.Ticks);
+            }
+        }
+        else
+        {
+            if (previous == KnxLinkState.Connected)
+            {
+                Interlocked.Exchange(ref _lastDisconnectedAtTicks, DateTime.UtcNow.Ticks);
+            }
+            Interlocked.Exchange(ref _connectedSinceTicks, 0);
+        }
+
+        _state = next;
+    }
+
+    private static DateTime? ReadInstant(ref long ticks)
+    {
+        var value = Interlocked.Read(ref ticks);
+        return value == 0 ? null : new DateTime(value, DateTimeKind.Utc);
     }
 
     private byte[] GetValueBytes(GroupValue? value)

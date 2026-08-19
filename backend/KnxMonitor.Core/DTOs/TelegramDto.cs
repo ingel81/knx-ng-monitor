@@ -11,6 +11,14 @@ public class TelegramDto
     public int Id { get; set; }
     public DateTime Timestamp { get; set; }
     public string SourceAddress { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Device name behind <see cref="SourceAddress"/>, resolved from the active project. Null when
+    /// no project is active or the address is not in it. Unlike <see cref="GroupAddressName"/>,
+    /// which follows the telegram's stored link, this is looked up per request: history rows
+    /// recorded under an older project therefore show today's device names.
+    /// </summary>
+    public string? SourceName { get; set; }
     public string DestinationAddress { get; set; } = string.Empty;
     public string? GroupAddressName { get; set; }
     public string? DatapointType { get; set; }

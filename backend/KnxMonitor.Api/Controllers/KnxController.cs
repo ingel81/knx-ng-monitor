@@ -1,6 +1,7 @@
 using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Enums;
 using KnxMonitor.Core.Services;
+using KnxMonitor.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,15 +14,21 @@ public class KnxController : ControllerBase
 {
     private readonly IKnxConnectionService _knxService;
     private readonly IKnxConfigurationRepository _configRepository;
+    private readonly TelegramPersistenceService _persistence;
+    private readonly TelegramArchiveService _archive;
     private readonly ILogger<KnxController> _logger;
 
     public KnxController(
         IKnxConnectionService knxService,
         IKnxConfigurationRepository configRepository,
+        TelegramPersistenceService persistence,
+        TelegramArchiveService archive,
         ILogger<KnxController> logger)
     {
         _knxService = knxService;
         _configRepository = configRepository;
+        _persistence = persistence;
+        _archive = archive;
         _logger = logger;
     }
 
@@ -33,7 +40,8 @@ public class KnxController : ControllerBase
     /// the auto-connect worker from reconnecting until the next connect clears it.
     /// </remarks>
     /// <returns>Connection flag, link state (Disconnected / Connecting / Connected), the
-    /// manual-disconnect latch and the configuration currently in use.</returns>
+    /// manual-disconnect latch, the configuration currently in use, and recording health
+    /// (link timestamps plus drop counters, both reset on restart).</returns>
     [HttpGet("status")]
     public async Task<IActionResult> GetStatus()
     {
@@ -43,7 +51,13 @@ public class KnxController : ControllerBase
             IsConnected = _knxService.IsConnected,
             State = _knxService.State.ToString(),
             ManualDisconnect = _knxService.ManualDisconnect,
-            Configuration = config
+            Configuration = config,
+            // Recording health: when the link came up, when it last dropped, and whether anything
+            // was thrown away because a writer could not keep up. Counters reset on restart.
+            ConnectedSince = _knxService.ConnectedSince,
+            LastDisconnectedAt = _knxService.LastDisconnectedAt,
+            DroppedTelegrams = _persistence.DroppedCount,
+            DroppedArchiveRecords = _archive.DroppedCount
         });
     }
 

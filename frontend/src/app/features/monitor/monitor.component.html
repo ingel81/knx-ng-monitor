@@ -313,7 +313,7 @@
       } @else {
         <knx-table [rows]="displayRows" [columns]="gridColumns" [rowHeight]="rowHeight"
                    [sortKey]="sortKey" [sortDir]="sortDir" [loading]="loading"
-                   emptyText="monitor.emptyArchive"
+                   [emptyText]="emptyText" [emptyParams]="emptyParams"
                    (rowClick)="showDetail($event)" (sortChange)="onSort($event)" (nearEnd)="onNearEnd()"></knx-table>
       }
     }

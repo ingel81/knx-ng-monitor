@@ -78,6 +78,9 @@ public class TelegramArchiveService : IHostedService, IAsyncDisposable
 
     public string ArchiveDirectory => _archiveDir;
 
+    /// <summary>Records dropped because the archive buffer was full, since process start.</summary>
+    public long DroppedCount => Interlocked.Read(ref _droppedTotal);
+
     public Task StartAsync(CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(_archiveDir);

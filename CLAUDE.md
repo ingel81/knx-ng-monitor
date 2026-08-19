@@ -142,6 +142,7 @@ There is a `/release` skill in `.claude/skills/release/SKILL.md` that automates 
 | `Devices` | Per-project (PhysicalAddress `a.l.d`, Name, Manufacturer, ProductName) |
 | `KnxTelegrams` | Logged bus traffic (timestamp, source, dest, type, raw + decoded value) |
 | `KnxConfigurations` | KNX interface settings |
+| `MonitorHeartbeats` | One beat per minute (timestamp, link state, telegrams since last) — turns a hole in `KnxTelegrams` into an answerable question |
 
 Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 
@@ -151,7 +152,8 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 - `/api/projects/*` — list, import (multipart), `provide-input`, activate, delete
 - Group addresses come with the project (`/api/projects/{id}` and `/{id}/groupranges`) — there is no separate controller for them
 - `/api/telegrams/*` — query, search, export
-- `/api/knx/*` — config, test-connection, status
+- `/api/knx/*` — config, test-connection, status (status also carries `ConnectedSince`, `LastDisconnectedAt` and the drop counters)
+- `/api/diagnostics/*` — logs, `availability` (uptime / link state per interval), download bundle
 - `/hubs/telegram` — SignalR hub (JWT-authenticated)
 
 ## Key Implementation Notes
@@ -181,9 +183,20 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 ### DPT conversion
 - `KnxMonitor.Infrastructure/KnxConnection/DptConverter.cs` covers the common DPT-1/2/3/5/6/7/8/9/10/11/12/13/14/16/17/18/19/20 types, falls back to hex for unknown.
 
+### Source name (#19)
+- `TelegramDto.SourceName` resolves the sender's device name through `ProjectCacheService`, for live (SignalR), history and both CSV exports.
+- No stored link exists for the sender (unlike `GroupAddressId`), so it resolves against the **currently active** project — history rows recorded under an older project show today's names.
+- Frontend: column `sourceName`, opt-in via the column manager. `ColumnManagerComponent` keeps a `<storageKey>.seen` list so a newly shipped column can default to hidden without resetting existing users' choices.
+
+### Availability / recording health
+- `MonitorHeartbeatWorker` writes one row per minute (retention 90 days) and counts telegrams per beat.
+- `AvailabilityCalculator` (pure, unit-tested) folds beats into `Up` / `BusDown` / `MonitorDown` intervals: a gap over 2× the beat interval means the process was not running, any non-`Connected` beat means the link was down. Conservative on purpose — a stretch is `Up` only when both bounding beats are connected.
+- Surfaced in Settings → Diagnostics (outage list), as the empty-state text in the archive, and as `availability.json` inside the diagnostics zip.
+- Both writer queues (`TelegramPersistenceService`, `TelegramArchiveService`) use `FullMode.Wait` + `TryWrite` so an overflow is counted and logged instead of silently dropping. `DropOldest` would make `TryWrite` always succeed.
+
 ### Performance
 - Virtual scrolling in AG-Grid for live view (1000+ rows)
-- `GroupAddressCacheService` (singleton) — `ConcurrentDictionary` of the active project's GAs, refreshed only on project change
+- `ProjectCacheService` (singleton) — `ConcurrentDictionary` of the active project's GAs **and devices**, refreshed only on project change. Devices share the cache because they share its lifetime; a second cache would have to be refreshed at every call site that refreshes this one
 - DB indices on `Timestamp`, `DestinationAddress`
 - SignalR throttling on bursts; debounced filter inputs in the UI
 

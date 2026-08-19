@@ -32,6 +32,9 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
     private int _batchesSinceRetention;
     private DateTime _lastRetention = DateTime.UtcNow;
 
+    private long _droppedTotal;
+    private long _droppedLogged;
+
     public TelegramPersistenceService(
         IServiceScopeFactory scopeFactory,
         IRecordingSettingsProvider settingsProvider,
@@ -42,13 +45,35 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
         _logger = logger;
         _channel = Channel.CreateBounded<KnxTelegram>(new BoundedChannelOptions(Capacity)
         {
-            FullMode = BoundedChannelFullMode.DropOldest,
+            // Wait-mode + TryWrite is what makes an overflow observable: TryWrite returns false
+            // instead of blocking, and the drop gets counted. DropOldest would make TryWrite always
+            // return true and lose telegrams without a trace.
+            //
+            // Deliberate trade-off: under a sustained burst the queue keeps its oldest entries and
+            // the newest telegrams are the ones dropped, so a hole lands at the end of the burst
+            // rather than at its start. Counted-and-reported beats silently-correct here — a hole
+            // nobody knows about is worse than a hole at a known position.
+            FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
             SingleWriter = false
         });
     }
 
-    public bool TryEnqueue(KnxTelegram telegram) => _channel.Writer.TryWrite(telegram);
+    /// <summary>Telegrams dropped because the queue was full, since process start.</summary>
+    public long DroppedCount => Interlocked.Read(ref _droppedTotal);
+
+    public bool TryEnqueue(KnxTelegram telegram)
+    {
+        if (_channel.Writer.TryWrite(telegram))
+        {
+            return true;
+        }
+
+        // Counted here and reported cumulatively by the worker: logging per telegram would spam
+        // the log with one line per lost telegram exactly when the system is already struggling.
+        Interlocked.Increment(ref _droppedTotal);
+        return false;
+    }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -111,11 +136,23 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
                 }
 
                 batch.Clear();
+                LogDropsIfAny();
             }
         }
         catch (OperationCanceledException)
         {
             // expected on shutdown
+        }
+    }
+
+    private void LogDropsIfAny()
+    {
+        var total = Interlocked.Read(ref _droppedTotal);
+        if (total > _droppedLogged)
+        {
+            _logger.LogWarning(
+                "Telegram persistence queue overflow: {Count} telegrams dropped (cumulative)", total);
+            _droppedLogged = total;
         }
     }
 

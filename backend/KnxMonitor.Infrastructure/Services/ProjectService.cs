@@ -11,13 +11,13 @@ public class ProjectService : IProjectService
     private readonly IProjectRepository _projectRepository;
     private readonly IGroupAddressRepository _groupAddressRepository;
     private readonly IKnxProjectParserService _parserService;
-    private readonly IGroupAddressCacheService _cacheService;
+    private readonly IProjectCacheService _cacheService;
 
     public ProjectService(
         IProjectRepository projectRepository,
         IGroupAddressRepository groupAddressRepository,
         IKnxProjectParserService parserService,
-        IGroupAddressCacheService cacheService)
+        IProjectCacheService cacheService)
     {
         _projectRepository = projectRepository;
         _groupAddressRepository = groupAddressRepository;

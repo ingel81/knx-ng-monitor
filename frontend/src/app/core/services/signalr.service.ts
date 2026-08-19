@@ -9,6 +9,8 @@ export interface KnxTelegram {
   id: number;
   timestamp: Date;
   sourceAddress: string;
+  /** Gerätename hinter `sourceAddress`, aufgelöst über das aktive Projekt. Fehlt, wenn unbekannt. */
+  sourceName?: string;
   destinationAddress: string;
   groupAddressName?: string;
   datapointType?: string;

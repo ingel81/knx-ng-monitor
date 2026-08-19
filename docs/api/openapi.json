@@ -261,6 +261,62 @@
         ]
       }
     },
+    "/api/Diagnostics/availability": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Availability of the recording: when did the monitor run, and was the bus link up.",
+        "description": "Answers the question a hole in the telegram history cannot: a stretch reported as Up was genuinely quiet on the bus, BusDown means the link was gone, and MonitorDown means the process was not running (restart, standby, crash). Derived from the one-per-minute heartbeats, so boundaries are accurate to about one minute. Stretches the record does not cover — before the first beat was ever written, or past its retention — report as Unknown and are deliberately not counted as outages. The range is clamped to now, because the future is neither up nor down.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start (UTC). Defaults to seven days before to.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End (UTC). Defaults to now; a later value is clamped to now.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/Diagnostics/download": {
       "get": {
         "tags": [
@@ -301,7 +357,7 @@
         "description": "Read-only — nothing is sent to the bus. Configuration is the configuration the live link was established with and is null while disconnected; it is not necessarily the stored configuration flagged active. ManualDisconnect is latched by a manual disconnect and keeps the auto-connect worker from reconnecting until the next connect clears it.",
         "responses": {
           "200": {
-            "description": "Connection flag, link state (Disconnected / Connecting / Connected), the manual-disconnect latch and the configuration currently in use."
+            "description": "Connection flag, link state (Disconnected / Connecting / Connected), the manual-disconnect latch, the configuration currently in use, and recording health (link timestamps plus drop counters, both reset on restart)."
           }
         },
         "security": [
@@ -1609,7 +1665,7 @@
           "Telegrams"
         ],
         "summary": "Server-streamed CSV export over the full filtered DB range.",
-        "description": "Accepts the same filters as GET /api/telegrams, but exports every matching row: cursor and pageSize are ignored and there is no row limit. Rows are always written chronologically (oldest first), regardless of order. The response is streamed while the query is still running, so the body starts arriving before the row count is known and no Content-Length is sent. The header line is always written, even when nothing matches. Encoding is UTF-8 without BOM; fields that contain a comma, quote or line break are quoted with doubled inner quotes. The filename is knx-telegrams-{UTC timestamp}.csv. Columns: Timestamp, SourceAddress, DestinationAddress, GroupAddressName, DatapointType, MessageType, Value, ValueDecoded. Value is the raw payload as uppercase hex without separators. Timestamp is the UTC value in ISO-8601 round-trip format but carries no zone designator — unlike the JSON responses, which end in Z. GroupAddressName and DatapointType are empty when the telegram has no linked group address.",
+        "description": "Accepts the same filters as GET /api/telegrams, but exports every matching row: cursor and pageSize are ignored and there is no row limit. Rows are always written chronologically (oldest first), regardless of order. The response is streamed while the query is still running, so the body starts arriving before the row count is known and no Content-Length is sent. The header line is always written, even when nothing matches. Encoding is UTF-8 without BOM; fields that contain a comma, quote or line break are quoted with doubled inner quotes. The filename is knx-telegrams-{UTC timestamp}.csv. Columns: Timestamp, SourceAddress, SourceName, DestinationAddress, GroupAddressName, DatapointType, MessageType, Value, ValueDecoded. Value is the raw payload as uppercase hex without separators. Timestamp is the UTC value in ISO-8601 round-trip format but carries no zone designator — unlike the JSON responses, which end in Z. GroupAddressName and DatapointType are empty when the telegram has no linked group address; SourceName is empty when the sender is not a device of the active project.",
         "parameters": [
           {
             "name": "From",
@@ -1758,6 +1814,76 @@
   },
   "components": {
     "schemas": {
+      "AvailabilityIntervalDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "$ref": "#/components/schemas/AvailabilityState"
+          },
+          "minutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "telegrams": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AvailabilityResponse": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "heartbeatIntervalSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "intervals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailabilityIntervalDto"
+            }
+          },
+          "upMinutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "busDownMinutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "monitorDownMinutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "unknownMinutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "outages": {
+            "type": "array",
+            "items": { }
+          }
+        }
+      },
+      "AvailabilityState": {
+        "type": "integer"
+      },
       "ConnectionType": {
         "type": "integer"
       },

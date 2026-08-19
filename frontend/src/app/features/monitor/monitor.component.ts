@@ -28,6 +28,8 @@ import { localeTag } from '../../core/i18n/locale.util';
 import { formatKnxDate } from '../../core/i18n/date.util';
 import { LoggerService } from '../../core/logging/logger.service';
 import { ProjectService, LocationDto } from '../../core/services/project.service';
+import { DiagnosticsService } from '../../core/services/diagnostics.service';
+import { formatDurationMinutes } from '../../shared/duration.util';
 
 interface KnxConfiguration {
   id: number;
@@ -69,6 +71,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   private lang = inject(LanguageService);
   private logger = inject(LoggerService);
   private projectService = inject(ProjectService);
+  private diagnostics = inject(DiagnosticsService);
   private subscription?: Subscription;
 
   @ViewChild(KnxTableComponent) table?: KnxTableComponent;
@@ -153,6 +156,14 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
 
   fromValue = '';
   toValue = '';
+
+  // Leerer Archiv-Treffer: statt "keine Telegramme" die Ursache benennen, wenn der Monitor im
+  // gewählten Fenster nachweislich nicht gelaufen ist oder keine Busverbindung hatte.
+  emptyText = 'monitor.emptyArchive';
+  emptyParams?: Record<string, string | number>;
+  // Laufende Nummer der Verfügbarkeitsabfrage: bei schnellen Filterwechseln darf eine spät
+  // eintreffende Antwort nicht die Ausfalldauer eines Zeitraums anzeigen, der nicht mehr gewählt ist.
+  private availabilitySeq = 0;
   address = '';
   source = '';
   types = new Set<string>();
@@ -187,6 +198,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly allColumns: KnxColumn[] = [
     { key: 'timestamp', header: 'columns.timestamp', kind: 'datetime', width: 220, sortable: true },
     { key: 'sourceAddress', header: 'columns.source', kind: 'mono', width: 105 },
+    { key: 'sourceName', header: 'columns.sourceName', kind: 'name', grow: 1, minWidth: 150 },
     { key: 'destinationAddress', header: 'columns.dest', kind: 'mono', width: 105 },
     { key: 'groupAddressName', header: 'columns.name', kind: 'name', grow: 1.4, minWidth: 200 },
     { key: 'datapointType', header: 'columns.dpt', kind: 'dpt', width: 120, align: 'right' },
@@ -196,7 +208,9 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     { key: 'priority', header: 'columns.priority', kind: 'muted-mono', width: 90, align: 'right' },
     { key: 'flags', header: 'columns.flags', kind: 'muted-mono', width: 90, align: 'right' }
   ];
-  readonly defaultHiddenCols = ['priority', 'flags'];
+  // sourceName ist zuschaltbar statt vorbelegt: die volle Spaltenliste braucht schon ohne sie
+  // ~1162 px, ein weiteres Namensfeld drängt auf Laptop-Breiten die Wert-Spalte heraus.
+  readonly defaultHiddenCols = ['priority', 'flags', 'sourceName'];
   columnOptions = this.allColumns.map((c) => ({ key: c.key as string, header: c.header }));
   hiddenCols = new Set<string>();
   readonly lockedCols = ['groupAddressName', 'valueDecoded'];
@@ -359,7 +373,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     const q = this.quickFilterText.trim().toLowerCase();
     this.filtered = q
       ? this.telegrams.filter((t) =>
-          [t.sourceAddress, t.destinationAddress, t.groupAddressName, t.datapointType, t.value, t.valueDecoded]
+          [t.sourceAddress, t.sourceName, t.destinationAddress, t.groupAddressName, t.datapointType, t.value, t.valueDecoded]
             .join(' ').toLowerCase().includes(q))
       : this.telegrams.slice();
   }
@@ -369,12 +383,12 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   clearTelegrams(): void { this.buffer.clear(); }
 
   exportLiveCsv(): void {
-    const header = ['Time', 'Source', 'Dest', 'Name', 'DPT', 'Type', 'Raw', 'Value'];
+    const header = ['Time', 'Source', 'SourceName', 'Dest', 'Name', 'DPT', 'Type', 'Raw', 'Value'];
     const lines = [header.join(',')];
     for (const t of this.filtered) {
       lines.push([
         formatKnxDate(t.timestamp, 'dateTime', this.lang.lang()),
-        t.sourceAddress, t.destinationAddress, t.groupAddressName ?? '', t.datapointType ?? '',
+        t.sourceAddress, t.sourceName ?? '', t.destinationAddress, t.groupAddressName ?? '', t.datapointType ?? '',
         messageTypeName(t.messageType), t.value, t.valueDecoded ?? ''
       ].map((v) => this.csv(String(v ?? ''))).join(','));
     }
@@ -444,8 +458,43 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
         this.cursor = page.nextCursor ?? undefined;
         this.hasMore = page.hasMore;
         this.loading = false;
+        if (this.rows.length === 0) this.explainEmptyResult();
       },
       error: () => { this.loading = false; }
+    });
+  }
+
+  /**
+   * Nichts gefunden heißt nicht zwangsläufig "nichts passiert": lief der Monitor im gewählten
+   * Fenster nicht oder war die Busverbindung weg, fehlen die Telegramme, statt dass es keine gab.
+   * Nur bei gesetztem Von-Zeitpunkt sinnvoll — ohne Zeitraum ist ein leeres Ergebnis eine leere
+   * Datenbank, keine Lücke.
+   */
+  private explainEmptyResult(): void {
+    this.emptyText = 'monitor.emptyArchive';
+    this.emptyParams = undefined;
+
+    // Vor dem Early Return hochzählen: sonst bleibt bei einem Wechsel auf "kein Zeitraum" die
+    // Nummer stehen und eine spät eintretende Antwort der vorigen Abfrage gilt weiter als aktuell.
+    const seq = ++this.availabilitySeq;
+
+    const from = this.toIso(this.fromValue);
+    if (!from) return;
+    const to = this.toIso(this.toValue) ?? new Date().toISOString();
+
+    this.diagnostics.getAvailability(from, to).subscribe({
+      next: (availability) => {
+        if (seq !== this.availabilitySeq) return;
+        // Unknown zählt bewusst nicht mit: fehlende Aufzeichnung ist kein belegter Ausfall.
+        const downMinutes = availability.monitorDownMinutes + availability.busDownMinutes;
+        if (downMinutes <= 0) return;
+        this.emptyText = availability.monitorDownMinutes >= availability.busDownMinutes
+          ? 'monitor.emptyArchiveMonitorDown'
+          : 'monitor.emptyArchiveBusDown';
+        this.emptyParams = { duration: formatDurationMinutes(downMinutes) };
+      },
+      // Die Verfügbarkeit ist Zusatzinfo: schlägt sie fehl, bleibt der neutrale Text stehen.
+      error: () => { }
     });
   }
 

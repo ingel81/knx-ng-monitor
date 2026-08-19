@@ -64,7 +64,7 @@ public class RoutingHardwareProbe
         // "Routing" in Settings, not a hand-rolled parameter set.
         var service = new KnxConnectionService(
             NullLogger<KnxConnectionService>.Instance,
-            Mock.Of<IGroupAddressCacheService>(),
+            Mock.Of<IProjectCacheService>(),
             Mock.Of<ITelegramQueue>(),
             Mock.Of<IServiceScopeFactory>());
         var parameters = await service.BuildConnectorParameters(config, keyringBlob: null);

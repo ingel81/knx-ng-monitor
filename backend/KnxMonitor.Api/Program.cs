@@ -217,6 +217,7 @@ builder.Services.AddScoped<IGroupAddressRepository, GroupAddressRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IKnxConfigurationRepository, KnxConfigurationRepository>();
 builder.Services.AddScoped<IRecordingSettingsRepository, RecordingSettingsRepository>();
+builder.Services.AddScoped<IMonitorHeartbeatRepository, MonitorHeartbeatRepository>();
 
 // Live-applied recording settings (cached snapshot, single source of truth)
 builder.Services.AddSingleton<IRecordingSettingsProvider, RecordingSettingsProvider>();
@@ -248,7 +249,7 @@ builder.Services.AddSingleton<KnxMonitor.ProjectParser.Core.Interfaces.IProjectP
 // Infrastructure Adapter (uses Library)
 builder.Services.AddScoped<IKnxProjectParserService, KnxProjectParserService>();
 
-builder.Services.AddSingleton<IGroupAddressCacheService, GroupAddressCacheService>();
+builder.Services.AddSingleton<IProjectCacheService, ProjectCacheService>();
 builder.Services.AddSingleton<IKnxConnectionService, KnxConnectionService>();
 
 // Keeps the bus link up automatically (startup + reconnect on loss).
@@ -261,6 +262,10 @@ builder.Services.AddSingleton<ITelegramQueue>(sp => sp.GetRequiredService<Telegr
 builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramPersistenceService>());
 
 builder.Services.AddHostedService<TelegramBroadcastService>();
+
+// Liveness record: one beat per minute so gaps in the telegram history can be explained
+// afterwards (quiet bus vs. lost link vs. process not running).
+builder.Services.AddHostedService<MonitorHeartbeatWorker>();
 
 // Pushes log entries from the buffer to the LogHub for the live in-app viewer.
 builder.Services.AddHostedService<LogBroadcastWorker>();
@@ -356,7 +361,7 @@ using (var scope = app.Services.CreateScope())
         await KnxMonitor.Infrastructure.Data.DbInitializer.InitializeAsync(context);
 
         // Initialize group address cache
-        var cacheService = app.Services.GetRequiredService<IGroupAddressCacheService>();
+        var cacheService = app.Services.GetRequiredService<IProjectCacheService>();
         await cacheService.InitializeAsync();
 
         // Warm the recording-settings snapshot before the persistence worker's first retention pass.

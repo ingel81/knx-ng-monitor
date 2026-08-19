@@ -13,6 +13,10 @@ export interface ColumnOption { key: string; header: string; }
  * Spalten-Manager-Popover: blendet Spalten ein/aus (gesperrte bleiben sichtbar).
  * Persistiert die verborgenen Keys pro Grid in localStorage. Emittiert das
  * aktuelle Hidden-Set; der Parent filtert seine Spaltenliste danach.
+ *
+ * Zusätzlich wird unter `<storageKey>.seen` festgehalten, welche Spalten dem Nutzer schon einmal
+ * angeboten wurden. Nur so lässt sich eine später hinzugefügte Spalte verborgen ausliefern, ohne
+ * die bestehende Auswahl zurückzusetzen.
  */
 @Component({
   selector: 'app-column-manager',
@@ -47,15 +51,44 @@ export class ColumnManagerComponent implements OnInit {
 
   ngOnInit(): void {
     const raw = localStorage.getItem(this.storageKey);
-    let stored: string[];
-    try { stored = raw ? JSON.parse(raw) : this.defaultHidden; } catch { stored = this.defaultHidden; }
-    this.hidden = new Set(stored.filter((k) => !this.locked.includes(k)));
+    let stored: string[] | null;
+    try { stored = raw ? JSON.parse(raw) : null; } catch { stored = null; }
+
+    if (stored === null) {
+      this.hidden = new Set(this.defaultHidden);
+    } else {
+      this.hidden = new Set(stored);
+      // Spalten, die es beim letzten Speichern noch nicht gab, starten auf ihrem Default statt
+      // sichtbar zu sein: sonst taucht jede neu ausgelieferte Spalte bei Bestandsnutzern
+      // ungefragt im Grid auf, weil sie im gespeicherten Hidden-Set naturgemäß fehlt.
+      const seen = this.readSeen();
+      for (const c of this.columns) {
+        if (!seen.includes(c.key) && this.defaultHidden.includes(c.key)) this.hidden.add(c.key);
+      }
+    }
+
+    this.locked.forEach((k) => this.hidden.delete(k));
+    // Beides zusammen persistieren: würde nur `seen` geschrieben, gälte die neue Spalte beim
+    // nächsten Laden als bekannt, stünde aber weiterhin nicht im gespeicherten Hidden-Set —
+    // und wäre damit ab dem zweiten Start doch sichtbar.
+    this.persist();
     this.emit();
   }
 
+  private persist(): void {
+    localStorage.setItem(this.storageKey, JSON.stringify([...this.hidden]));
+    localStorage.setItem(this.seenKey, JSON.stringify(this.columns.map((c) => c.key)));
+  }
+
+  private readSeen(): string[] {
+    try { return JSON.parse(localStorage.getItem(this.seenKey) ?? '[]'); } catch { return []; }
+  }
+
+  private get seenKey(): string { return `${this.storageKey}.seen`; }
+
   toggle(key: string, checked: boolean): void {
     if (checked) this.hidden.delete(key); else this.hidden.add(key);
-    localStorage.setItem(this.storageKey, JSON.stringify([...this.hidden]));
+    this.persist();
     this.emit();
   }
 

@@ -20,15 +20,18 @@ public partial class TelegramsController : ControllerBase
 
     private readonly ITelegramRepository _repository;
     private readonly TelegramArchiveService _archive;
+    private readonly IProjectCacheService _projectCache;
     private readonly ILogger<TelegramsController> _logger;
 
     public TelegramsController(
         ITelegramRepository repository,
         TelegramArchiveService archive,
+        IProjectCacheService projectCache,
         ILogger<TelegramsController> logger)
     {
         _repository = repository;
         _archive = archive;
+        _projectCache = projectCache;
         _logger = logger;
     }
 
@@ -132,11 +135,12 @@ public partial class TelegramsController : ControllerBase
     /// <c>knx-telegrams-{UTC timestamp}.csv</c>.
     /// </para>
     /// <para>
-    /// Columns: Timestamp, SourceAddress, DestinationAddress, GroupAddressName, DatapointType,
+    /// Columns: Timestamp, SourceAddress, SourceName, DestinationAddress, GroupAddressName, DatapointType,
     /// MessageType, Value, ValueDecoded. <c>Value</c> is the raw payload as uppercase hex without
     /// separators. <c>Timestamp</c> is the UTC value in ISO-8601 round-trip format but carries no
     /// zone designator — unlike the JSON responses, which end in <c>Z</c>. GroupAddressName and
-    /// DatapointType are empty when the telegram has no linked group address.
+    /// DatapointType are empty when the telegram has no linked group address; SourceName is empty
+    /// when the sender is not a device of the active project.
     /// </para>
     /// </remarks>
     /// <param name="request">Same filters as the history query; see the remarks above.</param>
@@ -157,13 +161,14 @@ public partial class TelegramsController : ControllerBase
 
         await using var writer = new StreamWriter(Response.Body, new UTF8Encoding(false));
         await writer.WriteLineAsync(
-            "Timestamp,SourceAddress,DestinationAddress,GroupAddressName,DatapointType,MessageType,Value,ValueDecoded");
+            "Timestamp,SourceAddress,SourceName,DestinationAddress,GroupAddressName,DatapointType,MessageType,Value,ValueDecoded");
 
         await foreach (var t in _repository.StreamByFilterAsync(request.ToFilter(), ct))
         {
             var line = string.Join(',',
                 Csv(t.Timestamp.ToString("O", CultureInfo.InvariantCulture)),
                 Csv(t.SourceAddress),
+                Csv(_projectCache.GetDeviceByAddress(t.SourceAddress)?.Name),
                 Csv(t.DestinationAddress),
                 Csv(t.GroupAddress?.Name),
                 Csv(t.GroupAddress?.DatapointType),
@@ -222,7 +227,7 @@ public partial class TelegramsController : ControllerBase
         return File(stream, contentType, fileName);
     }
 
-    private static TelegramDto ToDto(KnxTelegram t) => new()
+    private TelegramDto ToDto(KnxTelegram t) => new()
     {
         Id = t.Id,
         // SQLite returns Kind=Unspecified though the value is UTC (saved via DateTime.UtcNow).
@@ -230,6 +235,9 @@ public partial class TelegramsController : ControllerBase
         // correctly (otherwise the archive grid sits an offset behind the live view).
         Timestamp = DateTime.SpecifyKind(t.Timestamp, DateTimeKind.Utc),
         SourceAddress = t.SourceAddress,
+        // No stored link for the sender (unlike the group address), so this resolves against the
+        // project that is active right now — see TelegramDto.SourceName.
+        SourceName = _projectCache.GetDeviceByAddress(t.SourceAddress)?.Name,
         DestinationAddress = t.DestinationAddress,
         GroupAddressName = t.GroupAddress?.Name,
         DatapointType = t.GroupAddress?.DatapointType,

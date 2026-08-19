@@ -175,6 +175,46 @@
           <div><h3>{{ 'settings.diagnostics' | translate }}</h3><p>{{ 'settings.diagnosticsSub' | translate }}</p></div>
         </div>
         <div class="set-body">
+          <!-- Verfügbarkeit: erklärt Lücken im Archiv (Bus ruhig vs. Verbindung weg vs. Monitor aus) -->
+          <div class="set-row set-row--stack">
+            <div>
+              <div class="set-row-label">{{ 'settings.availability' | translate }}</div>
+              <div class="set-row-sub">{{ 'settings.availabilitySub' | translate }}</div>
+            </div>
+            @if (isLoadingAvailability) {
+              <div class="avail-note">{{ 'common.loading' | translate }}</div>
+            } @else if (availabilityFailed) {
+              <div class="avail-note">{{ 'settings.availabilityFailed' | translate }}</div>
+            } @else {
+              @if (outages.length === 0) {
+                <div class="avail-note avail-note--ok">
+                  <mat-icon>check_circle</mat-icon>{{ 'settings.availabilityNone' | translate }}
+                </div>
+              } @else {
+                <table class="avail-table">
+                  <tbody>
+                    @for (outage of outages; track outage.from) {
+                      <tr>
+                        <td class="avail-range">{{ outageRange(outage) }}</td>
+                        <td class="avail-duration">{{ formatDuration(outage.minutes) }}</td>
+                        <td class="avail-reason" [class.is-monitor]="outage.state === 'MonitorDown'">
+                          {{ outageReason(outage) }}
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+              <!-- Zeit vor Beginn der Aufzeichnung: weder Ausfall noch Entwarnung, deshalb eigener Hinweis -->
+              @if (unknownMinutes > 0) {
+                <div class="avail-note">
+                  <mat-icon>help_outline</mat-icon>
+                  {{ 'settings.availabilityUnknown' | translate:{ duration: formatDuration(unknownMinutes) } }}
+                </div>
+              }
+            }
+          </div>
+
           <div class="set-row">
             <div>
               <div class="set-row-label">{{ 'settings.downloadDiagnostics' | translate }}</div>

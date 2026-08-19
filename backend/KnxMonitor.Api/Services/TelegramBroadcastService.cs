@@ -11,13 +11,13 @@ public class TelegramBroadcastService : IHostedService
 {
     private readonly IKnxConnectionService _knxService;
     private readonly IHubContext<TelegramHub> _hubContext;
-    private readonly IGroupAddressCacheService _cache;
+    private readonly IProjectCacheService _cache;
     private readonly ILogger<TelegramBroadcastService> _logger;
 
     public TelegramBroadcastService(
         IKnxConnectionService knxService,
         IHubContext<TelegramHub> hubContext,
-        IGroupAddressCacheService cache,
+        IProjectCacheService cache,
         ILogger<TelegramBroadcastService> logger)
     {
         _knxService = knxService;
@@ -46,6 +46,7 @@ public class TelegramBroadcastService : IHostedService
         {
             string? groupAddressName = null;
             string? datapointType = null;
+            var sourceName = _cache.GetDeviceByAddress(telegram.SourceAddress)?.Name;
 
             if (telegram.GroupAddressId.HasValue)
             {
@@ -62,6 +63,7 @@ public class TelegramBroadcastService : IHostedService
                 telegram.Id,
                 telegram.Timestamp,
                 telegram.SourceAddress,
+                SourceName = sourceName,
                 telegram.DestinationAddress,
                 GroupAddressName = groupAddressName,
                 DatapointType = datapointType,

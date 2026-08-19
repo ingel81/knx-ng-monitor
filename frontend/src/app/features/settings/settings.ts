@@ -15,6 +15,9 @@ import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LoggerService } from '../../core/logging/logger.service';
 import { DiagnosticsService } from '../../core/services/diagnostics.service';
+import { Availability, AvailabilityInterval } from '../../core/models/availability.models';
+import { localeTag } from '../../core/i18n/locale.util';
+import { formatDurationMinutes } from '../../shared/duration.util';
 
 /**
  * Mirrors Core.Enums.ConnectionType. The API serialises enums as strings
@@ -60,6 +63,11 @@ export class Settings implements OnInit {
 
   isDownloadingDiagnostics = false;
 
+  /** Availability of the last few days — explains holes in the archive. Null until loaded. */
+  availability: Availability | null = null;
+  isLoadingAvailability = false;
+  availabilityFailed = false;
+
   // Erscheinungsbild (Theme + Dichte), aus ThemeService gespiegelt
   readonly theme = this.themeService.theme;
   readonly density = this.themeService.density;
@@ -99,6 +107,60 @@ export class Settings implements OnInit {
     this.loadSettings();
     this.loadRecordingSettings();
     this.loadAutoConnect();
+    this.loadAvailability();
+  }
+
+  /** Default window of the availability panel; matches the backend default. */
+  private static readonly AvailabilityDays = 7;
+
+  loadAvailability(): void {
+    this.isLoadingAvailability = true;
+    this.availabilityFailed = false;
+    const to = new Date();
+    const from = new Date(to.getTime() - Settings.AvailabilityDays * 24 * 60 * 60 * 1000);
+    this.diagnostics.getAvailability(from.toISOString(), to.toISOString()).subscribe({
+      next: result => {
+        this.availability = result;
+        this.isLoadingAvailability = false;
+      },
+      error: err => {
+        this.logger.error('Availability load failed:', err);
+        this.availabilityFailed = true;
+        this.isLoadingAvailability = false;
+      }
+    });
+  }
+
+  /** Outages worth showing, longest first — a two-minute blip is not the headline. */
+  get outages(): AvailabilityInterval[] {
+    return [...(this.availability?.outages ?? [])].sort((a, b) => b.minutes - a.minutes);
+  }
+
+  /** Zeit ohne Aufzeichnung (vor Beginn der Heartbeats). Kein Ausfall, aber auch keine Entwarnung. */
+  get unknownMinutes(): number {
+    return this.availability?.unknownMinutes ?? 0;
+  }
+
+  outageReason(interval: AvailabilityInterval): string {
+    return this.lang.translate(
+      interval.state === 'MonitorDown' ? 'availability.monitorDown' : 'availability.busDown');
+  }
+
+  outageRange(interval: AvailabilityInterval): string {
+    return this.lang.translate('availability.range', {
+      from: this.formatInstant(interval.from),
+      to: this.formatInstant(interval.to)
+    });
+  }
+
+  formatDuration(minutes: number): string {
+    return formatDurationMinutes(minutes);
+  }
+
+  private formatInstant(iso: string): string {
+    return new Date(iso).toLocaleString(localeTag(this.lang.lang()), {
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
   }
 
   async loadAutoConnect() {

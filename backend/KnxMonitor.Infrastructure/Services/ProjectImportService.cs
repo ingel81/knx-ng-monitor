@@ -246,7 +246,7 @@ public class ProjectImportService
         using var scope = _serviceScopeFactory.CreateScope();
         var projectRepository = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
         var parserService = scope.ServiceProvider.GetRequiredService<IKnxProjectParserService>();
-        var cacheService = scope.ServiceProvider.GetRequiredService<IGroupAddressCacheService>();
+        var cacheService = scope.ServiceProvider.GetRequiredService<IProjectCacheService>();
 
         try
         {

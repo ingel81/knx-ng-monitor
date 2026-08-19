@@ -48,6 +48,8 @@ export class KnxTableComponent {
   @Input() sortDir: SortDir = 'desc';
   @Input() loading = false;
   @Input() emptyText = 'monitor.emptyArchive';
+  /** Placeholders for `emptyText`, so the empty state can name a concrete cause. */
+  @Input() emptyParams?: Record<string, string | number>;
 
   @Output() rowClick = new EventEmitter<KnxTelegram>();
   @Output() sortChange = new EventEmitter<{ key: string; dir: SortDir }>();

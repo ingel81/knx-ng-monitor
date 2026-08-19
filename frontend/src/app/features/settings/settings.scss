@@ -15,3 +15,70 @@
   .warn-snackbar .mat-mdc-snack-bar-label,
   .error-snackbar .mat-mdc-snack-bar-label { color: #fff !important; }
 }
+
+// Verfügbarkeit: Ausfallliste im Diagnose-Block. Stapelt (Label über Inhalt), weil die
+// Tabelle die volle Breite braucht und nicht neben das Label passt.
+.set-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sp-3);
+}
+
+.avail-note {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+  &--ok { color: var(--ok); }
+}
+
+.avail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+
+  td {
+    padding: 6px 0;
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    vertical-align: baseline;
+  }
+
+  tr:first-child td { border-top: 0; }
+}
+
+.avail-range {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding-right: var(--sp-4) !important;
+}
+
+.avail-duration {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+  padding-right: var(--sp-4) !important;
+  color: var(--ink);
+  font-weight: var(--fw-medium);
+}
+
+// Ein fehlender Heartbeat wiegt schwerer als ein Verbindungsabriss: dabei fehlen die Daten
+// sicher, während der Bus ohne Link auch einfach ruhig gewesen sein kann.
+.avail-reason {
+  width: 100%;
+  color: var(--warn);
+
+  &.is-monitor { color: var(--err); }
+}
+
+@media (max-width: 700px) {
+  .avail-table, .avail-table tbody, .avail-table tr, .avail-table td { display: block; width: 100%; }
+  .avail-table tr { border-top: 1px solid var(--line); padding: var(--sp-2) 0; }
+  .avail-table tr:first-child { border-top: 0; }
+  .avail-table td { border-top: 0; padding: 1px 0; }
+  .avail-duration { text-align: left; padding-right: 0 !important; }
+}

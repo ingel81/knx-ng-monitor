@@ -127,6 +127,8 @@ public class TelegramArchiveServiceTests : IDisposable
         public KnxMonitor.Core.Enums.KnxLinkState State => KnxMonitor.Core.Enums.KnxLinkState.Disconnected;
         public bool ManualDisconnect => false;
         public bool TestInProgress => false;
+        public DateTime? ConnectedSince => null;
+        public DateTime? LastDisconnectedAt => null;
         public Task<bool> ConnectAsync(KnxConfiguration configuration) => Task.FromResult(false);
         public Task<KnxMonitor.Core.Enums.ConnectionTestOutcome> TestConnectionAsync(KnxConfiguration configuration)
             => Task.FromResult(KnxMonitor.Core.Enums.ConnectionTestOutcome.Failed);

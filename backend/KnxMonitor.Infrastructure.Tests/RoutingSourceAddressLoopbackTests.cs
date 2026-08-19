@@ -37,7 +37,7 @@ public class RoutingSourceAddressLoopbackTests
 
     private static KnxConnectionService CreateService() => new(
         NullLogger<KnxConnectionService>.Instance,
-        Mock.Of<IGroupAddressCacheService>(),
+        Mock.Of<IProjectCacheService>(),
         Mock.Of<ITelegramQueue>(),
         Mock.Of<IServiceScopeFactory>());
 
