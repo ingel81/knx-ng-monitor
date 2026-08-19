@@ -132,3 +132,6 @@ docs/ai/knx-ng-monitor.zip
 # Video pipeline: raw screen recordings + pre-blur originals (not versioned)
 docs/screenshots/*.mp4
 docs/screenshots/*.webp.orig
+
+# Local scratch dir for support material (DB copies, ETS recordings) — never versioned
+/tmp/
