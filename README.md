@@ -23,15 +23,20 @@ A modern, self-contained KNX bus monitoring tool with a web interface that displ
 
 ### Video tour
 
-A ~4-minute guided walkthrough of every feature. The app UI itself is bilingual (DE / EN, switchable live); the voice-over comes in two versions:
+A ~4-minute guided walkthrough of every feature on YouTube. The app UI itself is bilingual (DE / EN, switchable live); the voice-over comes in two versions:
 
-**🇬🇧 English**
-
-https://github.com/user-attachments/assets/d42fe0cb-d088-48fa-a07a-ead21aeebbbe
-
-**🇩🇪 Deutsch**
-
-https://github.com/user-attachments/assets/3b4ca0b0-97f8-420f-acb7-784465a6f5a5
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=buwyVSftH2k"><img src="docs/screenshots/video-tour-en.webp" alt="Video tour (English)" width="420"></a><br>
+      <sub><b>🇬🇧 English</b></sub>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=C_2DSGcZmKE"><img src="docs/screenshots/video-tour-de.webp" alt="Video-Rundgang (Deutsch)" width="420"></a><br>
+      <sub><b>🇩🇪 Deutsch</b></sub>
+    </td>
+  </tr>
+</table>
 
 <sub>Click any thumbnail for the full-resolution image.</sub>
 

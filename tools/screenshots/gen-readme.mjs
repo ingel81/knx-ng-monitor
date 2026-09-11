@@ -68,6 +68,21 @@ if (has('hero.gif')) {
   lines.push(`<div align="center"><img src="${REL}/hero-dark.webp" alt="Monitor (dark theme)" width="900"></div>`, '');
 }
 
+// video tour — poster frames (cut from the finished videos) linking to YouTube.
+const VIDEOS = [
+  { lang: 'en', id: 'buwyVSftH2k', alt: 'Video tour (English)', label: '🇬🇧 English' },
+  { lang: 'de', id: 'C_2DSGcZmKE', alt: 'Video-Rundgang (Deutsch)', label: '🇩🇪 Deutsch' },
+].filter((v) => has(`video-tour-${v.lang}.webp`));
+if (VIDEOS.length) {
+  const cells = VIDEOS.map((v) => `    <td align="center" width="50%">
+      <a href="https://www.youtube.com/watch?v=${v.id}"><img src="${REL}/video-tour-${v.lang}.webp" alt="${v.alt}" width="420"></a><br>
+      <sub><b>${v.label}</b></sub>
+    </td>`);
+  lines.push('### Video tour', '',
+    'A ~4-minute guided walkthrough of every feature on YouTube. The app UI itself is bilingual (DE / EN, switchable live); the voice-over comes in two versions:', '',
+    '<table>\n  <tr>\n' + cells.join('\n') + '\n  </tr>\n</table>', '');
+}
+
 lines.push('<sub>Click any thumbnail for the full-resolution image.</sub>', '');
 lines.push('### Desktop', '', grid(present), '');
 
