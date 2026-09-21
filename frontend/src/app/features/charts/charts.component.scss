@@ -592,6 +592,129 @@
   }
 }
 
+// Saved selections: square icon button beside the GA picker, popover anchored to the
+// toolbar's left padding (the trigger sits on the left, so a right-anchored panel would be
+// far away from it). Reuses .opts-backdrop and the .opts-title look.
+.saved-toggle {
+  flex: none;
+  width: 36px;
+  padding: 0;
+  justify-content: center;
+}
+
+.saved-panel {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  left: var(--sp-5);
+  z-index: 41;
+  width: min(380px, calc(100vw - 2 * var(--sp-4)));
+  max-height: min(70vh, 560px);
+  padding: var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2, 0 8px 24px rgba(0, 0, 0, .16));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+
+  .opts-title {
+    font-size: var(--fs-2xs);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ink-3);
+    margin-bottom: var(--sp-1);
+  }
+
+  .saved-form {
+    display: flex;
+    gap: var(--sp-2);
+
+    .knx-input { flex: 1; min-width: 0; height: 36px; }
+    .knx-btn { flex: none; }
+  }
+
+  .saved-hint {
+    font-size: var(--fs-xs);
+    color: var(--ink-3);
+
+    &--err { color: var(--err); }
+  }
+
+  // Only the list scrolls; the name field stays in view.
+  .saved-list {
+    list-style: none;
+    margin: var(--sp-2) 0 0;
+    padding: var(--sp-2) 0 0;
+    border-top: 1px solid var(--line);
+    overflow-y: auto;
+    min-height: 0;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-1);
+
+      + li { border-top: 1px solid var(--line); }
+    }
+  }
+
+  .saved-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: var(--sp-2);
+    border: none;
+    border-radius: var(--r-xs);
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover, &:focus-visible { background: var(--surface-3); }
+  }
+
+  // Wraps like the GA names in the picker; a long name is exactly what people save.
+  .saved-name {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    overflow-wrap: anywhere;
+  }
+
+  .saved-meta {
+    font-size: var(--fs-xs);
+    color: var(--ink-3);
+  }
+
+  .saved-missing { color: var(--warn, var(--err)); }
+
+  .saved-delete {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--r-xs);
+    background: transparent;
+    color: var(--ink-3);
+    cursor: pointer;
+
+    &:hover { background: var(--surface-3); color: var(--err); }
+    mat-icon { width: 18px; height: 18px; font-size: 18px; }
+  }
+
+  .saved-empty {
+    padding: var(--sp-3) var(--sp-2);
+    font-size: var(--fs-sm);
+    color: var(--ink-3);
+  }
+}
+
 // Mobile: the toolbar collapses to two rows — GA picker + range toggle, then a strip of
 // icon-only actions. The range controls only appear when the toggle is on. Stacking them all
 // vertically (the previous approach) produced nine full-width rows before the chart started.
@@ -615,6 +738,9 @@
   // 44px all the way up to 1560, not only in the phone/tablet band: iPad landscape widths run
   // from 1024 (iPad) over 1180 (Air) to 1366 (Pro 12.9"), all inside this band. The price is
   // that the toggle stands 8px taller than the 36px GA picker next to it on a mouse laptop.
+  // Same 44px touch square as the range toggle it now stands next to.
+  .saved-toggle { width: 44px; height: 44px; }
+
   .range-toggle {
     display: inline-flex;
     flex: 0 0 auto;

@@ -27,6 +27,7 @@ public sealed class SqliteTestDb : IDisposable
                    .AddInterceptors(new SqliteWalConnectionInterceptor()));
         services.AddScoped<ITelegramRepository, TelegramRepository>();
         services.AddScoped<IRecordingSettingsRepository, RecordingSettingsRepository>();
+        services.AddScoped<IChartSelectionRepository, ChartSelectionRepository>();
 
         Services = services.BuildServiceProvider();
 
