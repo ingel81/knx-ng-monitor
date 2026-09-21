@@ -11,6 +11,7 @@
             [placeholder]="'charts.pickGroupAddresses' | translate"
             [disabled]="!hasActiveProject || availableGas.length === 0"
             panelClass="ga-panel"
+            [panelWidth]="gaPanelWidth"
           >
             <!-- Without a custom trigger Material concatenates every selected label, which grows
                  the field until the toolbar wraps. Show one name plus a counter instead. -->
