@@ -143,6 +143,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   get messagesPerSecond(): number { return this.buffer.messagesPerSecond; }
   get busLoadPercent(): number { return this.buffer.busLoadPercent; }
   private rateSub?: Subscription;
+  private clearCountSub?: Subscription;
 
   // --- Archive state ---------------------------------------------------------
   private readonly pageSize = 100;
@@ -305,6 +306,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     // damit die Live-Ansicht beim Zurückwechseln nicht leer ist.
     this.subscription?.unsubscribe();
     this.rateSub?.unsubscribe();
+    this.clearCountSub?.unsubscribe();
     if (this.statusPoll) clearInterval(this.statusPoll);
     this.gridScrollRef?.nativeElement.removeEventListener('scroll', this.onCaptureScroll, true);
   }
@@ -337,7 +339,11 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.mode !== 'live') return;
     if (event.code === 'Space' && event.target instanceof HTMLElement) {
       const tag = event.target.tagName.toLowerCase();
-      if (tag !== 'input' && tag !== 'textarea' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
+      // Alles im CDK-Overlay ist tabu: dort ist Space die Aktivierungstaste. Sonst pausiert der
+      // Monitor, statt den fokussierten Menüpunkt oder Dialog-Button auszulösen — seit "Verlauf
+      // löschen" auch im Live-Modus im Kebab steht, träfe das eine zerstörende Aktion.
+      const inOverlay = !!event.target.closest('.cdk-overlay-container');
+      if (!inOverlay && tag !== 'input' && tag !== 'textarea' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
         event.preventDefault();
         this.togglePause();
       }
@@ -601,7 +607,19 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   clearHistory(): void {
-    const total = this.totalCount;
+    // Gelöscht wird immer die ganze Historie, nie nur der gefilterte Ausschnitt. totalCount taugt
+    // als Grundlage nicht: es zählt den aktiven Filter mit und steht im Live-Modus seit ngOnInit
+    // still. Also ungefiltert und frisch holen, sonst nennt der Dialog eine falsche Zahl.
+    // Die Subscription hängt am Lebenszyklus: sonst öffnet der Dialog noch über der nächsten
+    // Seite, wenn der Nutzer zwischen Klick und Antwort wegnavigiert.
+    this.clearCountSub?.unsubscribe();
+    this.clearCountSub = this.historyService.count({ pageSize: this.pageSize }).subscribe({
+      next: (res) => this.confirmClearHistory(res.count),
+      error: () => this.confirmClearHistory(null)
+    });
+  }
+
+  private confirmClearHistory(total: number | null): void {
     const countText = total != null
       ? this.lang.translate('monitor.confirmClearCount', { count: total.toLocaleString(localeTag(this.lang.lang())) })
       : this.lang.translate('monitor.confirmClearAll');
