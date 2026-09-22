@@ -67,6 +67,80 @@
         </mat-form-field>
       </div>
 
+      <!-- Saved selections. Same popover mechanics as the display options: anchored to the
+           toolbar, closed by a full-screen click-catcher. -->
+      <button
+        class="knx-btn knx-btn--outline saved-toggle"
+        [class.is-active]="savedOpen"
+        (click)="toggleSaved()"
+        [disabled]="!hasActiveProject"
+        [matTooltip]="'charts.saved.tooltip' | translate"
+        [attr.aria-label]="'charts.saved.title' | translate"
+        [attr.aria-expanded]="savedOpen"
+      >
+        <mat-icon>{{ savedSelections.length ? 'bookmarks' : 'bookmark_border' }}</mat-icon>
+      </button>
+
+      @if (savedOpen) {
+        <div class="opts-backdrop" (click)="savedOpen = false"></div>
+        <div class="saved-panel" role="dialog" [attr.aria-label]="'charts.saved.title' | translate">
+          <div class="opts-title">{{ 'charts.saved.title' | translate }}</div>
+
+          <form class="saved-form" (ngSubmit)="saveSelection()">
+            <input
+              class="knx-input"
+              type="text"
+              name="savedName"
+              maxlength="100"
+              [(ngModel)]="savedName"
+              [placeholder]="'charts.saved.namePlaceholder' | translate"
+              [disabled]="selectedAddresses.length === 0"
+            />
+            <button
+              type="submit"
+              class="knx-btn knx-btn--primary"
+              [disabled]="!savedName.trim() || selectedAddresses.length === 0 || savedBusy"
+            >
+              <mat-icon>bookmark_add</mat-icon>{{ 'charts.saved.save' | translate }}
+            </button>
+          </form>
+          @if (selectedAddresses.length === 0) {
+            <div class="saved-hint">{{ 'charts.saved.needSelection' | translate }}</div>
+          }
+
+          @if (savedError) {
+            <div class="saved-hint saved-hint--err">{{ 'charts.saved.failed' | translate }}</div>
+          }
+
+          <ul class="saved-list">
+            @for (sel of savedSelections; track sel.id) {
+              <li>
+                <button type="button" class="saved-item" (click)="applySaved(sel)" [attr.title]="sel.addresses.join(', ')">
+                  <span class="saved-name">{{ sel.name }}</span>
+                  <span class="saved-meta">
+                    {{ 'charts.saved.addresses' | translate: { count: sel.addresses.length } }}
+                    @if (missingCount(sel) > 0) {
+                      · <span class="saved-missing">{{ 'charts.saved.missing' | translate: { count: missingCount(sel) } }}</span>
+                    }
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="saved-delete"
+                  (click)="deleteSaved(sel, $event)"
+                  [attr.aria-label]="'charts.saved.delete' | translate"
+                  [matTooltip]="'charts.saved.delete' | translate"
+                >
+                  <mat-icon>delete_outline</mat-icon>
+                </button>
+              </li>
+            } @empty {
+              <li class="saved-empty">{{ 'charts.saved.empty' | translate }}</li>
+            }
+          </ul>
+        </div>
+      }
+
       <!-- Mobile only: the whole range group collapses behind this toggle. No matTooltip —
            a hover tooltip never shows on touch, so the name lives in aria-label instead. -->
       <button

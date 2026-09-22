@@ -25,6 +25,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<KnxConfiguration> KnxConfigurations => Set<KnxConfiguration>();
     public DbSet<RecordingSettings> RecordingSettings => Set<RecordingSettings>();
     public DbSet<MonitorHeartbeat> MonitorHeartbeats => Set<MonitorHeartbeat>();
+    public DbSet<ChartSelection> ChartSelections => Set<ChartSelection>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -252,6 +253,18 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.TelegramsSinceLast).IsRequired();
             // Every read is a range scan over time, and retention deletes by the same key.
             entity.HasIndex(e => e.Timestamp);
+        });
+
+        // ChartSelection entity configuration (saved group-address sets of the charts view)
+        modelBuilder.Entity<ChartSelection>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            // NOCASE so "Pumpe" and "pumpe" are the same selection, not two near-duplicates.
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100).UseCollation("NOCASE");
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.Property(e => e.Addresses).IsRequired().HasMaxLength(400);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
         });
     }
 }

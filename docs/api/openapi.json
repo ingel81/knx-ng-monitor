@@ -190,6 +190,133 @@
         }
       }
     },
+    "/api/chart-selections": {
+      "get": {
+        "tags": [
+          "ChartSelections"
+        ],
+        "summary": "All saved selections, ordered by name.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChartSelectionDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChartSelectionDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChartSelectionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "ChartSelections"
+        ],
+        "summary": "Saves a selection under a name; an existing one with that name is overwritten.",
+        "description": "The name is trimmed and matched case-insensitively, so saving \"pumpe\" updates \"Pumpe\" (and adopts the new spelling). Addresses are trimmed and de-duplicated, keeping their order. Validation: the name must be 1–100 characters, and there must be 1–8 addresses of at most 20 characters each — otherwise 400 and nothing is stored.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveChartSelectionDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveChartSelectionDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveChartSelectionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The selection as stored.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChartSelectionDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChartSelectionDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChartSelectionDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/chart-selections/{id}": {
+      "delete": {
+        "tags": [
+          "ChartSelections"
+        ],
+        "summary": "Deletes a saved selection.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/Diagnostics/logs": {
       "get": {
         "tags": [
@@ -1884,6 +2011,28 @@
       "AvailabilityState": {
         "type": "integer"
       },
+      "ChartSelectionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ConnectionType": {
         "type": "integer"
       },
@@ -2023,6 +2172,20 @@
       "RequirementType": {
         "type": "integer"
       },
+      "SaveChartSelectionDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "addresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "SetAutoConnectRequest": {
         "required": [
           "enabled"
@@ -2071,6 +2234,9 @@
     },
     {
       "name": "Auth"
+    },
+    {
+      "name": "ChartSelections"
     },
     {
       "name": "Diagnostics"
