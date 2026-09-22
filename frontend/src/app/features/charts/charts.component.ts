@@ -48,6 +48,26 @@ function csvCell(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
+/**
+ * Lower-cases and drops diacritics character by character ("Küche" → "kuche"), so a search
+ * works without typing umlauts. Deliberately one output character per input character — the
+ * highlighting relies on the indices matching the original text.
+ */
+function foldForSearch(text: string): string {
+  let out = '';
+  for (const ch of text.toLowerCase()) {
+    const base = ch.normalize('NFD')[0];
+    // Characters outside the BMP would count as two here; keep them as they are.
+    out += ch.length === 1 && base.length === 1 ? base : ch;
+  }
+  return out;
+}
+
+/** Search input split into words, each folded like the text it is matched against. */
+function searchTokens(input: string): string[] {
+  return foldForSearch(input).split(/\s+/).filter((t) => t.length > 0);
+}
+
 interface LiveSeries {
   address: string;
   name: string;
@@ -247,15 +267,16 @@ export class ChartsComponent implements OnInit, OnDestroy {
    * option components, so filtering one away could drop it from the selection.
    */
   filteredGas(): GroupAddressDto[] {
-    const term = this.gaFilter.trim().toLowerCase();
-    if (!term) return this.displayGas;
+    const tokens = searchTokens(this.gaFilter);
+    if (tokens.length === 0) return this.displayGas;
     const selected = new Set(this.selectedAddresses);
-    return this.displayGas.filter(
-      (ga) =>
-        selected.has(ga.address) ||
-        ga.address.toLowerCase().includes(term) ||
-        (ga.name ?? '').toLowerCase().includes(term)
-    );
+    // Every word has to occur somewhere in address or name, in any order: "küche raum" finds
+    // "EG.Küche.Heizung.Raumtemperatur" without typing the path in between.
+    return this.displayGas.filter((ga) => {
+      if (selected.has(ga.address)) return true;
+      const haystack = foldForSearch(`${ga.address} ${ga.name ?? ''}`);
+      return tokens.every((t) => haystack.includes(t));
+    });
   }
 
   /**
@@ -264,23 +285,29 @@ export class ChartsComponent implements OnInit, OnDestroy {
    * markup stays inert text.
    */
   highlightParts(text: string): { text: string; hit: boolean }[] {
-    const term = this.gaFilter.trim();
-    if (!term || !text) return [{ text, hit: false }];
+    const tokens = searchTokens(this.gaFilter);
+    if (tokens.length === 0 || !text) return [{ text, hit: false }];
 
-    const haystack = text.toLowerCase();
-    const needle = term.toLowerCase();
-    const parts: { text: string; hit: boolean }[] = [];
-
-    let cursor = 0;
-    while (cursor < text.length) {
-      const hitAt = haystack.indexOf(needle, cursor);
-      if (hitAt < 0) {
-        parts.push({ text: text.slice(cursor), hit: false });
-        break;
+    // foldForSearch keeps one character per character, so indices in the folded string are
+    // indices in the original and the hit can be cut out of the original spelling.
+    const haystack = foldForSearch(text);
+    const hit = new Array<boolean>(text.length).fill(false);
+    for (const token of tokens) {
+      let from = 0;
+      let at: number;
+      while ((at = haystack.indexOf(token, from)) >= 0) {
+        hit.fill(true, at, at + token.length);
+        from = at + token.length;
       }
-      if (hitAt > cursor) parts.push({ text: text.slice(cursor, hitAt), hit: false });
-      parts.push({ text: text.slice(hitAt, hitAt + needle.length), hit: true });
-      cursor = hitAt + needle.length;
+    }
+
+    const parts: { text: string; hit: boolean }[] = [];
+    let start = 0;
+    for (let i = 1; i <= text.length; i++) {
+      if (i === text.length || hit[i] !== hit[start]) {
+        parts.push({ text: text.slice(start, i), hit: hit[start] });
+        start = i;
+      }
     }
     return parts;
   }
