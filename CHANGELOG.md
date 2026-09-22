@@ -10,6 +10,45 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
+## [0.12.0]
+
+### Fixed
+- **ETS 4 projects imported without a single datapoint type (#24).** The type was only ever
+  read from the `GroupAddress` element, and ETS 4 never writes it there: across seven ETS 4
+  projects, 95 group addresses, not one carried a type, and migrating the same project to a
+  newer ETS does not add it either. ETS 6 projects can leave it out as well. The result was
+  no value in the monitor and an empty charts page ("no numeric group addresses to plot").
+  The type is now resolved through the communication object linked to the address and,
+  behind it, the manufacturer's application program inside the project archive. It stays
+  deliberately conservative: an object width that fits a dozen types yields nothing, and
+  linked objects declaring contradicting types leave the address empty, because a wrong type
+  decodes every telegram on that address wrongly. Of those 95 addresses, 45 are linked to a
+  communication object at all and 35 of them now resolve; an address with no object attached
+  still has no type, since there is nothing to infer from.
+- **Communication flags were wrong in every project.** ETS 5 and 6 showed none at all (0 of
+  1528 on a real installation): ETS writes a flag into the project file only where the
+  integrator changed it, the rest lives in the manufacturer data, which was never read.
+  ETS 4 showed a single "Transmit" on everything, because the `Send` / `Receive` connectors
+  were reported as flags although they name the object's group-address links, not what it may
+  do - a receive-only actuator input read as transmitting. Both levels are now read, with the
+  integrator's change laid over the factory setting per flag.
+
+### Changed
+- **A project archive is no longer unpacked in full.** Every entry used to be decompressed
+  into memory up front, although an import reads a handful of files: a 6.7 MB project became
+  128 MB of heap, a 33 MB one roughly 550 MB, with single application programs of 50 MB and
+  more - a real OOM risk on a Pi or a memory-capped container. Entries are decompressed on
+  access now, and the application programs the type resolution needs are streamed rather than
+  held.
+- **Flag badges are quieter.** With the flags actually resolved a row commonly carries five of
+  them, and five filled chips next to the DPT badge drowned out the name. They are plain
+  letters now, and the tooltip names the flag instead of repeating every value of every linked
+  communication object.
+
+**Re-import required:** existing projects keep their stored types and flags until the project
+is imported again. The re-import matches on the ETS project id, so it updates in place and the
+recorded telegrams are kept.
+
 ## [0.11.0]
 
 ### Added

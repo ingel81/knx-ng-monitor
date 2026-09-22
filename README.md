@@ -330,7 +330,19 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.11.0:** a gap in the archive can now be explained instead of guessed
+**Current - v0.12.0:** ETS 4 projects finally import with datapoint types (#24). The type
+was only ever read from the group address, where ETS 4 never puts it - so the value column
+stayed empty and the charts page reported nothing to plot. It is now resolved through the
+linked communication object and the manufacturer's application program in the archive, and
+stays conservative where the project does not say enough: an ambiguous object width or two
+objects claiming different types leave the address without a type rather than guessing one.
+Along the way the **communication flags** turned out to be wrong everywhere - ETS 5 / 6
+showed none at all, ETS 4 showed "Transmit" on everything - and now come from the same
+manufacturer data. A project archive is also no longer unpacked in full: a 6.7 MB project
+used to occupy 128 MB, entries are decompressed on access now. Existing projects need one
+re-import to pick this up; it updates in place and keeps the recorded telegrams.
+
+**Previous - v0.11.0:** a gap in the archive can now be explained instead of guessed
 about. An empty stretch of telegrams used to be ambiguous - the bus was quiet, the
 bus link was gone, or the monitor was not running at all - and nothing in the data
 told those apart; the first bug report about "missing messages" ran straight into
