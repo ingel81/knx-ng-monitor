@@ -18,7 +18,14 @@ namespace KnxMonitor.Infrastructure.Services;
 public interface IProjectCacheService
 {
     Task InitializeAsync();
-    Task RefreshAsync();
+
+    /// <summary>Reloads the cache from the active project.</summary>
+    /// <param name="force">
+    /// Reload even when the active project id has not changed. Needed after a re-import: the row
+    /// keeps its id, so the cheap id comparison would keep the stale group addresses alive and
+    /// incoming telegrams would decode against the pre-import DPTs.
+    /// </param>
+    Task RefreshAsync(bool force = false);
     GroupAddress? GetByAddress(string address);
     Task<GroupAddress?> GetByAddressAsync(string address);
 
@@ -47,7 +54,7 @@ public class ProjectCacheService : IProjectCacheService
         await RefreshAsync();
     }
 
-    public async Task RefreshAsync()
+    public async Task RefreshAsync(bool force = false)
     {
         try
         {
@@ -67,8 +74,9 @@ public class ProjectCacheService : IProjectCacheService
                 return;
             }
 
-            // Check if we need to refresh (different project)
-            if (_currentActiveProjectId == activeProject.Id && _addressCache.Any())
+            // Check if we need to refresh (different project). A re-import keeps the id but
+            // rewrites names and DPTs, so it has to pass force: true to get past this.
+            if (!force && _currentActiveProjectId == activeProject.Id && _addressCache.Any())
             {
                 _logger.LogDebug("Cache already up-to-date for project {ProjectId}", activeProject.Id);
                 return;

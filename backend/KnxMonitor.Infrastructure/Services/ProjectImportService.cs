@@ -357,7 +357,9 @@ public class ProjectImportService
                 // names/DPTs. The bus link is deliberately NOT touched here — the gateway connection
                 // is governed solely by KnxConfiguration.AutoConnect + the auto-connect worker +
                 // manual connect/disconnect. Import decodes; it does not connect.
-                await cacheService.RefreshAsync();
+                // force: a re-import keeps the project id, so the id check would skip the reload
+                // and incoming telegrams would keep decoding against the pre-import DPTs (#24).
+                await cacheService.RefreshAsync(force: true);
             }
 
             _jobManager.UpdateStep(jobId, ImportStepType.RefreshCache, "completed", 100);
