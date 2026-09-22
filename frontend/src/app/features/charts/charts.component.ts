@@ -54,6 +54,12 @@ interface LiveSeries {
   unit: string;
   isBool: boolean;
   data: [number, number][]; // [epochMs, value]
+  /**
+   * Last reading before the visible window ([epochMs, value]), carried in so the curve starts at
+   * the left edge. Filled from the server's `carry` on load and by points that slide out of the
+   * live window. Display only: never part of `data`, the stats or the CSV.
+   */
+  carry: [number, number] | null;
 }
 
 @Component({
@@ -143,7 +149,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
   // --- Display options -------------------------------------------------------
   options: ChartDisplayOptions = loadChartOptions();
   optionsOpen = false;
-  readonly curveModes: CurveMode[] = ['line', 'area', 'step'];
+  readonly curveModes: CurveMode[] = ['line', 'smooth', 'area', 'step'];
 
   /** Set by ngx-echarts once the canvas exists; needed for the PNG export. */
   private chart?: ECharts;
@@ -420,11 +426,24 @@ export class ChartsComponent implements OnInit, OnDestroy {
   /** Drops points that slid out of the live window on the left. */
   private trimToWindow(now: number): void {
     const cutoff = now - this.rangeSpanMs;
-    for (const s of this.series) {
-      let drop = 0;
+    for (const s of this.series) this.dropBefore(s, cutoff);
+  }
+
+  /**
+   * Removes the points older than `cutoff` (or, with `keep`, all but the newest `keep` points)
+   * and keeps the newest removed one as the carry-in value, so the curve still starts at the
+   * left edge with the value that was in force there.
+   */
+  private dropBefore(s: LiveSeries, cutoff: number, keep?: number): void {
+    let drop = 0;
+    if (keep !== undefined) {
+      drop = Math.max(0, s.data.length - keep);
+    } else {
       while (drop < s.data.length && s.data[drop][0] < cutoff) drop++;
-      if (drop > 0) s.data.splice(0, drop);
     }
+    if (drop === 0) return;
+    s.carry = s.data[drop - 1];
+    s.data.splice(0, drop);
   }
 
   // --- Display options -------------------------------------------------------
@@ -594,7 +613,8 @@ export class ChartsComponent implements OnInit, OnDestroy {
       name: s.name || ga?.name || s.address,
       unit: s.unit,
       isBool: this.isBoolDpt(ga?.datapointType),
-      data: s.points.map((p) => [new Date(p.t).getTime(), p.v] as [number, number])
+      data: s.points.map((p) => [new Date(p.t).getTime(), p.v] as [number, number]),
+      carry: s.carry ? [new Date(s.carry.t).getTime(), s.carry.v] : null
     };
   }
 
@@ -610,16 +630,8 @@ export class ChartsComponent implements OnInit, OnDestroy {
 
     // Live means a window that moves with the data, not a range that grows without end. Trimming
     // the data (rather than pinning the axis) keeps the user's dataZoom selection working.
-    if (this.rangeSpanMs > 0) {
-      const cutoff = ts - this.rangeSpanMs;
-      let drop = 0;
-      while (drop < s.data.length && s.data[drop][0] < cutoff) drop++;
-      if (drop > 0) s.data.splice(0, drop);
-    }
-
-    if (s.data.length > this.maxLivePoints) {
-      s.data.splice(0, s.data.length - this.maxLivePoints);
-    }
+    if (this.rangeSpanMs > 0) this.dropBefore(s, ts - this.rangeSpanMs);
+    if (s.data.length > this.maxLivePoints) this.dropBefore(s, 0, this.maxLivePoints);
     this.scheduleFlush();
   }
 
@@ -691,7 +703,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
       // 'line' keeps the long-standing behaviour of filling a lone numeric series;
       // 'area' forces the fill for every series, 'step' never fills.
       const withArea = opts.curve === 'area'
-        || (opts.curve === 'line' && singleSeries && !s.isBool);
+        || ((opts.curve === 'line' || opts.curve === 'smooth') && singleSeries && !s.isBool);
       // Booleans are always stepped — interpolating between on and off is a lie.
       const stepped = opts.curve === 'step' || s.isBool;
 
@@ -702,6 +714,9 @@ export class ChartsComponent implements OnInit, OnDestroy {
         showSymbol: opts.showPoints,
         symbolSize: 4,
         step: stepped ? ('end' as const) : undefined,
+        // 'x'-monotone smoothing never bends back in time or overshoots between two readings,
+        // so a rounded curve does not invent peaks the sensor never reported.
+        ...(opts.curve === 'smooth' && !stepped ? { smooth: 0.4, smoothMonotone: 'x' as const } : {}),
         // Thins out dense series for drawing without distorting the curve shape.
         sampling: 'lttb',
         ...(opts.averageLine
@@ -715,13 +730,29 @@ export class ChartsComponent implements OnInit, OnDestroy {
               }
             }
           : {}),
-        data: following ? this.withNowPoint(s.data, now) : s.data
+        data: this.displayData(s, xMin, following ? now : undefined)
       }, color, withArea);
     });
 
     this.stats = this.series
-      .filter((s) => s.data.length > 0)
-      .map((s, i) => {
+      .filter((s) => s.data.length > 0 || s.carry)
+      .map((s) => {
+        // No reading inside the range, only the value carried in from before: that value held
+        // the whole time, so it is min, max, average and last alike — with 0 points.
+        if (s.data.length === 0) {
+          const v = s.carry![1];
+          return {
+            name: s.name,
+            address: s.address,
+            unit: s.unit,
+            color: skin.palette[this.series.indexOf(s) % skin.palette.length],
+            min: v,
+            max: v,
+            avg: v,
+            last: v,
+            count: 0
+          };
+        }
         let min = s.data[0][1];
         let max = min;
         let sum = 0;
@@ -772,18 +803,33 @@ export class ChartsComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * A KNX value holds until the next telegram, so in live mode the curve is carried on from the
-   * last reading to "now". Display only — the extra point never enters stats or the CSV, and it
-   * gets no symbol so it is not mistaken for a real reading.
+   * A KNX value holds until the next telegram, so the curve is drawn across the whole window:
+   * from the left edge with the value carried in from before it (when there is one), and in
+   * live mode on to "now" with the last value. Both extra points are display only — they never
+   * enter the stats or the CSV, and they get no symbol so they are not mistaken for readings.
    */
-  private withNowPoint(data: [number, number][], now: number): unknown[] {
-    const last = data[data.length - 1];
-    if (!last || last[0] >= now) return data;
-    return [...data, { value: [now, last[1]], symbol: 'none' }];
+  private displayData(s: LiveSeries, start: number | undefined, now: number | undefined): unknown[] {
+    const out: unknown[] = [];
+    const first = s.data[0];
+    if (s.carry && start !== undefined && (!first || first[0] > start)) {
+      out.push({ value: [start, s.carry[1]], symbol: 'none' });
+      // The carried value held until the first reading, so hold it flat up to there and let the
+      // curve jump — a line or smooth curve would otherwise draw a ramp over the whole gap.
+      if (first && first[1] !== s.carry[1]) {
+        out.push({ value: [first[0], s.carry[1]], symbol: 'none' });
+      }
+    }
+    out.push(...s.data);
+
+    const last = s.data[s.data.length - 1] ?? (s.carry ? [start ?? s.carry[0], s.carry[1]] : undefined);
+    if (now !== undefined && last && last[0] < now) {
+      out.push({ value: [now, last[1]], symbol: 'none' });
+    }
+    return out;
   }
 
   get hasData(): boolean {
-    return this.series.some((s) => s.data.length > 0);
+    return this.series.some((s) => s.data.length > 0 || s.carry);
   }
 
   liveTooltip(): string {

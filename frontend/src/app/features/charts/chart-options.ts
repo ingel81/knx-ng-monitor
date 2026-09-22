@@ -3,7 +3,7 @@
  * theme and density are — a chart that resets its appearance on every navigation is useless.
  */
 
-export type CurveMode = 'line' | 'area' | 'step';
+export type CurveMode = 'line' | 'smooth' | 'area' | 'step';
 
 export interface ChartDisplayOptions {
   curve: CurveMode;
