@@ -27,7 +27,7 @@ public class JsonFormatter : IOutputFormatter
                 address = ga.Address,
                 name = ga.Name,
                 description = ga.Description,
-                dpt = ga.DatapointType?.OriginalString,
+                dpt = ga.DatapointType?.ToDptId(),
                 dataSecure = ga.DataSecure
             }),
             devices = result.Devices?.Select(d => new

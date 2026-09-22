@@ -1,4 +1,4 @@
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using KnxMonitor.ProjectParser.Core.Enums;
 using KnxMonitor.ProjectParser.Core.Interfaces;
 using KnxMonitor.ProjectParser.Core.Models;
@@ -44,7 +44,7 @@ public class ProjectParser : IProjectParser
             //    unbekannte ETS-Version noch aus den entpackten Projektdateien nachgezogen werden
             //    kann — bei passwortgeschützten Projekten sind die vorher nicht lesbar.
             ReportProgress(progress, ParseStep.OpenZip, 0);
-            var files = await ZipHandler.LoadAsync(
+            using var files = await ZipHandler.LoadAsync(
                 stream,
                 features,
                 options.Password,

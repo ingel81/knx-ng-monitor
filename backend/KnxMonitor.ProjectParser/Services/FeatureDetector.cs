@@ -1,4 +1,4 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using System.Xml;
 using System.Xml.Linq;
 using KnxMonitor.ProjectParser.Core.Enums;
@@ -32,7 +32,7 @@ public class FeatureDetector : IFeatureDetector
 
         // Re-scan inside the decrypted archive: KNX Secure indicators live in the inner 0.xml
         stream.Position = 0;
-        var files = await ZipHandler.LoadAsync(stream, features, password, cancellationToken: cancellationToken);
+        using var files = await ZipHandler.LoadAsync(stream, features, password, cancellationToken: cancellationToken);
 
         var projectXmlPath = files.FindFirstByName("0.xml");
         if (projectXmlPath == null) return features;

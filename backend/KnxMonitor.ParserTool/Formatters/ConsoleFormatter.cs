@@ -53,7 +53,9 @@ public class ConsoleFormatter : IOutputFormatter
             var sample = result.GroupAddresses.Take(5);
             foreach (var ga in sample)
             {
-                var dpt = ga.DatapointType?.OriginalString ?? "unknown";
+                // ToDptId, not OriginalString: the CLI is the documented way to verify a parse,
+                // so it has to show what the import actually stores, not the raw attribute.
+                var dpt = ga.DatapointType?.ToDptId() ?? "unknown";
                 var secure = ga.DataSecure ? " [SECURE]" : "";
                 sb.AppendLine($"  {ga.Address,-12} {ga.Name,-30} (DPT {dpt}){secure}");
             }

@@ -1,7 +1,9 @@
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using KnxMonitor.ProjectParser.Core.Enums;
 using KnxMonitor.ProjectParser.Core.Interfaces;
 using KnxMonitor.ProjectParser.Core.Models;
+using KnxMonitor.ProjectParser.Helpers;
+using KnxMonitor.ProjectParser.Services;
 using Microsoft.Extensions.Logging;
 
 namespace KnxMonitor.ProjectParser.Loaders;
@@ -86,10 +88,17 @@ public abstract class BaseProjectLoader : IProjectLoader
                 PercentComplete = 0
             });
 
+            // The manufacturer catalog carries the datapoint types and flags the project file leaves
+            // out. Read once here and used by both the com objects and the group-address cascade.
+            var catalog = await BuildApplicationProgramCatalogAsync(files, projectXml, cancellationToken);
+
+            ApplyDatapointTypeCascade(projectXml, result.GroupAddresses, groupAddressMap, catalog);
+
             result.CommunicationObjects = await ParseCommunicationObjectsAsync(
                 projectXml,
                 deviceAddressMap,
                 groupAddressMap,
+                catalog,
                 cancellationToken
             );
 
@@ -217,10 +226,11 @@ public abstract class BaseProjectLoader : IProjectLoader
     /// ETS4 nests &lt;Connectors&gt;/&lt;Send&gt;/&lt;Receive GroupAddressRefId="..."&gt;, while ETS5/6 use a
     /// space-separated @Links attribute. Only com objects with at least one resolvable GA link are kept.
     /// </summary>
-    protected virtual Task<List<ComObject>> ParseCommunicationObjectsAsync(
+    private protected virtual Task<List<ComObject>> ParseCommunicationObjectsAsync(
         XDocument projectXml,
         IReadOnlyDictionary<string, string> deviceAddressMap,
         IReadOnlyDictionary<string, string> groupAddressMap,
+        ApplicationProgramCatalog catalog,
         CancellationToken cancellationToken)
     {
         var ns = GetNamespace(projectXml);
@@ -242,6 +252,8 @@ public abstract class BaseProjectLoader : IProjectLoader
                 if (links.Count == 0)
                     continue; // only keep com objects that are actually linked to a GA
 
+                var catalogEntry = catalog.Find(deviceId, comRef.Attribute("RefId")?.Value);
+
                 comObjects.Add(new ComObject
                 {
                     DeviceAddress = deviceAddress,
@@ -249,14 +261,157 @@ public abstract class BaseProjectLoader : IProjectLoader
                     Name = comRef.Attribute("Text")?.Value,
                     FunctionText = comRef.Attribute("Description")?.Value,
                     GroupAddressLinks = links,
-                    DatapointType = comRef.Attribute("DatapointType")?.Value,
-                    Flags = BuildComObjectFlags(comRef, ns)
+                    DatapointType = ResolveDeclaredDatapointType(comRef, catalogEntry),
+                    Flags = BuildComObjectFlags(comRef, ns, catalogEntry)
                 });
             }
         }
 
         _logger.LogInformation("Parsed {Count} communication objects", comObjects.Count);
         return Task.FromResult(comObjects);
+    }
+
+    /// <summary>
+    /// Read the manufacturer catalog entries for every communication object of the project. Failing
+    /// here costs datapoint types and flags, never the import, so any error is logged and swallowed.
+    /// </summary>
+    private async Task<ApplicationProgramCatalog> BuildApplicationProgramCatalogAsync(
+        ProjectFileMap files,
+        XDocument projectXml,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await ApplicationProgramCatalog.BuildAsync(files, projectXml, _logger, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Application program catalog unavailable; continuing without it");
+            return ApplicationProgramCatalog.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Fill in the datapoint type of every group address that carries none (issue #24). ETS 4 never
+    /// writes <c>GroupAddress/@DatapointType</c> and migrating a project to ETS 5/6 does not add it,
+    /// so without this the value column and the charts stay empty for those projects.
+    /// <para>
+    /// Each communication object linked to the address contributes one candidate, resolved through
+    /// <see cref="DatapointTypeCascade"/>; the candidates are then folded together. An address that
+    /// already has a type is never touched, and an unresolvable one keeps none.
+    /// </para>
+    /// </summary>
+    private protected void ApplyDatapointTypeCascade(
+        XDocument projectXml,
+        List<GroupAddress> groupAddresses,
+        IReadOnlyDictionary<string, string> groupAddressMap,
+        ApplicationProgramCatalog catalog)
+    {
+        // Keyed by address because that is what the links resolve to. A list per address, not a
+        // single entry: should a project ever carry the same address twice (several installations,
+        // or a malformed file), keeping only the last one would leave the others silently untyped
+        // even though they are persisted just the same.
+        var pending = new Dictionary<string, List<GroupAddress>>(StringComparer.Ordinal);
+        foreach (var ga in groupAddresses)
+        {
+            if (ga.DatapointType != null || string.IsNullOrEmpty(ga.Address)) continue;
+
+            if (!pending.TryGetValue(ga.Address, out var sameAddress))
+            {
+                pending[ga.Address] = sameAddress = new List<GroupAddress>(1);
+            }
+            sameAddress.Add(ga);
+        }
+
+        if (pending.Count == 0) return;
+
+        var ns = GetNamespace(projectXml);
+        var candidates = new Dictionary<string, List<DatapointCandidate>>(StringComparer.Ordinal);
+
+        foreach (var device in projectXml.Descendants(ns + "DeviceInstance"))
+        {
+            var deviceId = device.Attribute("Id")?.Value;
+            if (string.IsNullOrEmpty(deviceId)) continue;
+
+            foreach (var comRef in device.Descendants(ns + "ComObjectInstanceRef"))
+            {
+                var links = ResolveComObjectLinks(comRef, ns, groupAddressMap);
+                if (links.Count == 0) continue;
+
+                List<string>? targets = null;
+                foreach (var link in links)
+                {
+                    if (pending.ContainsKey(link)) (targets ??= new List<string>()).Add(link);
+                }
+                if (targets == null) continue;
+
+                var candidate = ResolveComObjectDatapointType(comRef, deviceId, catalog);
+                if (candidate.Dpt == null) continue;
+
+                foreach (var target in targets)
+                {
+                    if (!candidates.TryGetValue(target, out var list))
+                    {
+                        candidates[target] = list = new List<DatapointCandidate>();
+                    }
+                    list.Add(candidate);
+                }
+            }
+        }
+
+        var filled = 0;
+        foreach (var (address, list) in candidates)
+        {
+            var combined = DatapointTypeCascade.Combine(list);
+            if (combined == null)
+            {
+                // Only reachable when the linked objects name different MAIN types; a subtype
+                // disagreement still yields the main type. Logged because the address then shows no
+                // type at all and the reason is invisible from the outside.
+                _logger.LogDebug(
+                    "No datapoint type for {Address}: linked objects disagree ({Candidates})",
+                    address,
+                    string.Join(", ", list.Select(c => c.Inferred ? $"{c.Dpt} (from size)" : $"{c.Dpt}")));
+                continue;
+            }
+
+            foreach (var ga in pending[address])
+            {
+                ga.DatapointType = combined;
+                filled++;
+            }
+        }
+
+        if (filled > 0)
+        {
+            _logger.LogInformation(
+                "Datapoint type resolved from the device catalog for {Filled} of {Pending} group addresses without one",
+                filled, pending.Sum(p => p.Value.Count));
+        }
+    }
+
+    /// <summary>
+    /// One communication object's contribution to the cascade:
+    /// <c>ComObjectInstanceRef/@DatapointType</c> → <c>ComObjectRef/@DatapointType</c> →
+    /// <c>ComObject/@DatapointType</c> → <c>ObjectSize</c>. The middle two come pre-merged in the
+    /// catalog entry (the ref wins over the object), which is the same precedence.
+    /// An empty attribute counts as absent — <c>DatapointType=""</c> occurs in real projects.
+    /// </summary>
+    private static DatapointCandidate ResolveComObjectDatapointType(
+        XElement comRef,
+        string deviceId,
+        ApplicationProgramCatalog catalog)
+    {
+        var fromInstance = DptInfo.TryParse(comRef.Attribute("DatapointType")?.Value);
+        if (DatapointTypeCascade.IsUsable(fromInstance)) return new DatapointCandidate(fromInstance, false);
+
+        var entry = catalog.Find(deviceId, comRef.Attribute("RefId")?.Value);
+        if (entry == null) return default;
+
+        var fromCatalog = DptInfo.TryParse(entry.DatapointType);
+        if (DatapointTypeCascade.IsUsable(fromCatalog)) return new DatapointCandidate(fromCatalog, false);
+
+        return new DatapointCandidate(DatapointTypeCascade.FromObjectSize(entry.ObjectSize), true);
     }
 
     private void WalkLocationNode(
@@ -329,8 +484,60 @@ public abstract class BaseProjectLoader : IProjectLoader
         return resolved;
     }
 
-    private static string? BuildComObjectFlags(XElement comRef, XNamespace ns)
+    /// <summary>
+    /// Resolve the six communication flags from the two levels that actually carry them:
+    /// the manufacturer catalog holds the factory setting (<c>&lt;ComObject&gt;</c>, refined by the
+    /// <c>&lt;ComObjectRef&gt;</c>), and the project file carries ONLY those flags the integrator
+    /// changed in ETS, as attributes on the <c>&lt;ComObjectInstanceRef&gt;</c>. The instance wins,
+    /// per attribute rather than per element, so an unchanged flag keeps the catalog value.
+    /// <para>
+    /// ETS 4 has no flag attributes in the project file at all, only <c>&lt;Send&gt;</c> /
+    /// <c>&lt;Receive&gt;</c> connectors — and those are NOT flags. They say which group address is
+    /// the object's primary link and which ones it additionally listens to. Reporting them as flags
+    /// made every ETS 4 object read as "Transmit": sample <c>ets 03-de.knxproj</c> has 29 Send and 0
+    /// Receive connectors, while the catalog behind them says e.g. TransmitFlag="Disabled",
+    /// WriteFlag="Enabled" — a receive-only object shown as transmitting. So the connectors are used
+    /// only when no flag information exists anywhere, which is the one case they still say something.
+    /// </para>
+    /// </summary>
+    private static string? BuildComObjectFlags(
+        XElement comRef,
+        XNamespace ns,
+        ComObjectCatalogEntry? catalogEntry)
     {
+        var names = ComObjectFlagNames.All;
+        var values = new string?[names.Length];
+        if (catalogEntry != null)
+        {
+            Array.Copy(catalogEntry.Flags, values, names.Length);
+        }
+
+        var hasFlagData = false;
+
+        for (var i = 0; i < names.Length; i++)
+        {
+            var value = comRef.Attribute(names[i])?.Value;
+            if (!string.IsNullOrEmpty(value)) values[i] = value;
+            if (!string.IsNullOrEmpty(values[i])) hasFlagData = true;
+        }
+
+        if (hasFlagData)
+        {
+            // Something declared a flag, so the connectors have nothing to add. The result may still
+            // come out empty — an object with every flag disabled is an answer, not a gap — and a
+            // catalog entry that names only some of the six is taken at its word for the rest rather
+            // than reopening the Send/Receive guess for them.
+            var flags = new List<string>();
+            for (var i = 0; i < names.Length; i++)
+            {
+                if (string.Equals(values[i], "Enabled", StringComparison.OrdinalIgnoreCase))
+                    flags.Add(names[i].Replace("Flag", string.Empty));
+            }
+
+            return flags.Count > 0 ? string.Join(",", flags) : null;
+        }
+
+        // Last resort: no manufacturer data for this object and nothing set in the project either.
         var hasSend = comRef.Descendants(ns + "Send").Any();
         var hasReceive = comRef.Descendants(ns + "Receive").Any();
 
@@ -338,16 +545,32 @@ public abstract class BaseProjectLoader : IProjectLoader
         if (hasSend) return "Send";
         if (hasReceive) return "Receive";
 
-        // ETS5/6 expose explicit flag attributes instead of Send/Receive connectors.
-        var flags = new List<string>();
-        foreach (var name in new[] { "ReadFlag", "WriteFlag", "CommunicationFlag", "TransmitFlag", "UpdateFlag", "ReadOnInitFlag" })
-        {
-            var value = comRef.Attribute(name)?.Value;
-            if (string.Equals(value, "Enabled", StringComparison.OrdinalIgnoreCase))
-                flags.Add(name.Replace("Flag", string.Empty));
-        }
+        return null;
+    }
 
-        return flags.Count > 0 ? string.Join(",", flags) : null;
+    /// <summary>
+    /// The datapoint type a communication object DECLARES: its own attribute, else the manufacturer
+    /// catalog. Unlike the group-address cascade this never infers a type from ObjectSize — an
+    /// object that names no type shows none, while the group address above it may still be resolved
+    /// from the width of its linked objects.
+    /// <para>
+    /// The result is the canonical id rather than the raw attribute, because the raw value may list
+    /// every accepted subtype ("DPT-9 DPST-9-1 DPST-9-2 …") and anything decoding it would read that
+    /// as 9.001. A value that parses to nothing is passed on unchanged instead of being dropped, but
+    /// it must not push the catalog aside — hence the usability check on each level.
+    /// </para>
+    /// </summary>
+    private static string? ResolveDeclaredDatapointType(XElement comRef, ComObjectCatalogEntry? catalogEntry)
+    {
+        var raw = comRef.Attribute("DatapointType")?.Value;
+
+        var fromInstance = DptInfo.TryParse(raw);
+        if (DatapointTypeCascade.IsUsable(fromInstance)) return fromInstance!.ToDptId();
+
+        var fromCatalog = DptInfo.TryParse(catalogEntry?.DatapointType);
+        if (DatapointTypeCascade.IsUsable(fromCatalog)) return fromCatalog!.ToDptId();
+
+        return string.IsNullOrEmpty(raw) ? catalogEntry?.DatapointType : raw;
     }
 
     /// <summary>

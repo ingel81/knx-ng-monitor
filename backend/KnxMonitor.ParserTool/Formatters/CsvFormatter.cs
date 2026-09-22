@@ -16,7 +16,7 @@ public class CsvFormatter : IOutputFormatter
             sb.AppendLine("Address,Name,Description,DPT,DataSecure");
             foreach (var ga in result.GroupAddresses)
             {
-                sb.AppendLine($"{EscapeCsv(ga.Address)},{EscapeCsv(ga.Name)},{EscapeCsv(ga.Description)},{EscapeCsv(ga.DatapointType?.OriginalString)},{ga.DataSecure}");
+                sb.AppendLine($"{EscapeCsv(ga.Address)},{EscapeCsv(ga.Name)},{EscapeCsv(ga.Description)},{EscapeCsv(ga.DatapointType?.ToDptId())},{ga.DataSecure}");
             }
             sb.AppendLine();
         }

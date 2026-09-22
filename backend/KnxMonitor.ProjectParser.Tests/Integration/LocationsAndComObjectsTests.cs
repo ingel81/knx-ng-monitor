@@ -47,7 +47,9 @@ public class LocationsAndComObjectsTests : IClassFixture<SampleFileFixture>
             c.GroupAddressLinks.Should().NotBeEmpty();
             c.GroupAddressLinks.Should().AllSatisfy(g => g.Should().MatchRegex(@"^\d+/\d+/\d+$"));
         });
-        result.CommunicationObjects.Should().Contain(c => c.Flags == "Send,Receive");
+        // Flags come from the manufacturer catalog, not from the Send/Receive connectors — those name
+        // the object's group-address links, not what it may do. See ComObjectFlagTests.
+        result.CommunicationObjects.Should().Contain(c => c.Flags == "Write,Communication");
     }
 
     [Fact]

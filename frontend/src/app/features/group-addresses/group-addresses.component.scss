@@ -197,27 +197,30 @@
   }
 
   // KNX flags. Single letters so a full set stays narrower than the DPT badge next to it.
+  // Deliberately NOT badges: since the flags are resolved from the manufacturer catalog a row
+  // commonly carries five of them, and five filled chips next to the DPT badge drowned out both
+  // the name and the DPT. Bare mono letters keep the information and give up the weight; the DPT
+  // stays the only boxed tag on the row, which is the order of importance.
   .leaf-flags {
     display: inline-flex;
-    gap: 2px;
+    gap: 3px;
     flex: none;
+    align-items: baseline;
   }
 
   .flag {
-    display: inline-grid;
-    place-items: center;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 3px;
-    border-radius: 3px;
-    background: var(--surface-3);
-    border: 1px solid var(--line);
+    // --ink-2, not the quieter --ink-3: at 10px the latter sits at 3.1:1 on the light surface and
+    // would miss WCAG AA. Dropping the chip is what makes these recede, not thinning the ink.
     color: var(--ink-2);
     font-family: var(--font-mono);
     font-size: 10px;
-    font-weight: var(--fw-semi);
+    font-weight: var(--fw-medium);
     line-height: 1;
+    letter-spacing: .02em;
     cursor: help;
+
+    // The letters are the only hit target left, so give hovering something to land on.
+    &:hover { color: var(--ink); }
   }
 
   // Last value seen on the bus. Pushed to the right edge of the info block so it forms its own

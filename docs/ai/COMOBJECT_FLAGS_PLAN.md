@@ -1,7 +1,14 @@
 # Plan: resolve communication-object flags from the manufacturer catalog
 
-Status: **not started**. Written 2026-07-27 after the flag badges on the group-address page
-turned out to have no data to show.
+Status: **umgesetzt** (2026-09-22, uncommittet). Written 2026-07-27 after the flag badges on the
+group-address page turned out to have no data to show.
+
+Umgesetzt zusammen mit der DPT-Kaskade (Issue #24), weil beide dieselbe Auflösung brauchen:
+`KnxMonitor.ProjectParser/Services/ApplicationProgramCatalog.cs` löst jeden
+`ComObjectInstanceRef` über `Hardware2ProgramRefId` → `Hardware.xml` → Applikationsprogramm auf,
+`ApplicationProgramReader.cs` streamt das Programm per `XmlReader` und mischt ComObject und
+ComObjectRef pro Attribut. `BaseProjectLoader.BuildComObjectFlags` legt den Instanz-Ref darüber — für ETS 4 genauso wie für
+ETS 5/6, siehe die verworfene Annahme unter „What to build".
 
 ## The defect
 
@@ -54,7 +61,15 @@ Rules:
 - Start from the `<ComObject>` attributes, overlay any attribute the `<ComObjectRef>` sets,
   overlay any attribute the `<ComObjectInstanceRef>` sets. Only the most specific wins per
   attribute — not per element.
-- Keep the ETS 4 `Send` / `Receive` path exactly as it is; it is correct for that schema.
+- ~~Keep the ETS 4 `Send` / `Receive` path exactly as it is; it is correct for that schema.~~
+  **Diese Annahme war falsch und wurde 2026-09-22 verworfen.** `<Send>` / `<Receive>` sind keine
+  Flags, sondern sagen, welche Gruppenadresse die primäre Verknüpfung eines Objekts ist und welche
+  es zusätzlich mithört. Beleg: `docs/samples/other/ets 03-de.knxproj` hat 29 `<Send>` und 0
+  `<Receive>`, also zeigte jede Gruppenadresse genau ein `T` — auch dort, wo der Katalog
+  `TransmitFlag="Disabled"`, `WriteFlag="Enabled"` sagt, das Objekt also nur empfängt.
+  ETS 4 nutzt jetzt dieselben zwei Ebenen wie ETS 5/6; die Connectors greifen nur noch, wenn zu
+  einem Objekt überhaupt keine Flag-Information auffindbar ist (kein Katalogeintrag, nichts am
+  Instanz-Ref).
 - The manufacturer files are already in the `ProjectFileMap` (`M-XXXX/*.xml`), so no new I/O —
   see the ZipHandler merge fixed in 0.8.1, which is why they are present even for
   password-protected projects.
@@ -92,3 +107,8 @@ The UI currently normalises `Send`→`Transmit` and `Receive`→`Write`
 (`group-addresses.component.ts`, `FLAG_ALIASES`). Once ETS 5 / 6 deliver real flags, check
 whether that mapping should stay for ETS 4 projects or whether the badges should mark
 interpreted values differently. The raw project value is already in the badge tooltip.
+
+Stand 2026-09-22: entschärft, aber nicht erledigt. Da ETS 4 die Flags jetzt ebenfalls aus dem
+Katalog bekommt, greift die Alias-Abbildung nur noch im Fallback ohne Herstellerdaten. Dort ist
+`Send`→`T` weiterhin eine Interpretation und keine Tatsache; ob das Badge das kenntlich machen
+soll, ist offen.

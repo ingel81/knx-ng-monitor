@@ -146,6 +146,53 @@ public class ZipHandlerUnitTests
             .WithMessage("*password is wrong*");
     }
 
+    /// <summary>
+    /// ETS 4/5 use traditional ZipCrypto, whose password check is a single byte — so the opened
+    /// archive is additionally verified against the stored CRC. That check must not reject a
+    /// CORRECT password, which is what this pins down (AES is excluded from it because AE-2 stores
+    /// a zero there by design).
+    /// </summary>
+    [Fact]
+    public async Task LoadAsync_ZipCryptoCorrectPassword_PassesTheChecksumCheck()
+    {
+        using var zip = TestZipBuilder.BuildPasswordProtected(
+            "P-0001",
+            "affe",
+            new[]
+            {
+                ("P-0001/0.xml", "<KNX xmlns=\"http://knx.org/xml/project/20\"/>"),
+                ("P-0001/project.xml", "<KNX/>"),
+            },
+            aesKeySize: 0);
+
+        var features = new ProjectFeatures { HasPassword = true, EtsVersion = EtsVersion.Ets5 };
+
+        using var files = await ZipHandler.LoadAsync(zip, features, "affe");
+
+        files.Contains("P-0001/0.xml").Should().BeTrue();
+
+        using var stream = files.OpenRead("P-0001/0.xml");
+        using var reader = new StreamReader(stream);
+        (await reader.ReadToEndAsync()).Should().Contain("project/20");
+    }
+
+    [Fact]
+    public async Task LoadAsync_ZipCryptoWrongPassword_ThrowsWithClearMessage()
+    {
+        using var zip = TestZipBuilder.BuildPasswordProtected(
+            "P-0001",
+            "affe",
+            new[] { ("P-0001/0.xml", "<KNX/>") },
+            aesKeySize: 0);
+
+        var features = new ProjectFeatures { HasPassword = true, EtsVersion = EtsVersion.Ets5 };
+
+        var act = async () => await ZipHandler.LoadAsync(zip, features, "wrong");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*password is wrong*");
+    }
+
     [Fact]
     public void DeriveEts6Password_KnownInput_ReturnsKnownHash()
     {

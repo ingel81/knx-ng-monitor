@@ -155,7 +155,10 @@ public class KnxProjectParserService : IKnxProjectParserService
             Address = dto.Address,
             Name = dto.Name,
             Description = dto.Description,
-            DatapointType = dto.DatapointType?.OriginalString,
+            // ToDptId, not OriginalString: the raw attribute may list every accepted subtype
+            // ("DPT-9 DPST-9-1 DPST-9-2 …") and DptConverter reads the first two numbers out of
+            // whatever it is handed, which would decode that as 9.001.
+            DatapointType = dto.DatapointType?.ToDptId(),
             CreatedAt = DateTime.UtcNow
         };
     }
