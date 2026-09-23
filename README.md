@@ -200,7 +200,7 @@ services:
     container_name: knx-monitor
     restart: unless-stopped
     environment:
-      - TZ=${TZ:-Europe/Vienna}
+      - TZ=${TZ}
     ports: ["8080:8080"]
     volumes: ["./data:/app/data"]
 ```
@@ -250,6 +250,7 @@ types and room/building context. The two-stage wizard walks through:
 | `ASPNETCORE_ENVIRONMENT` | `Production` | `Development` enables CORS for `:4200`, the separate dev server and the scalar/v1 API docs |
 | `ASPNETCORE_URLS` | `http://0.0.0.0:8080` | Listen URL - change to use a different port. Up to 0.10.0 the shipped `appsettings.json` pinned the endpoint and silently outranked this variable; it is honoured now. Alternatives: `ASPNETCORE_HTTP_PORTS`, `ASPNETCORE_HTTPS_PORTS`, `Kestrel__Endpoints__Http__Url`, or a `Urls` key in `appsettings.json` - each of them wins over the default. The Docker image sets the equivalent `http://+:8080`; inside a container leave the port at 8080 (the `HEALTHCHECK` probes it) and remap on the host with `-p HOST:8080` |
 | `KNX_LOG_LEVEL` | `Information` | Log verbosity: `Verbose`, `Debug`, `Information`, `Warning`, `Error`, `Fatal` (see [Logging & diagnostics](#logging--diagnostics)) |
+| `TZ` | unset | Timezone used by the container for log timestamps and for the daily rollover of the log files, as a [tz database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List) such as `Europe/Berlin`. A container has no time zone of its own, so without this variable the log reads UTC; the self-contained binary follows the machine's zone. Telegram times in the UI are not affected |
 
 ### Data directory
 
