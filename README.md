@@ -199,8 +199,8 @@ services:
     image: ingel81/knx-ng-monitor:latest
     container_name: knx-monitor
     restart: unless-stopped
-    environment:
-      - TZ=${TZ}
+    # environment:
+    #   - TZ=Europe/Berlin   # log time zone, UTC if unset
     ports: ["8080:8080"]
     volumes: ["./data:/app/data"]
 ```
