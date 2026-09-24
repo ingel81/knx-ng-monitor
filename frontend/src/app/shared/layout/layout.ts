@@ -15,6 +15,7 @@ import { LanguageService } from '../../core/i18n/language.service';
 import { Lang } from '../../core/i18n/translations';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { ThemeService, ThemeMode } from '../../core/services/theme.service';
+import { VersionService } from '../../core/services/version.service';
 
 /**
  * Ein Navigationseintrag. `slot` entscheidet, wo er auf Mobil landet:
@@ -62,6 +63,7 @@ export class Layout {
   private destroyRef = inject(DestroyRef);
 
   currentUser$ = this.authService.currentUser$;
+  readonly version$ = inject(VersionService).version$;
   readonly lang = this.language.lang;
   readonly theme = this.themeSvc.theme;
 

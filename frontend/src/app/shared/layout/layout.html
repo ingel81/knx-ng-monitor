@@ -103,6 +103,10 @@
               <mat-icon>devices</mat-icon>
               <span>{{ 'nav.logoutAll' | translate }}</span>
             </button>
+
+            <div class="um-foot" (click)="$event.stopPropagation()">
+              {{ 'nav.version' | translate:{ version: (version$ | async) || '…' } }}
+            </div>
           </mat-menu>
         }
       </div>
