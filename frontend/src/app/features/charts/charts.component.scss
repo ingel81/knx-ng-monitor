@@ -484,10 +484,11 @@
     min-width: 0;
   }
 
-  // Fixed column for the address so the names line up underneath each other.
+  // Fixed column for the address so the names line up underneath each other. 8ch fits the
+  // longest three-level address (31/7/255).
   .ga-addr {
     flex: none;
-    width: 7ch;
+    width: 8ch;
     font-family: var(--font-mono);
     font-size: var(--fs-xs);
     color: var(--ink-3);
@@ -495,12 +496,15 @@
     font-feature-settings: 'tnum' 1;
   }
 
+  // Wraps instead of ellipsising: GA names are often long dotted paths
+  // (Außen.Gartenhaus.Niederschlag…) whose distinguishing part sits at the end.
   .ga-name {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+    padding: 5px 0;
     color: var(--ink);
   }
 

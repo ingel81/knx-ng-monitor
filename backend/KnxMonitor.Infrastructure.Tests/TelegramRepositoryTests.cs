@@ -182,4 +182,30 @@ public class TelegramRepositoryTests
         rows.Should().HaveCount(2);
         rows.Should().OnlyContain(r => r.DestinationAddress == "1/1/1");
     }
+
+    [Fact]
+    public async Task Latest_before_returns_newest_first_per_address_and_only_before_the_cutoff()
+    {
+        using var db = new SqliteTestDb();
+        using var scope = db.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<ITelegramRepository>();
+
+        var cutoff = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+        await repo.AddRangeAsync(new[]
+        {
+            Tg(cutoff.AddHours(-3), "1/1/1"),
+            Tg(cutoff.AddHours(-2), "1/1/1"),
+            Tg(cutoff.AddHours(-1), "1/1/1"),
+            Tg(cutoff, "1/1/1"),                 // at the cutoff: belongs to the range, not before it
+            Tg(cutoff.AddMinutes(5), "1/1/1"),
+            Tg(cutoff.AddDays(-30), "1/1/2"),    // long ago still counts: a value holds until changed
+            Tg(cutoff.AddMinutes(1), "1/1/3")    // only inside the range
+        });
+
+        var result = await repo.GetLatestBeforeAsync(new[] { "1/1/1", "1/1/2", "1/1/3" }, cutoff, perAddress: 2);
+
+        result.Keys.Should().BeEquivalentTo("1/1/1", "1/1/2");
+        result["1/1/1"].Select(r => r.Timestamp).Should().Equal(cutoff.AddHours(-1), cutoff.AddHours(-2));
+        result["1/1/2"].Should().ContainSingle().Which.Timestamp.Should().Be(cutoff.AddDays(-30));
+    }
 }

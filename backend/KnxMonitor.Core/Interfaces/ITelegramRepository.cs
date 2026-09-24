@@ -57,6 +57,16 @@ public interface ITelegramRepository : IRepository<KnxTelegram>
         IReadOnlyCollection<string> addresses, DateTime from, DateTime to, int maxRows,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// For each address, up to <paramref name="perAddress"/> telegrams strictly before
+    /// <paramref name="before"/>, newest first. Lets the chart carry the last known value into the
+    /// start of a range; several rows because the newest one may carry no value (a read request).
+    /// Addresses without any earlier telegram are absent from the result.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, IReadOnlyList<KnxTelegram>>> GetLatestBeforeAsync(
+        IReadOnlyCollection<string> addresses, DateTime before, int perAddress,
+        CancellationToken ct = default);
+
     /// <summary>Counts telegrams in [from,to] (no other filter). Backs the statistics view.</summary>
     Task<int> CountInRangeAsync(DateTime from, DateTime to, CancellationToken ct = default);
 

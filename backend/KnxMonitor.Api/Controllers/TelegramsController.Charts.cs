@@ -15,6 +15,9 @@ public partial class TelegramsController
     private const int MaxMaxPoints = 10000;
     // Hard cap on rows pulled per series request so a wide range stays bounded.
     private const int SeriesRowCap = 200_000;
+    // Earlier telegrams looked at per address when searching the carry-in value: the newest one
+    // may carry no number (a read request), so a few are needed, but not the whole history.
+    private const int CarryLookback = 20;
     private const int DefaultStatsBuckets = 60;
     private const int MaxStatsBuckets = 500;
 
@@ -41,6 +44,14 @@ public partial class TelegramsController
     /// At most 200 000 rows are read per request. When the range holds more, the <b>newest</b>
     /// rows win, the older end is missing and <c>truncated</c> is true — a chart is easier to
     /// distrust when it starts late than when it ends early.
+    /// </para>
+    /// <para>
+    /// <c>carry</c> is the last chartable value <b>before</b> <c>from</c> (with its original
+    /// timestamp), so a client can draw the curve from the left edge instead of starting it at
+    /// the first telegram inside the range — a KNX value holds until the next telegram. It is null
+    /// when there is no earlier value, and always null when <c>truncated</c> is true, since the
+    /// missing older end would sit between it and the first point. An address with a carry value
+    /// but no telegram inside the range is returned with an empty <c>points</c> list.
     /// </para>
     /// <para>
     /// A timestamp without a zone designator (<c>from=2026-07-30T00:00:00</c>) is interpreted as
@@ -89,12 +100,32 @@ public partial class TelegramsController
             .GroupBy(t => t.DestinationAddress, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
 
+        // Skipped when truncated: the carry value would then bridge the part that is missing.
+        var earlier = truncated
+            ? new Dictionary<string, IReadOnlyList<KnxMonitor.Core.Entities.KnxTelegram>>()
+            : await _repository.GetLatestBeforeAsync(addressList, rangeFrom, CarryLookback, ct);
+
         var series = new List<ChartSeries>();
         foreach (var address in addressList)
         {
-            if (!byAddress.TryGetValue(address, out var telegrams) || telegrams.Count == 0)
+            byAddress.TryGetValue(address, out var telegrams);
+            telegrams ??= new List<KnxMonitor.Core.Entities.KnxTelegram>();
+
+            ChartPoint? carry = null;
+            string carryUnit = string.Empty;
+            string? carryName = null;
+            if (earlier.TryGetValue(address, out var before))
             {
-                continue;
+                foreach (var t in before)
+                {
+                    if (TryExtractNumeric(t.ValueDecoded, out var carryValue))
+                    {
+                        carry = new ChartPoint { T = ToIsoUtc(t.Timestamp), V = carryValue };
+                        carryUnit = ExtractUnit(t.ValueDecoded);
+                        carryName = t.GroupAddress?.Name;
+                        break;
+                    }
+                }
             }
 
             string? name = null;
@@ -114,16 +145,12 @@ public partial class TelegramsController
                 }
                 points.Add(new ChartPoint
                 {
-                    // Timestamps come back from SQLite as Kind=Unspecified but hold the UTC wall
-                    // time (telegrams are saved with DateTime.UtcNow). ToUniversalTime() would
-                    // then wrongly subtract the local offset; tag as UTC instead so the "O" format
-                    // emits a correct trailing 'Z' and the client plots it at the right instant.
-                    T = DateTime.SpecifyKind(t.Timestamp, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture),
+                    T = ToIsoUtc(t.Timestamp),
                     V = value
                 });
             }
 
-            if (points.Count == 0)
+            if (points.Count == 0 && carry is null)
             {
                 continue;
             }
@@ -133,11 +160,12 @@ public partial class TelegramsController
             series.Add(new ChartSeries
             {
                 Address = address,
-                Name = name,
-                Unit = unit,
+                Name = name ?? carryName,
+                Unit = unit.Length > 0 ? unit : carryUnit,
                 DownSampled = downSampled,
                 TotalPoints = points.Count,
-                Points = sampled
+                Points = sampled,
+                Carry = carry
             });
         }
 
@@ -349,6 +377,13 @@ public partial class TelegramsController
     /// leading minus and a decimal point/comma), else a known boolean/enum word → 1/0. Returns
     /// false when nothing chartable is present.
     /// </summary>
+    // Timestamps come back from SQLite as Kind=Unspecified but hold the UTC wall time (telegrams
+    // are saved with DateTime.UtcNow). ToUniversalTime() would then wrongly subtract the local
+    // offset; tag as UTC instead so the "O" format emits a correct trailing 'Z' and the client
+    // plots it at the right instant.
+    private static string ToIsoUtc(DateTime timestamp) =>
+        DateTime.SpecifyKind(timestamp, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture);
+
     internal static bool TryExtractNumeric(string? decoded, out double value)
     {
         value = 0;
@@ -418,6 +453,12 @@ public class ChartSeries
     public int TotalPoints { get; set; }
 
     public List<ChartPoint> Points { get; set; } = new();
+
+    /// <summary>
+    /// Last chartable value before the range start, with its original timestamp; null when there
+    /// is none or the result is truncated. Not part of <see cref="Points"/> or <see cref="TotalPoints"/>.
+    /// </summary>
+    public ChartPoint? Carry { get; set; }
 }
 
 public class ChartPoint
