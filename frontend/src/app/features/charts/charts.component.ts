@@ -596,26 +596,37 @@ export class ChartsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // One Y axis per distinct unit (max 3); extra units share the last axis.
-    const units: string[] = [];
+    // One Y axis per distinct unit (max 3); extra units share the last axis. All DPT1 series
+    // share one fixed 0..1 axis instead: their "unit" is just the label of the last value
+    // ("On", "False", "Start"), so grouping by it gave two switches two axes, and a switch that
+    // stayed on for the whole range got an auto-scaled 0.5..1.5 axis — its 1 then sat halfway
+    // up next to another switch's 1 at the top.
+    const BOOL_AXIS = '\u0000bool';
+    const axisKey = (s: LiveSeries) => (s.isBool ? BOOL_AXIS : s.unit);
+    const keys: string[] = [];
     for (const s of this.series) {
-      if (!units.includes(s.unit)) units.push(s.unit);
+      const k = axisKey(s);
+      if (!keys.includes(k)) keys.push(k);
     }
-    const axisUnits = units.slice(0, 3);
-    const unitToAxis = new Map<string, number>();
-    units.forEach((u, i) => unitToAxis.set(u, Math.min(i, axisUnits.length - 1)));
+    const axisKeys = keys.slice(0, 3);
+    const keyToAxis = new Map<string, number>();
+    keys.forEach((k, i) => keyToAxis.set(k, Math.min(i, axisKeys.length - 1)));
 
     const skin = readSkin();
     const singleSeries = this.series.length === 1;
     const opts = this.options;
 
-    const yAxis = axisUnits.map((u, i) => valueAxis(skin, {
-      name: u || undefined,
+    const yAxis = axisKeys.map((k, i) => valueAxis(skin, {
       position: i === 0 ? 'left' : 'right',
       offset: i >= 2 ? 60 : 0,
       splitLine: { show: i === 0, lineStyle: { color: skin.line } },
-      // Pull zero into view without clipping negative readings (outdoor temperatures).
-      ...(opts.zeroBased ? { min: (v: { min: number }) => Math.min(0, v.min) } : {})
+      ...(k === BOOL_AXIS
+        ? { scale: false, min: 0, max: 1, interval: 1 }
+        : {
+            name: k || undefined,
+            // Pull zero into view without clipping negative readings (outdoor temperatures).
+            ...(opts.zeroBased ? { min: (v: { min: number }) => Math.min(0, v.min) } : {})
+          })
     }));
 
     const echartsSeries = this.series.map((s, i) => {
@@ -630,7 +641,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
       return styleLineSeries({
         name: s.name,
         type: 'line' as const,
-        yAxisIndex: unitToAxis.get(s.unit) ?? 0,
+        yAxisIndex: keyToAxis.get(axisKey(s)) ?? 0,
         showSymbol: opts.showPoints,
         symbolSize: 4,
         step: stepped ? ('end' as const) : undefined,
@@ -694,8 +705,8 @@ export class ChartsComponent implements OnInit, OnDestroy {
       },
       // Tighter margins on mobile so axes, legend and the dataZoom slider still fit the 46vh box.
       grid: this.isMobile
-        ? { left: 42, right: axisUnits.length > 1 ? 46 : 10, top: opts.showLegend ? 34 : 20, bottom: 84 }
-        : { left: 56, right: axisUnits.length > 1 ? 72 : 24, top: opts.showLegend ? 40 : 16, bottom: 92 },
+        ? { left: 42, right: axisKeys.length > 1 ? 46 : 10, top: opts.showLegend ? 34 : 20, bottom: 84 }
+        : { left: 56, right: axisKeys.length > 1 ? 72 : 24, top: opts.showLegend ? 40 : 16, bottom: 92 },
       xAxis: timeAxis(skin, localeTag(this.lang.lang())),
       yAxis,
       dataZoom: dataZoom(skin, this.isMobile),
