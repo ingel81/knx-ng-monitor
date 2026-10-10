@@ -6,12 +6,15 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute } from '@angular/router';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import type { ECharts, EChartsCoreOption } from 'echarts/core';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 
 import { ChartsService, ChartSeries, extractNumeric } from '../../core/services/charts.service';
+import { ChartSelectionsService, ChartSelection } from '../../core/services/chart-selections.service';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/confirm-dialog.component';
 import { ProjectService, GroupAddressDto } from '../../core/services/project.service';
 import { SignalrService, KnxTelegram } from '../../core/services/signalr.service';
 import { LanguageService } from '../../core/i18n/language.service';
@@ -83,6 +86,8 @@ export class ChartsComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private theme = inject(ThemeService);
   private zone = inject(NgZone);
+  private selectionsService = inject(ChartSelectionsService);
+  private dialog = inject(MatDialog);
 
   constructor() {
     // Rebuild with re-read tokens whenever the theme toggles (canvas can't use CSS vars).
@@ -112,6 +117,18 @@ export class ChartsComponent implements OnInit, OnDestroy {
   /** Dropdown panel width in px: wider than the 320px trigger so long GA names stay readable,
    *  but never wider than the viewport minus the page gutters. */
   gaPanelWidth = ChartsComponent.panelWidthFor(window.innerWidth);
+
+  // --- Saved selections ------------------------------------------------------
+  savedSelections: ChartSelection[] = [];
+  savedOpen = false;
+  savedName = '';
+  savedBusy = false;
+  savedError = false;
+  /** The list request is running; the empty state waits for it. */
+  savedLoading = false;
+  /** At least one list request succeeded, so an empty list really means "none saved". */
+  savedLoaded = false;
+  private missingById = new Map<number, number>();
 
   // --- Time range ------------------------------------------------------------
   preset: RangePreset = '24h';
@@ -175,6 +192,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.preselectGa = this.route.snapshot.queryParamMap.get('ga');
     this.loadGroupAddresses();
+    this.loadSavedSelections();
     this.telegramSub = this.signalr.telegram$.subscribe((t) => this.onLiveTelegram(t));
   }
 
@@ -200,6 +218,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
               .filter((ga) => this.isChartable(ga.datapointType))
               .sort((a, b) => a.address.localeCompare(b.address, undefined, { numeric: true }));
             this.displayGas = this.availableGas;
+            this.refreshMissing();
             this.applyPreselect();
           },
           error: () => (this.availableGas = [])
@@ -362,6 +381,123 @@ export class ChartsComponent implements OnInit, OnDestroy {
     // freshly picked address that happens to carry the same name.
     this.hiddenSeries.clear();
     this.load();
+  }
+
+  // --- Saved selections ------------------------------------------------------
+  private loadSavedSelections(): void {
+    this.savedLoading = true;
+    this.selectionsService.getAll().subscribe({
+      next: (rows) => {
+        this.savedSelections = rows;
+        this.savedLoaded = true;
+        this.savedLoading = false;
+        this.savedError = false;
+        this.refreshMissing();
+      },
+      error: () => {
+        this.savedLoading = false;
+        this.savedError = true;
+      }
+    });
+  }
+
+  /** Counts per selection the addresses the active project does not know. Done once per load
+   *  of either list, not per row on every redraw. */
+  private refreshMissing(): void {
+    const known = new Set(this.availableGas.map((g) => g.address));
+    this.missingById = new Map(
+      this.savedSelections.map((s) => [s.id, s.addresses.filter((a) => !known.has(a)).length])
+    );
+  }
+
+  /** Every address is unknown here (other project, re-import): applying it would only empty
+   *  the chart, so the entry is disabled and its meta line says why. */
+  isUnusable(sel: ChartSelection): boolean {
+    return sel.addresses.length > 0 && this.missingCount(sel) >= sel.addresses.length;
+  }
+
+  /** Same rule as the server: case-insensitive including umlauts ("Übersicht" = "übersicht"). */
+  private sameName(a: string, b: string): boolean {
+    return a.toLowerCase() === b.toLowerCase();
+  }
+
+  toggleSaved(): void {
+    this.savedOpen = !this.savedOpen;
+    if (this.savedOpen) {
+      this.savedError = false;
+      // Picked up again on every open, so a selection saved on another device shows up.
+      this.loadSavedSelections();
+    }
+  }
+
+  /** Applies a saved selection; addresses unknown to the active project are skipped. */
+  applySaved(sel: ChartSelection): void {
+    if (this.isUnusable(sel)) return;
+    const known = new Set(this.availableGas.map((g) => g.address));
+    this.savedOpen = false;
+    this.onSelectionChange(sel.addresses.filter((a) => known.has(a)));
+  }
+
+  /** Addresses of a saved selection that the active project does not know (renamed, other project). */
+  missingCount(sel: ChartSelection): number {
+    return this.missingById.get(sel.id) ?? 0;
+  }
+
+  async saveSelection(): Promise<void> {
+    const name = this.savedName.trim();
+    if (!name || this.selectedAddresses.length === 0 || this.savedBusy) return;
+
+    const existing = this.savedSelections.find((s) => this.sameName(s.name, name));
+    if (existing) {
+      const ok = await this.confirm({
+        title: this.lang.translate('charts.saved.overwriteTitle'),
+        message: this.lang.translate('charts.saved.overwriteMsg', { name: existing.name }),
+        confirmText: this.lang.translate('charts.saved.overwrite')
+      });
+      if (!ok) return;
+    }
+
+    this.savedBusy = true;
+    this.selectionsService.save(name, this.selectedAddresses).subscribe({
+      next: () => {
+        this.savedBusy = false;
+        this.savedName = '';
+        this.loadSavedSelections();
+      },
+      error: () => {
+        this.savedBusy = false;
+        this.savedError = true;
+      }
+    });
+  }
+
+  async deleteSaved(sel: ChartSelection, event: Event): Promise<void> {
+    // The row itself applies the selection; the delete button must not trigger that too.
+    event.stopPropagation();
+    const ok = await this.confirm({
+      title: this.lang.translate('charts.saved.deleteTitle'),
+      message: this.lang.translate('charts.saved.deleteMsg', { name: sel.name }),
+      confirmText: this.lang.translate('common.delete'),
+      danger: true
+    });
+    if (!ok) return;
+
+    const drop = () => (this.savedSelections = this.savedSelections.filter((s) => s.id !== sel.id));
+    this.selectionsService.delete(sel.id).subscribe({
+      next: drop,
+      // Already deleted on another device: the goal is reached, no error to show.
+      error: (err: { status?: number }) => {
+        if (err?.status === 404) drop(); else this.savedError = true;
+      }
+    });
+  }
+
+  private confirm(data: ConfirmDialogData): Promise<boolean | undefined> {
+    return firstValueFrom(
+      this.dialog
+        .open(ConfirmDialogComponent, { data, width: 'min(420px, calc(100vw - 32px))', maxWidth: '100vw' })
+        .afterClosed()
+    );
   }
 
   // --- Time range ------------------------------------------------------------

@@ -218,6 +218,7 @@ builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IKnxConfigurationRepository, KnxConfigurationRepository>();
 builder.Services.AddScoped<IRecordingSettingsRepository, RecordingSettingsRepository>();
 builder.Services.AddScoped<IMonitorHeartbeatRepository, MonitorHeartbeatRepository>();
+builder.Services.AddScoped<IChartSelectionRepository, ChartSelectionRepository>();
 
 // Live-applied recording settings (cached snapshot, single source of truth)
 builder.Services.AddSingleton<IRecordingSettingsProvider, RecordingSettingsProvider>();
