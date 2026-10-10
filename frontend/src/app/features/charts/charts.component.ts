@@ -768,8 +768,12 @@ export class ChartsComponent implements OnInit, OnDestroy {
 
     this.loading = true;
     this.error = false;
+    // Quick preset switches overlap requests; only the newest may land, an older 24 h answer
+    // arriving late would otherwise replace the 1 h curve while rangeSpanMs is already 1 h.
+    const seq = ++this.loadSeq;
     this.chartsService.getSeries(this.selectedAddresses, range.from, range.to, 2000).subscribe({
       next: (res) => {
+        if (seq !== this.loadSeq) return;
         this.downSampled = res.series.some((s) => s.downSampled);
         this.truncated = res.truncated;
         this.totalPoints = res.series.reduce((sum, s) => sum + s.totalPoints, 0);
@@ -781,11 +785,14 @@ export class ChartsComponent implements OnInit, OnDestroy {
         this.syncFollow();
       },
       error: () => {
+        if (seq !== this.loadSeq) return;
         this.loading = false;
         this.error = true;
       }
     });
   }
+
+  private loadSeq = 0;
 
   private toLiveSeries(s: ChartSeries): LiveSeries {
     const ga = this.availableGas.find((g) => g.address === s.address);

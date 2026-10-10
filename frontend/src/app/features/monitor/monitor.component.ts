@@ -571,7 +571,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   /** Liefert false, wenn der Filter abgelehnt wurde (Ende vor Start). */
   applyFilters(): boolean {
     // Ein unlesbares Datum ergibt '' und würde sonst als "keine Grenze" das ganze Archiv abfragen.
-    if (this.dateFields?.some(f => f.hasInvalidInput)) {
+    if (this.dateFields?.some(f => f.hasInvalidInput || f.hasIncompleteInput)) {
       this.toast(this.lang.translate('monitor.filter.invalidDate'));
       return false;
     }
@@ -585,6 +585,11 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     this.loadCount();
     this.resetArchive();
     return true;
+  }
+
+  /** A date typed by hand no longer matches a quick-range chip. */
+  onDateEdited(): void {
+    this.timeRange = 'custom';
   }
 
   resetFilters(): void {
@@ -638,13 +643,15 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   setTimeRange(range: 'all' | 'hour' | 'today' | '7d'): void {
+    // Empty the fields first (also unreadable text): the new values reach them via ngModel only
+    // in the next tick, so applyFilters below would otherwise still see the old invalid input.
+    this.dateFields?.forEach(f => f.clear());
     this.timeRange = range;
     const now = new Date();
     let from: Date | null = null;
     if (range === 'hour') from = new Date(now.getTime() - 3600_000);
     else if (range === 'today') { from = new Date(now); from.setHours(0, 0, 0, 0); }
     else if (range === '7d') from = new Date(now.getTime() - 7 * 86_400_000);
-    if (range === 'all') this.dateFields?.forEach(f => f.clear());
     this.fromValue = from ? this.toLocalInput(from) : '';
     this.toValue = range === 'all' ? '' : this.toLocalInput(now);
     this.applyFilters();

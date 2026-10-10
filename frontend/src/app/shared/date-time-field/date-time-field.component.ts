@@ -1,4 +1,4 @@
-import { Component, ElementRef, Input, ViewChild, computed, effect, forwardRef, inject } from '@angular/core';
+import { Component, ElementRef, Input, ViewChild, computed, effect, forwardRef, inject, Output, EventEmitter } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
@@ -232,6 +232,14 @@ export class DateTimeFieldComponent implements ControlValueAccessor {
   /** True while the typed date or time cannot be read; the bound value is '' then. */
   get hasInvalidInput(): boolean { return this.dateInvalid || this.timeInvalid; }
 
+  /** Only one half filled in (e.g. the time was deleted): the bound value is '' as well. */
+  get hasIncompleteInput(): boolean {
+    return (this.dateCtrl.value === null) !== (this.timeCtrl.value === null);
+  }
+
+  /** Fires when the user changes the field (typing or picking), never for a value set in code. */
+  @Output() readonly edited = new EventEmitter<void>();
+
   /**
    * Empties both inputs, including unreadable text. Setting the model to '' alone does not reach
    * the field when it is '' already (an invalid entry), so the red text would stay on screen.
@@ -280,6 +288,7 @@ export class DateTimeFieldComponent implements ControlValueAccessor {
     if (next === this.value) return;
     this.value = next;
     this.onChange(next);
+    this.edited.emit();
   }
 
   private compose(): string {

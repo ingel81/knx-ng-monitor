@@ -12,6 +12,12 @@ export function formatDurationMinutes(minutes: number): string {
   const total = Math.round(minutes);
   const hours = Math.floor(total / 60);
   const rest = total % 60;
+  // Past a day the minutes are noise: "21 d 3 h" instead of "507 h 12 min".
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const h = hours % 24;
+    return h === 0 ? `${days} d` : `${days} d ${h} h`;
+  }
   if (hours === 0) return `${rest} min`;
   if (rest === 0) return `${hours} h`;
   return `${hours} h ${rest} min`;

@@ -240,11 +240,14 @@
   .c-rank { width: 1%; color: var(--ink-3); }
   .c-num { text-align: right; }
   th.c-num { text-align: right; }
-  .c-name {
+  .c-name { color: var(--ink-2); }
+  // Table cells ignore max-width in auto layout, so the ellipsis lives on an inner block.
+  .c-name-text {
+    display: block;
     max-width: 320px;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--ink-2);
+    white-space: nowrap;
   }
   .c-share { min-width: 150px; }
   .muted { color: var(--ink-3); }
@@ -467,7 +470,7 @@
   .top-table {
     .c-dpt, .c-rate { display: none; }
     th, td { padding: var(--sp-2); }
-    .c-name { max-width: 34vw; }
+    .c-name-text { max-width: 34vw; }
     .c-share { min-width: 0; }
   }
 

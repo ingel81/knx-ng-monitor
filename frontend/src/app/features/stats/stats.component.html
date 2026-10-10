@@ -174,7 +174,7 @@
                        [matTooltip]="'stats.top.open' | translate"
                        [attr.aria-label]="('stats.top.openAria' | translate: { address: row.address })">{{ row.address }}</a>
                   </td>
-                  <td class="c-name" [title]="row.name ?? ''">{{ row.name || '–' }}</td>
+                  <td class="c-name" [title]="row.name ?? ''"><span class="c-name-text">{{ row.name || '–' }}</span></td>
                   @if (topTab === 'ga') {
                     <td class="c-dpt mono muted" [knxDptTitle]="row.dpt">{{ row.dpt || '–' }}</td>
                   }

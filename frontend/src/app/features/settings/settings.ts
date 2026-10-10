@@ -124,7 +124,15 @@ export class Settings implements OnInit {
   isSavingRecording = false;
 
   /** Choices for the history write interval (#37); the backend accepts 0 to 600 seconds. */
-  readonly historyWriteIntervals = [
+  /** The fixed choices plus the stored value when it is none of them (set through the API). */
+  get historyWriteIntervalOptions(): { seconds: number; label: string; params?: Record<string, number> }[] {
+    const v = this.recording.historyWriteIntervalSeconds;
+    return this.historyWriteIntervals.some(o => o.seconds === v)
+      ? this.historyWriteIntervals
+      : [...this.historyWriteIntervals, { seconds: v, label: 'settings.historyWriteCustom', params: { seconds: v } }];
+  }
+
+  readonly historyWriteIntervals: { seconds: number; label: string; params?: Record<string, number> }[] = [
     { seconds: 0, label: 'settings.historyWriteImmediate' },
     { seconds: 5, label: 'settings.historyWrite5s' },
     { seconds: 30, label: 'settings.historyWrite30s' },

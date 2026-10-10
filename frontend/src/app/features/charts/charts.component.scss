@@ -951,11 +951,12 @@
 
 // On desktop the message used to stay visually hidden, so a refused "Apply" said nothing.
 // Shown as a small callout under the date fields while it has text.
+// Anchored like .opts-panel, to the toolbar: making .tb-right the positioning box would have
+// moved the options popover along with it.
 @media (min-width: 768px) {
-  .tb-right { position: relative; }
   .range-hint:not(:empty) {
-    top: calc(100% + 6px);
-    right: 0;
+    top: calc(100% + var(--sp-2));
+    right: var(--sp-5);
     z-index: 20;
     width: auto;
     height: auto;

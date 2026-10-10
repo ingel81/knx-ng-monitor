@@ -218,12 +218,12 @@
         <input class="knx-input" style="width: 150px;" [(ngModel)]="source" [placeholder]="'monitor.filter.source' | translate" (keyup.enter)="applyFilters()">
         <div class="fb-dt" role="group" [attr.aria-label]="'monitor.filter.from' | translate">
           <span class="fb-label" aria-hidden="true">{{ 'monitor.filter.from' | translate }}</span>
-          <knx-date-time-field [label]="'monitor.filter.from' | translate" [(ngModel)]="fromValue" />
+          <knx-date-time-field [label]="'monitor.filter.from' | translate" [(ngModel)]="fromValue" (edited)="onDateEdited()" />
         </div>
         <div class="fb-dt" role="group" [attr.aria-label]="'monitor.filter.to' | translate">
           <span class="fb-label" aria-hidden="true">{{ 'monitor.filter.to' | translate }}</span>
           <knx-date-time-field [label]="'monitor.filter.to' | translate" defaultTime="23:59"
-                               [min]="fromValue" [(ngModel)]="toValue" />
+                               [min]="fromValue" [(ngModel)]="toValue" (edited)="onDateEdited()" />
         </div>
 
         <span class="fb-sep"></span>

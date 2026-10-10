@@ -19,8 +19,8 @@
               <div class="set-row-sub">{{ 'settings.colorSchemeSub' | translate }}</div>
             </div>
             <div class="knx-seg">
-              <button [class.is-active]="theme() === 'light'" (click)="setTheme('light')"><mat-icon svgIcon="knx:sun"></mat-icon>{{ 'settings.light' | translate }}</button>
-              <button [class.is-active]="theme() === 'dark'" (click)="setTheme('dark')"><mat-icon svgIcon="knx:moon"></mat-icon>{{ 'settings.console' | translate }}</button>
+              <button [class.is-active]="theme() === 'light'" [attr.aria-pressed]="theme() === 'light'" (click)="setTheme('light')"><mat-icon svgIcon="knx:sun"></mat-icon>{{ 'settings.light' | translate }}</button>
+              <button [class.is-active]="theme() === 'dark'" [attr.aria-pressed]="theme() === 'dark'" (click)="setTheme('dark')"><mat-icon svgIcon="knx:moon"></mat-icon>{{ 'settings.console' | translate }}</button>
             </div>
           </div>
           <div class="set-row">
@@ -29,8 +29,8 @@
               <div class="set-row-sub">{{ 'settings.gridDensitySub' | translate }}</div>
             </div>
             <div class="knx-seg">
-              <button [class.is-active]="density() === 'compact'" (click)="setDensity('compact')">{{ 'settings.compact' | translate }}</button>
-              <button [class.is-active]="density() === 'cozy'" (click)="setDensity('cozy')">{{ 'settings.cozy' | translate }}</button>
+              <button [class.is-active]="density() === 'compact'" [attr.aria-pressed]="density() === 'compact'" (click)="setDensity('compact')">{{ 'settings.compact' | translate }}</button>
+              <button [class.is-active]="density() === 'cozy'" [attr.aria-pressed]="density() === 'cozy'" (click)="setDensity('cozy')">{{ 'settings.cozy' | translate }}</button>
             </div>
           </div>
         </div>
@@ -49,10 +49,10 @@
               <div class="set-row-sub">{{ 'settings.connectionModeSub' | translate }}</div>
             </div>
             <div class="knx-seg">
-              <button [class.is-active]="!isRouting" (click)="setConnectionType('Tunneling')">
+              <button [class.is-active]="!isRouting" [attr.aria-pressed]="!isRouting" (click)="setConnectionType('Tunneling')">
                 <mat-icon svgIcon="knx:link"></mat-icon>{{ 'settings.tunneling' | translate }}
               </button>
-              <button [class.is-active]="isRouting" (click)="setConnectionType('Routing')">
+              <button [class.is-active]="isRouting" [attr.aria-pressed]="isRouting" (click)="setConnectionType('Routing')">
                 <mat-icon svgIcon="knx:sitemap"></mat-icon>{{ 'settings.routing' | translate }}
               </button>
             </div>
@@ -108,10 +108,10 @@
                 <div class="set-row-sub">{{ 'settings.tunnelProtocolSub' | translate }}</div>
               </div>
               <div class="knx-seg" role="group" [attr.aria-label]="'settings.tunnelProtocol' | translate">
-                <button type="button" [class.is-active]="knxConfig.tunnelProtocol === 'Udp'"
+                <button type="button" [class.is-active]="knxConfig.tunnelProtocol === 'Udp'" [attr.aria-pressed]="knxConfig.tunnelProtocol === 'Udp'"
                         (click)="knxConfig.tunnelProtocol = 'Udp'"
                         [matTooltip]="'settings.tunnelProtocolUdpTooltip' | translate">UDP</button>
-                <button type="button" [class.is-active]="knxConfig.tunnelProtocol === 'Tcp'"
+                <button type="button" [class.is-active]="knxConfig.tunnelProtocol === 'Tcp'" [attr.aria-pressed]="knxConfig.tunnelProtocol === 'Tcp'"
                         (click)="knxConfig.tunnelProtocol = 'Tcp'"
                         [matTooltip]="'settings.tunnelProtocolTcpTooltip' | translate">TCP</button>
               </div>
@@ -207,8 +207,8 @@
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:save"></mat-icon>
                 <select id="history-write-interval" class="knx-input" [(ngModel)]="recording.historyWriteIntervalSeconds">
-                  @for (option of historyWriteIntervals; track option.seconds) {
-                    <option [ngValue]="option.seconds">{{ option.label | translate }}</option>
+                  @for (option of historyWriteIntervalOptions; track option.seconds) {
+                    <option [ngValue]="option.seconds">{{ option.label | translate: (option.params ?? {}) }}</option>
                   }
                 </select>
               </div>
