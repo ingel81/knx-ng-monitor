@@ -46,8 +46,10 @@ binaries and auto-generated notes are on the
   time (#27), the value in force before the range is carried in so a rarely sending address
   no longer starts blank, and an optional smoothed curve (#33). Switching values (DPT 1)
   share one 0..1 axis (#30). Contributions by Elkomaster91, thank you.
-- **Graph filters (#17):** the GA network graph filters by group, room, DPT and the
-  neighbourhood of a node.
+- **Graph filters (#17):** the GA network graph filters by main / middle group, room or
+  building part, DPT / type and free text (word-based, umlauts optional), plus a neighbourhood
+  of 1 to 3 levels around the matches. Filters combine, survive a page reload and reset with
+  one click; on phones the bar sits behind a button.
 - **Building part and function columns (#12).** Two opt-in monitor columns: the building
   part of the sending device (compact path, only levels with siblings, the full path in the
   tooltip) and the ETS functions of the destination address ("Name +N" with the list in the
