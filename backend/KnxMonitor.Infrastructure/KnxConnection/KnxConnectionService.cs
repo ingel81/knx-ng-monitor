@@ -142,7 +142,31 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             _knxBus.ConnectionStateChanged += OnConnectionStateChanged;
 
             // Connect to the bus
-            await _knxBus.ConnectAsync(_cancellationTokenSource.Token);
+            try
+            {
+                await _knxBus.ConnectAsync(_cancellationTokenSource.Token);
+            }
+            catch (KnxIpUnicastConnectorException ex) when (
+                parameters is IpTunnelingConnectorParameters { IndividualAddress: not null, FallbackToAnyIndividualAddress: true })
+            {
+                // Falcon falls back only when the requested address is taken. An address that is
+                // not one of the interface's tunnel addresses at all is rejected outright (seen on
+                // an MDT router: "The IA requested in the Extended CRI is not a Tunnelling IA").
+                // With the fallback switched on the user asked for "any free slot rather than
+                // nothing", so honour that here too.
+                _logger.LogWarning(
+                    "Interface rejected tunnel address {TunnelAddress} ({Reason}); retrying with any free address",
+                    configuration.TunnelAddress, ex.Message);
+                await CleanupBusConnection();
+
+                var anyAddress = await BuildConnectorParameters(configuration, keyringBlob);
+                ((IpTunnelingConnectorParameters)anyAddress).IndividualAddress = null;
+                _knxBus = new KnxBus(anyAddress);
+                await TryApplyGroupSecurityAsync(_knxBus, keyringBlob);
+                _knxBus.GroupMessageReceived += OnGroupMessageReceived;
+                _knxBus.ConnectionStateChanged += OnConnectionStateChanged;
+                await _knxBus.ConnectAsync(_cancellationTokenSource.Token);
+            }
 
             _activeConfiguration = configuration;
             SetState(KnxLinkState.Connected);
