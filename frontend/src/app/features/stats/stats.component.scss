@@ -168,6 +168,123 @@
   }
 }
 
+// --- Top group addresses / senders (#38) -------------------------------------
+// Sized by its rows rather than stretched like the chart cards; the table scrolls sideways on
+// its own when a phone cannot fit it.
+.chart-card.top-card {
+  flex: none;
+  min-height: 0;
+}
+
+.top-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.top-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-weight: normal;
+
+  .knx-seg { height: 30px; }
+}
+
+.top-host {
+  position: relative;
+  display: flex;
+  min-height: 160px;
+  overflow-x: auto;
+}
+
+.top-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  color: var(--ink);
+  transition: opacity var(--t-fast);
+
+  &.is-stale { opacity: .55; }
+
+  th {
+    position: sticky;
+    top: 0;
+    text-align: left;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ink-3);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+    padding: var(--sp-2) var(--sp-3);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: var(--sp-2) var(--sp-3);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    cursor: pointer;
+    &:hover { background: var(--surface-2); }
+    &:last-child td { border-bottom: none; }
+  }
+
+  .c-rank { width: 1%; color: var(--ink-3); }
+  .c-num { text-align: right; }
+  th.c-num { text-align: right; }
+  .c-name {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--ink-2);
+  }
+  .c-share { min-width: 150px; }
+  .muted { color: var(--ink-3); }
+}
+
+.top-link {
+  color: var(--brand);
+  text-decoration: none;
+  border-radius: var(--r-sm);
+
+  &:hover { text-decoration: underline; }
+  &:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+}
+
+.share-bar {
+  display: inline-block;
+  vertical-align: middle;
+  width: 64px;
+  height: 6px;
+  margin-right: var(--sp-2);
+  border-radius: var(--r-full);
+  background: var(--surface-3);
+  overflow: hidden;
+
+  > span {
+    display: block;
+    height: 100%;
+    background: var(--brand);
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .echart {
   flex: 1;
   min-height: 0;
@@ -339,4 +456,20 @@
 // date, time and the calendar button, so From and To stack instead.
 @media (max-width: 479.98px) {
   .tb-range.is-open { grid-template-columns: 1fr; }
+}
+
+// Phones: the top list keeps address, name, count and share; DPT and rate are the first to go
+// (the DPT is one tap away in the monitor, the rate follows from count and range).
+@media (max-width: 767px) {
+  .top-head { padding: var(--sp-3) var(--sp-4); }
+  .top-controls .knx-seg { height: 36px; }
+
+  .top-table {
+    .c-dpt, .c-rate { display: none; }
+    th, td { padding: var(--sp-2); }
+    .c-name { max-width: 34vw; }
+    .c-share { min-width: 0; }
+  }
+
+  .share-bar { display: none; }
 }

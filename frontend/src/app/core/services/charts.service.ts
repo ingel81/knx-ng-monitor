@@ -41,6 +41,22 @@ export interface StatsResponse {
   counts: StatsBucket[];
 }
 
+export interface TopEntry {
+  address: string;
+  name: string | null;
+  dpt?: string | null;   // group addresses only
+  count: number;
+  share: number;         // percent of all telegrams in the range, 0..100
+  perHour: number;
+}
+
+export interface TopResponse {
+  total: number;
+  rangeHours: number;
+  groupAddresses: TopEntry[];
+  senders: TopEntry[];
+}
+
 export interface HeatmapResponse {
   total: number;
   grid: number[][];   // grid[weekday 0=Sun..6=Sat][hour 0..23]
@@ -74,6 +90,14 @@ export class ChartsService {
     if (from) params = params.set('from', from);
     if (to) params = params.set('to', to);
     return this.http.get<StatsResponse>(`${this.apiUrl}/stats`, { params });
+  }
+
+  /** Busiest group addresses and senders over the range (GET /api/telegrams/top). */
+  getTop(from?: string, to?: string, limit = 20): Observable<TopResponse> {
+    let params = new HttpParams().set('limit', String(limit));
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    return this.http.get<TopResponse>(`${this.apiUrl}/top`, { params });
   }
 
   /** Activity heatmap (weekday × hour). `tz` = local offset in minutes (getTimezoneOffset()). */

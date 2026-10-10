@@ -20,6 +20,8 @@ public partial class TelegramsController
     private const int CarryLookback = 20;
     private const int DefaultStatsBuckets = 60;
     private const int MaxStatsBuckets = 500;
+    private const int DefaultTopLimit = 20;
+    private const int MaxTopLimit = 100;
 
     /// <summary>
     /// Numeric time-series per destination group address. Each telegram's decoded value is
@@ -270,6 +272,79 @@ public partial class TelegramsController
         return Ok(new HeatmapResponse { Total = total, Grid = grid });
     }
 
+    /// <summary>
+    /// The busiest destination group addresses and the busiest senders over [from,to], for the
+    /// bus-load breakdown in the statistics view.
+    /// </summary>
+    /// <remarks>
+    /// Both lists are ranked by telegram count, highest first, ties broken by address, and hold
+    /// at most <paramref name="limit"/> entries each. <c>share</c> is the percentage of all
+    /// telegrams in the range (<c>total</c>), <c>perHour</c> the count divided by the length of
+    /// the range in hours (<c>rangeHours</c>), so a short range is not mistaken for a quiet one.
+    /// <para>
+    /// Names and DPTs come from the <b>currently active</b> project: an address that is not part
+    /// of it, or a range recorded under an older project, shows whatever today's project says,
+    /// or null. Counts all telegrams in the range, every message type included.
+    /// </para>
+    /// <para>
+    /// A timestamp without a zone designator is interpreted as server local time, not UTC. Send
+    /// ISO-8601 with a trailing <c>Z</c> to be unambiguous.
+    /// </para>
+    /// </remarks>
+    /// <param name="from">Start of the range (inclusive). Defaults to 24 hours before <c>to</c>.</param>
+    /// <param name="to">End of the range (inclusive). Defaults to now. A reversed range is swapped, not rejected.</param>
+    /// <param name="limit">Entries per list. Default 20, clamped to 1..100.</param>
+    [HttpGet("top")]
+    public async Task<IActionResult> GetTop(
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int limit = DefaultTopLimit)
+    {
+        var (rangeFrom, rangeTo) = ResolveRange(from, to);
+        var take = Math.Clamp(limit, 1, MaxTopLimit);
+        var ct = HttpContext.RequestAborted;
+
+        // Sequential on purpose: the repository shares one DbContext, which allows a single
+        // active query at a time.
+        var total = await _repository.CountInRangeAsync(rangeFrom, rangeTo, ct);
+        var destinations = await _repository.GetTopDestinationsAsync(rangeFrom, rangeTo, take, ct);
+        var sources = await _repository.GetTopSourcesAsync(rangeFrom, rangeTo, take, ct);
+
+        var hours = Math.Max((rangeTo - rangeFrom).TotalHours, 1.0 / 3600);
+        double Share(long count) => total > 0 ? count * 100.0 / total : 0;
+
+        return Ok(new TopResponse
+        {
+            Total = total,
+            RangeHours = hours,
+            GroupAddresses = destinations.Select(d =>
+            {
+                var ga = _projectCache.GetByAddress(d.Address);
+                return new TopEntry
+                {
+                    Address = d.Address,
+                    Name = string.IsNullOrEmpty(ga?.Name) ? null : ga.Name,
+                    Dpt = ga?.DatapointType,
+                    Count = d.Count,
+                    Share = Share(d.Count),
+                    PerHour = d.Count / hours
+                };
+            }).ToList(),
+            Senders = sources.Select(s =>
+            {
+                var device = _projectCache.GetDeviceByAddress(s.Address);
+                return new TopEntry
+                {
+                    Address = s.Address,
+                    Name = string.IsNullOrEmpty(device?.Name) ? null : device.Name,
+                    Count = s.Count,
+                    Share = Share(s.Count),
+                    PerHour = s.Count / hours
+                };
+            }).ToList()
+        });
+    }
+
     private static (DateTime From, DateTime To) ResolveRange(DateTime? from, DateTime? to)
     {
         var rangeTo = (to ?? DateTime.UtcNow).ToUniversalTime();
@@ -462,6 +537,41 @@ public class StatsBucket
 {
     public string T { get; set; } = string.Empty;
     public long Count { get; set; }
+}
+
+public class TopResponse
+{
+    /// <summary>All telegrams in the range, the base of every <c>share</c>.</summary>
+    public long Total { get; set; }
+
+    /// <summary>Length of the range in hours, the base of every <c>perHour</c>.</summary>
+    public double RangeHours { get; set; }
+
+    /// <summary>Busiest destination group addresses, highest count first.</summary>
+    public List<TopEntry> GroupAddresses { get; set; } = new();
+
+    /// <summary>Busiest source devices (individual addresses), highest count first.</summary>
+    public List<TopEntry> Senders { get; set; } = new();
+}
+
+public class TopEntry
+{
+    /// <summary>Group address (<c>1/2/3</c>) or individual address (<c>1.1.5</c>).</summary>
+    public string Address { get; set; } = string.Empty;
+
+    /// <summary>GA or device name from the active project; null when it has none.</summary>
+    public string? Name { get; set; }
+
+    /// <summary>Datapoint type of the GA from the active project; always null for senders.</summary>
+    public string? Dpt { get; set; }
+
+    public long Count { get; set; }
+
+    /// <summary>Percentage of all telegrams in the range, 0..100.</summary>
+    public double Share { get; set; }
+
+    /// <summary>Average telegrams per hour over the whole range.</summary>
+    public double PerHour { get; set; }
 }
 
 public class HeatmapResponse

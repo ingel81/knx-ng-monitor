@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, AfterViewInit, ElementRef, NgZone, inject, ViewChild, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -68,6 +68,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   private historyService = inject(TelegramHistoryService);
   private http = inject(HttpClient);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private detail = inject(TelegramDetailService);
@@ -271,6 +272,10 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   onHiddenChange(hidden: Set<string>): void { this.hiddenCols = hidden; }
 
   async ngOnInit(): Promise<void> {
+    // Deep-Link ins Archiv (z. B. aus der Statistik, #38) zuerst übernehmen: so startet die
+    // Ansicht gar nicht erst im Live-Modus, und Zähler und erste Seite kommen schon gefiltert.
+    this.applyQueryParams();
+
     // Live-Buffer immer starten — läuft als Singleton im Hintergrund weiter.
     await this.buffer.start();
     this.applyClientFilter();
@@ -318,6 +323,37 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     this.clearCountSub?.unsubscribe();
     if (this.statusPoll) clearInterval(this.statusPoll);
     this.gridScrollRef?.nativeElement.removeEventListener('scroll', this.onCaptureScroll, true);
+  }
+
+  /**
+   * Versteht `?mode=archive&address=1/2/3&source=1.1.5&from=<ISO>&to=<ISO>`. Alle Parameter
+   * sind optional; `from`/`to` sind Zeitpunkte (ISO mit Z) und landen als lokale Zeit in den
+   * Datumsfeldern, wie eine Eingabe von Hand. Unlesbare Werte werden ignoriert.
+   */
+  private applyQueryParams(): void {
+    const q = this.route.snapshot.queryParamMap;
+    const address = q.get('address')?.trim();
+    const source = q.get('source')?.trim();
+    const from = this.parseInstant(q.get('from'));
+    const to = this.parseInstant(q.get('to'));
+
+    if (address) this.address = address;
+    if (source) this.source = source;
+    if (from) this.fromValue = this.toLocalInput(from);
+    if (to) this.toValue = this.toLocalInput(to);
+
+    if (q.get('mode') === 'archive' || address || source || from || to) {
+      this.mode = 'archive';
+      // Mobil ist die Filterleiste sonst zugeklappt und der gesetzte Filter unsichtbar.
+      this.filtersExpanded = true;
+      void this.loadRoomsIfNeeded();
+    }
+  }
+
+  private parseInstant(value: string | null): Date | null {
+    if (!value) return null;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
   }
 
   // --- Mode toggle -----------------------------------------------------------

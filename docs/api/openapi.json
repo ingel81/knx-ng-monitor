@@ -1672,6 +1672,59 @@
         ]
       }
     },
+    "/api/Telegrams/top": {
+      "get": {
+        "tags": [
+          "Telegrams"
+        ],
+        "summary": "The busiest destination group addresses and the busiest senders over [from,to], for the\r\nbus-load breakdown in the statistics view.",
+        "description": "    Both lists are ranked by telegram count, highest first, ties broken by address, and hold\r\n    at most limit entries each. `share` is the percentage of all\r\n    telegrams in the range (`total`), `perHour` the count divided by the length of\r\n    the range in hours (`rangeHours`), so a short range is not mistaken for a quiet one.\r\n    Names and DPTs come from the currently active project: an address that is not part\r\nof it, or a range recorded under an older project, shows whatever today's project says,\r\nor null. Counts all telegrams in the range, every message type included.\r\n    A timestamp without a zone designator is interpreted as server local time, not UTC. Send\r\nISO-8601 with a trailing Z to be unambiguous.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Start of the range (inclusive). Defaults to 24 hours before `to`.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "End of the range (inclusive). Defaults to now. A reversed range is swapped, not rejected.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Entries per list. Default 20, clamped to 1..100.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/api/Telegrams": {
       "get": {
         "tags": [

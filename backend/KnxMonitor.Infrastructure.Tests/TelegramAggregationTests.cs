@@ -136,6 +136,41 @@ public class TelegramAggregationTests
         counts.Should().HaveCount(60).And.OnlyContain(c => c == 0);
     }
 
+    [Fact]
+    public async Task Top_lists_rank_by_count_break_ties_by_address_and_respect_range_and_limit()
+    {
+        using var db = new SqliteTestDb();
+        using var scope = db.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<ITelegramRepository>();
+
+        var from = Start;
+        var to = Start.AddHours(1);
+        var rows = new List<KnxTelegram>();
+        void Add(string dst, string src, int n, DateTime? at = null)
+        {
+            for (var i = 0; i < n; i++)
+            {
+                var t = Tg(at ?? from.AddSeconds(i + 1));
+                t.DestinationAddress = dst;
+                t.SourceAddress = src;
+                rows.Add(t);
+            }
+        }
+
+        Add("1/1/3", "1.1.9", 5);
+        Add("1/1/1", "1.1.2", 3);
+        Add("1/1/2", "1.1.2", 3);     // tie with 1/1/1 on count
+        Add("9/9/9", "9.9.9", 50, to.AddSeconds(1)); // outside the range
+        Add("1/1/4", "1.1.1", 1, to); // exactly at the inclusive end
+        await repo.AddRangeAsync(rows);
+
+        var top = await repo.GetTopDestinationsAsync(from, to, 3);
+        top.Select(a => (a.Address, a.Count)).Should().Equal(("1/1/3", 5L), ("1/1/1", 3L), ("1/1/2", 3L));
+
+        var senders = await repo.GetTopSourcesAsync(from, to, 10);
+        senders.Select(a => (a.Address, a.Count)).Should().Equal(("1.1.2", 6L), ("1.1.9", 5L), ("1.1.1", 1L));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-120)]   // CEST

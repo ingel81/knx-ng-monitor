@@ -108,5 +108,88 @@
         }
       </div>
     </div>
+
+    <!-- #38: which group addresses / devices produce the traffic in the selected range. -->
+    <div class="chart-card top-card">
+      <div class="chart-head top-head">
+        <span class="top-title">{{ 'stats.top.title' | translate }}</span>
+        <div class="top-controls">
+          <div class="knx-seg" role="group" [attr.aria-label]="'stats.top.view' | translate">
+            <button type="button" [class.is-active]="topTab === 'ga'" [attr.aria-pressed]="topTab === 'ga'"
+                    (click)="topTab = 'ga'">{{ 'stats.top.tabGa' | translate }}</button>
+            <button type="button" [class.is-active]="topTab === 'sender'" [attr.aria-pressed]="topTab === 'sender'"
+                    (click)="topTab = 'sender'">{{ 'stats.top.tabSender' | translate }}</button>
+          </div>
+          <div class="knx-seg" role="group" [attr.aria-label]="'stats.top.limit' | translate">
+            @for (n of topLimits; track n) {
+              <button type="button" [class.is-active]="topLimit === n" [attr.aria-pressed]="topLimit === n"
+                      [matTooltip]="'stats.top.limitN' | translate: { n: n }"
+                      (click)="setTopLimit(n)">{{ n }}</button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="top-host">
+        @if (topLoading && !top) {
+          <div class="empty-state"><mat-icon class="spin">autorenew</mat-icon></div>
+        } @else if (topError) {
+          <div class="empty-state">
+            <mat-icon>error_outline</mat-icon>
+            <p>{{ 'stats.loadFailed' | translate }}</p>
+          </div>
+        } @else if (!topRows.length) {
+          <div class="empty-state">
+            <mat-icon>leaderboard</mat-icon>
+            <p>{{ 'stats.emptyNoData' | translate }}</p>
+          </div>
+        } @else {
+          <table class="top-table" [class.is-stale]="topLoading">
+            <caption class="sr-only">
+              {{ (topTab === 'ga' ? 'stats.top.captionGa' : 'stats.top.captionSender') | translate }}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col" class="c-rank">#</th>
+                <th scope="col" class="c-addr">
+                  {{ (topTab === 'ga' ? 'stats.top.colGa' : 'stats.top.colSender') | translate }}
+                </th>
+                <th scope="col" class="c-name">{{ 'stats.top.colName' | translate }}</th>
+                @if (topTab === 'ga') {
+                  <th scope="col" class="c-dpt">{{ 'stats.top.colDpt' | translate }}</th>
+                }
+                <th scope="col" class="c-num">{{ 'stats.top.colCount' | translate }}</th>
+                <th scope="col" class="c-share">{{ 'stats.top.colShare' | translate }}</th>
+                <th scope="col" class="c-num c-rate">{{ 'stats.top.colPerHour' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of topRows; track row.address; let i = $index) {
+                <!-- The whole row is a mouse target; the address link is the keyboard and
+                     screen-reader target, so no interactive role on the row itself. -->
+                <tr (click)="openInMonitor(row)">
+                  <td class="c-rank mono">{{ i + 1 }}</td>
+                  <td class="c-addr">
+                    <a class="top-link mono" href="" (click)="$event.preventDefault(); $event.stopPropagation(); openInMonitor(row)"
+                       [matTooltip]="'stats.top.open' | translate"
+                       [attr.aria-label]="('stats.top.openAria' | translate: { address: row.address })">{{ row.address }}</a>
+                  </td>
+                  <td class="c-name" [title]="row.name ?? ''">{{ row.name || '–' }}</td>
+                  @if (topTab === 'ga') {
+                    <td class="c-dpt mono muted" [knxDptTitle]="row.dpt">{{ row.dpt || '–' }}</td>
+                  }
+                  <td class="c-num mono">{{ formatCount(row.count) }}</td>
+                  <td class="c-share">
+                    <span class="share-bar" aria-hidden="true"><span [style.width.%]="row.share"></span></span>
+                    <span class="mono">{{ formatShare(row.share) }} %</span>
+                  </td>
+                  <td class="c-num c-rate mono">{{ formatPerHour(row.perHour) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
   </div>
 </div>

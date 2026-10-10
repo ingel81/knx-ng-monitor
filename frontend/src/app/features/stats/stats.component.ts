@@ -2,21 +2,29 @@ import { Component, HostListener, OnInit, ViewChild, effect, inject } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router } from '@angular/router';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import type { EChartsCoreOption } from 'echarts/core';
 
-import { ChartsService, StatsResponse, HeatmapResponse } from '../../core/services/charts.service';
+import { ChartsService, StatsResponse, HeatmapResponse, TopEntry, TopResponse } from '../../core/services/charts.service';
 import { LanguageService } from '../../core/i18n/language.service';
 import { localeTag } from '../../core/i18n/locale.util';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { DateTimeFieldComponent } from '../../shared/date-time-field/date-time-field.component';
+import { DptTitleDirective } from '../../shared/grid/dpt-title.directive';
 import { ThemeService } from '../../core/services/theme.service';
 import { RangePreset, isRangeOrdered, resolveRange } from '../charts/time-range.util';
 import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom } from '../charts/chart-skin';
 
+type TopLimit = 10 | 20 | 50;
+
 @Component({
   selector: 'app-stats',
-  imports: [CommonModule, FormsModule, MatIconModule, NgxEchartsDirective, TranslatePipe, DateTimeFieldComponent],
+  imports: [
+    CommonModule, FormsModule, MatIconModule, MatTooltipModule, NgxEchartsDirective, TranslatePipe,
+    DateTimeFieldComponent, DptTitleDirective
+  ],
   templateUrl: './stats.component.html',
   styleUrl: './stats.component.scss'
 })
@@ -24,6 +32,7 @@ export class StatsComponent implements OnInit {
   private chartsService = inject(ChartsService);
   private lang = inject(LanguageService);
   private theme = inject(ThemeService);
+  private router = inject(Router);
 
   /** Last bucket data, kept so the chart can be rebuilt on a theme toggle. */
   private lastData: [number, number][] | null = null;
@@ -65,6 +74,21 @@ export class StatsComponent implements OnInit {
   chartOption: EChartsCoreOption = {};
   heatmapOption: EChartsCoreOption = {};
   hasHeatmap = false;
+
+  // --- Top group addresses / senders (#38) ------------------------------------
+  readonly topLimits: TopLimit[] = [10, 20, 50];
+  topLimit: TopLimit = 20;
+  topTab: 'ga' | 'sender' = 'ga';
+  top: TopResponse | null = null;
+  topLoading = false;
+  topError = false;
+  /** Range the top list was loaded for; a row click opens exactly this window in the archive. */
+  private topRange: { from: string; to: string } | null = null;
+
+  get topRows(): TopEntry[] {
+    if (!this.top) return [];
+    return this.topTab === 'ga' ? this.top.groupAddresses : this.top.senders;
+  }
 
   ngOnInit(): void {
     this.load();
@@ -124,11 +148,64 @@ export class StatsComponent implements OnInit {
       }
     });
 
+    this.loadTop(range);
+
     const tz = new Date().getTimezoneOffset();
     this.chartsService.getHeatmap(range.from, range.to, tz).subscribe({
       next: (res) => this.applyHeatmap(res),
       error: () => { this.hasHeatmap = false; },
     });
+  }
+
+  setTopLimit(limit: TopLimit): void {
+    if (limit === this.topLimit) return;
+    this.topLimit = limit;
+    if (this.topRange) this.loadTop(this.topRange);
+  }
+
+  private loadTop(range: { from: string; to: string }): void {
+    this.topRange = range;
+    this.topLoading = true;
+    this.topError = false;
+    const limit = this.topLimit;
+    this.chartsService.getTop(range.from, range.to, limit).subscribe({
+      next: (res) => {
+        // A slow answer for an older range or limit must not overwrite the current one.
+        if (this.topRange !== range || this.topLimit !== limit) return;
+        this.top = res;
+        this.topLoading = false;
+      },
+      error: () => {
+        if (this.topRange !== range || this.topLimit !== limit) return;
+        this.topLoading = false;
+        this.topError = true;
+      }
+    });
+  }
+
+  /** Opens the monitor archive filtered to this group address or sender over the same range. */
+  openInMonitor(row: TopEntry): void {
+    if (!this.topRange) return;
+    const filter = this.topTab === 'ga' ? { address: row.address } : { source: row.address };
+    void this.router.navigate(['/monitor'], {
+      queryParams: { mode: 'archive', ...filter, from: this.topRange.from, to: this.topRange.to }
+    });
+  }
+
+  formatShare(share: number): string {
+    return new Intl.NumberFormat(localeTag(this.lang.lang()), {
+      minimumFractionDigits: 1, maximumFractionDigits: 1
+    }).format(share);
+  }
+
+  formatPerHour(perHour: number): string {
+    return new Intl.NumberFormat(localeTag(this.lang.lang()), {
+      maximumFractionDigits: perHour >= 10 ? 0 : 1
+    }).format(perHour);
+  }
+
+  formatCount(count: number): string {
+    return new Intl.NumberFormat(localeTag(this.lang.lang())).format(count);
   }
 
   private applyHeatmap(res: HeatmapResponse): void {

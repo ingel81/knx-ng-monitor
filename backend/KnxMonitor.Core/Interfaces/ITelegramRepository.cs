@@ -94,4 +94,15 @@ public interface ITelegramRepository : IRepository<KnxTelegram>
     /// </summary>
     Task<long[][]> CountPerWeekdayHourAsync(
         DateTime from, DateTime to, int tzOffsetMinutes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Destination group addresses with the most telegrams in [from,to], busiest first (ties by
+    /// address). Grouped in SQL over the (Timestamp, DestinationAddress) index.
+    /// </summary>
+    Task<IReadOnlyList<AddressCount>> GetTopDestinationsAsync(
+        DateTime from, DateTime to, int limit, CancellationToken ct = default);
+
+    /// <summary>Source devices (individual addresses) with the most telegrams in [from,to], busiest first (ties by address).</summary>
+    Task<IReadOnlyList<AddressCount>> GetTopSourcesAsync(
+        DateTime from, DateTime to, int limit, CancellationToken ct = default);
 }

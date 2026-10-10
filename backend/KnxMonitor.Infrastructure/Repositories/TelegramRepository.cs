@@ -346,6 +346,34 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
         return grid;
     }
 
+    public async Task<IReadOnlyList<AddressCount>> GetTopDestinationsAsync(
+        DateTime from, DateTime to, int limit, CancellationToken ct = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Where(t => t.Timestamp >= from && t.Timestamp <= to)
+            .GroupBy(t => t.DestinationAddress)
+            .Select(g => new AddressCount { Address = g.Key, Count = g.LongCount() })
+            .OrderByDescending(a => a.Count)
+            .ThenBy(a => a.Address)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<AddressCount>> GetTopSourcesAsync(
+        DateTime from, DateTime to, int limit, CancellationToken ct = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Where(t => t.Timestamp >= from && t.Timestamp <= to)
+            .GroupBy(t => t.SourceAddress)
+            .Select(g => new AddressCount { Address = g.Key, Count = g.LongCount() })
+            .OrderByDescending(a => a.Count)
+            .ThenBy(a => a.Address)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
+
     private IQueryable<KnxTelegram> BuildFilteredQuery(TelegramFilter filter)
     {
         var query = _dbSet.AsQueryable();
