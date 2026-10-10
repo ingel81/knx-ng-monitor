@@ -26,7 +26,8 @@ import { OverflowTitleDirective } from '../../shared/grid/overflow-title.directi
 import { SearchCache, foldForSearch, searchTokens } from '../../shared/search.util';
 import { SlashFocusDirective } from '../../shared/slash-focus.directive';
 import { RangePreset, isRangeOrdered, resolveRange } from './time-range.util';
-import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom, styleLineSeries } from './chart-skin';
+import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom, styleLineSeries, TooltipRow } from './chart-skin';
+import { formatDurationMinutes } from '../../shared/duration.util';
 import {
   ChartDisplayOptions, CurveMode, DEFAULT_CHART_OPTIONS,
   loadChartOptions, saveChartOptions, loadChartQuery, saveChartQuery
@@ -959,7 +960,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
     this.chartOption = {
       // Re-animating every curve on each live flush is distracting and costly.
       animation: !this.liveAppend,
-      tooltip: tooltipCfg(skin, unitByName, localeTag(this.lang.lang())),
+      tooltip: tooltipCfg(skin, unitByName, localeTag(this.lang.lang()), (t) => this.tooltipRows(t, skin.palette)),
       legend: {
         // Kept in the option even when hidden: it carries the show/hide state that the
         // summary table drives.
@@ -1071,6 +1072,41 @@ export class ChartsComponent implements OnInit, OnDestroy {
       out.push({ value: [now, last[1]], symbol: 'none' });
     }
     return out;
+  }
+
+  /**
+   * Tooltip rows for the time under the pointer: every visible series with the value in force
+   * then, i.e. its last reading at or before that time (a KNX value holds until the next
+   * telegram), or the carried-in value before the first one. The age tells a fresh reading from
+   * a held one. Series without any value yet at that time are left out.
+   */
+  private tooltipRows(time: number, palette: string[]): TooltipRow[] {
+    const rows: TooltipRow[] = [];
+    this.series.forEach((s, i) => {
+      if (this.hiddenSeries.has(s.name)) return;
+      // Last index with timestamp <= time (binary search; data is in time order).
+      let lo = 0;
+      let hi = s.data.length - 1;
+      let at = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (s.data[mid][0] <= time) { at = mid; lo = mid + 1; } else hi = mid - 1;
+      }
+      const point = at >= 0 ? s.data[at] : s.carry;
+      if (!point || point[0] > time) return;
+      const ageMs = time - point[0];
+      rows.push({
+        name: s.name,
+        color: palette[i % palette.length],
+        value: point[1],
+        unit: s.unit,
+        // Under a second it is the reading itself; no age needed.
+        age: ageMs >= 1000
+          ? this.lang.translate('charts.tooltipAge', { age: formatDurationMinutes(ageMs / 60_000) })
+          : undefined
+      });
+    });
+    return rows;
   }
 
   get hasData(): boolean {

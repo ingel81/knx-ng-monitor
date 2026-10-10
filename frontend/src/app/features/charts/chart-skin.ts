@@ -103,13 +103,47 @@ export function timeAxis(skin: ChartSkin, locale = 'en-GB'): Record<string, unkn
   };
 }
 
+/** One tooltip row; `age` is shown small after the value when given. */
+export interface TooltipRow {
+  name: string;
+  color: string;
+  value: number | string;
+  unit: string;
+  age?: string;
+}
+
 /**
  * Axis tooltip with dashed crosshair. Each row shows a colour marker, the series
  * name, and the mono value with its unit (§1.1). `units` maps seriesName → unit.
+ *
+ * With `rowsAt` the rows come from the caller for the time under the pointer instead of from
+ * ECharts' own pick, which on a time axis only takes the series whose point lies nearest to the
+ * pointer. KNX telegrams never arrive at the same instant, so that was nearly always one (#36).
  */
 export function tooltipCfg(
   skin: ChartSkin, units: Record<string, string> = {}, locale?: string,
+  rowsAt?: (time: number) => TooltipRow[],
 ): Record<string, unknown> {
+  const rowHtml = (r: TooltipRow): string => {
+    const v = typeof r.value === 'number'
+      ? r.value.toLocaleString(locale, { maximumFractionDigits: 2 })
+      : r.value;
+    const unitHtml = r.unit
+      ? ` <span style="color:${skin.ink3};font-weight:500;font-size:11px">${r.unit}</span>`
+      : '';
+    const ageHtml = r.age
+      ? ` <span style="color:${skin.ink3};font-family:${skin.mono};font-weight:400;font-size:10px">${r.age}</span>`
+      : '';
+    return (
+      `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin:3px 0">` +
+        `<span style="display:inline-flex;align-items:center;gap:7px;color:${skin.ink2};font-size:12px">` +
+          `<span style="width:8px;height:8px;border-radius:2px;background:${r.color};display:inline-block"></span>` +
+          `${r.name}</span>` +
+        `<span style="font-family:${skin.mono};font-weight:700;font-size:13px;color:${skin.ink}">${v}${unitHtml}${ageHtml}</span>` +
+      `</div>`
+    );
+  };
+
   return {
     trigger: 'axis',
     backgroundColor: skin.surface,
@@ -122,34 +156,24 @@ export function tooltipCfg(
     axisPointer: {
       type: 'line',
       lineStyle: { color: skin.ink3, type: 'dashed', width: 1 },
+      // Rows from rowsAt follow the pointer itself; snapping would pull it onto one series' point.
+      ...(rowsAt ? { snap: false } : {}),
     },
     formatter: (params: unknown) => {
       const arr = (Array.isArray(params) ? params : [params]) as Array<{
-        value: [number, number]; color: string; seriesName: string;
+        value: [number, number]; color: string; seriesName: string; axisValue?: number;
       }>;
       if (!arr.length) return '';
-      const stamp = formatKnxDateIn(locale ?? 'en-GB', arr[0].value[0], 'dateTime');
+      // The pointer position itself, not the time of whichever point ECharts picked.
+      const time = rowsAt && typeof arr[0].axisValue === 'number' ? arr[0].axisValue : arr[0].value[0];
+      const stamp = formatKnxDateIn(locale ?? 'en-GB', time, 'dateTime');
       const head =
         `<div style="font-family:${skin.mono};font-size:11px;color:${skin.ink3};` +
         `margin-bottom:6px;letter-spacing:.02em">${stamp}</div>`;
-      const rows = arr.map((p) => {
-        const unit = units[p.seriesName] || '';
-        const v = typeof p.value[1] === 'number'
-          ? p.value[1].toLocaleString(locale, { maximumFractionDigits: 2 })
-          : p.value[1];
-        const unitHtml = unit
-          ? ` <span style="color:${skin.ink3};font-weight:500;font-size:11px">${unit}</span>`
-          : '';
-        return (
-          `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin:3px 0">` +
-            `<span style="display:inline-flex;align-items:center;gap:7px;color:${skin.ink2};font-size:12px">` +
-              `<span style="width:8px;height:8px;border-radius:2px;background:${p.color};display:inline-block"></span>` +
-              `${p.seriesName}</span>` +
-            `<span style="font-family:${skin.mono};font-weight:700;font-size:13px;color:${skin.ink}">${v}${unitHtml}</span>` +
-          `</div>`
-        );
-      }).join('');
-      return head + rows;
+      const rows: TooltipRow[] = rowsAt
+        ? rowsAt(time)
+        : arr.map((p) => ({ name: p.seriesName, color: p.color, value: p.value[1], unit: units[p.seriesName] || '' }));
+      return head + rows.map(rowHtml).join('');
     },
   };
 }
