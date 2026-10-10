@@ -50,13 +50,13 @@ Quell-Recording (User): `../2026-06-24 11-27-23.mp4` (2560×1440@60, 32s; Deskto
 > `backend/KnxMonitor.Api/Program.cs:93-95` überschreibt die Verbindung bewusst mit einem
 > Pfad relativ zur Programmdatei (`AppPaths.DbPath`), damit das portable Binary immer
 > dieselbe DB öffnet. Ein `dotnet run` aus `backend/` liest deshalb **immer**
-> `backend/KnxMonitor.Api/bin/Debug/net9.0/data/knxmonitor.db` — egal was die Env sagt.
+> `backend/KnxMonitor.Api/bin/Debug/net10.0/data/knxmonitor.db` — egal was die Env sagt.
 >
 > Wer die Prod-Kopie sehen will, kopiert sie an genau diese Stelle (Prozess vorher
 > stoppen, `-wal`/`-shm` mit entfernen, vorhandene Dev-DB vorher wegsichern):
 > ```bash
 > powershell -Command "Get-Process -Name KnxMonitor.Api -EA SilentlyContinue | Stop-Process -Force"
-> D=backend/KnxMonitor.Api/bin/Debug/net9.0/data
+> D=backend/KnxMonitor.Api/bin/Debug/net10.0/data
 > mv $D/knxmonitor.db $D/knxmonitor.db.devbak; rm -f $D/knxmonitor.db-wal $D/knxmonitor.db-shm
 > cp publish/data/knxmonitor.db $D/knxmonitor.db
 > ```

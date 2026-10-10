@@ -9,8 +9,8 @@ KNX-NG-Monitor is a KNX bus monitoring tool with a web UI that displays, histori
 ## Tech Stack
 
 ### Backend
-- **.NET 9** (ASP.NET Core Web API) — see `backend/global.json` (none — uses installed SDK)
-- **Entity Framework Core 9** with SQLite (`Microsoft.EntityFrameworkCore.Sqlite`)
+- **.NET 10** (LTS, ASP.NET Core Web API) — see `backend/global.json` (none — uses installed SDK)
+- **Entity Framework Core 10** with SQLite (`Microsoft.EntityFrameworkCore.Sqlite`)
 - **SignalR** for real-time telegram broadcasting
 - **[Knx.Falcon.Sdk](https://www.nuget.org/packages/Knx.Falcon.Sdk)** for KNX bus integration
 - **JWT auth** (access + refresh tokens, secret auto-generated)
@@ -206,7 +206,7 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 ## Docker Multi-Stage Build
 
 1. **Node 20** — `ng build --configuration production`
-2. **.NET 9 SDK** — `dotnet publish -c Release -r <RID> --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true`
+2. **.NET 10 SDK** — `dotnet publish -c Release -r <RID> --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true`
 3. **debian:12-slim** runtime — copies the single-file binary, installs `libicu72`, `ENTRYPOINT ["/app/KnxMonitor.Api"]`. Final image ≈ 120 MB.
 
 ## Environment Variables

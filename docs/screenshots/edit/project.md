@@ -80,7 +80,7 @@ frische Prod-DB tauschen; zusätzlich ein Short fürs Hochformat. Datenschutz-Bl
 
 - **Datenbasis:** neue Prod-Kopie `publish/data/knxmonitor.db` (140 MB, **1.000.001 Telegramme**,
   08.08.–17.08.2026, Projekt `Ingelfinger_iob_import`, 843 GAs). Wie in §2a beschrieben nach
-  `backend/KnxMonitor.Api/bin/Debug/net9.0/data/` kopiert (die Env-Variable wirkt nicht),
+  `backend/KnxMonitor.Api/bin/Debug/net10.0/data/` kopiert (die Env-Variable wirkt nicht),
   Dev-DB als `knxmonitor.db.devbak-20260817` gesichert, `demo`/`demo12345` per BCrypt nachgetragen.
   Backend `dotnet run` (Dev, :8080) + `ng serve --port 4321 --proxy-config proxy.conf.json`.
   4200 war von einem fremden Projekt belegt — deshalb 4321.

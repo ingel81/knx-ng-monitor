@@ -12,7 +12,7 @@ COPY frontend/ ./
 RUN npm run build -- --configuration production
 
 # Stage 2: Build Self-Contained .NET Backend
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS backend-build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
 
 ARG TARGETARCH
 # Release version forwarded from CI (build-arg). Empty by default, in which case

@@ -295,22 +295,22 @@ builder.Services.AddOpenApi(options =>
     // jeder geschützte Aufruf käme dort als 401 zurück.
     options.AddDocumentTransformer((document, _, _) =>
     {
-        document.Components ??= new Microsoft.OpenApi.Models.OpenApiComponents();
-        document.Components.SecuritySchemes["Bearer"] = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        document.Components ??= new Microsoft.OpenApi.OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, Microsoft.OpenApi.IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = new Microsoft.OpenApi.OpenApiSecurityScheme
         {
-            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+            Type = Microsoft.OpenApi.SecuritySchemeType.Http,
             Scheme = "bearer",
             BearerFormat = "JWT",
-            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            In = Microsoft.OpenApi.ParameterLocation.Header,
             Description = "Access-Token aus POST /api/Auth/login (ohne \"Bearer \"-Präfix einfügen)."
         };
         return Task.CompletedTask;
     });
 
-    // Beschreibungen kommen aus den XML-Doku-Kommentaren an den Controller-Methoden;
-    // damit ist der Code die einzige Quelle und es gibt keine zweite, separat
-    // gepflegte API-Doku, die still veralten kann.
-    options.AddOperationTransformer<KnxMonitor.Api.OpenApi.XmlDocumentationTransformer>();
+    // Beschreibungen kommen aus den XML-Doku-Kommentaren an den Controller-Methoden
+    // (seit .NET 10 wertet AddOpenApi sie selbst aus); damit ist der Code die einzige
+    // Quelle und es gibt keine zweite, separat gepflegte API-Doku, die still veralten kann.
 
     // Nur die Endpunkte als geschützt ausweisen, die es wirklich sind — sonst
     // erscheinen Login und Health fälschlich als anmeldepflichtig.
@@ -322,18 +322,11 @@ builder.Services.AddOpenApi(options =>
 
         if (authorized && !anonymous)
         {
-            operation.Security = new List<Microsoft.OpenApi.Models.OpenApiSecurityRequirement>
+            operation.Security = new List<Microsoft.OpenApi.OpenApiSecurityRequirement>
             {
                 new()
                 {
-                    [new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                    {
-                        Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                        {
-                            Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                            Id = "Bearer"
-                        }
-                    }] = Array.Empty<string>()
+                    [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", context.Document)] = []
                 }
             };
         }

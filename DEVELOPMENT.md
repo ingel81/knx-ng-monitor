@@ -6,7 +6,7 @@ end-user/install side see the [README](README.md); for version history see the
 
 ## Tech stack
 
-- **Backend** — .NET 9 (ASP.NET Core Web API), EF Core 9 + SQLite, SignalR,
+- **Backend** — .NET 10 (ASP.NET Core Web API), EF Core 10 + SQLite, SignalR,
   [Knx.Falcon.Sdk](https://www.nuget.org/packages/Knx.Falcon.Sdk) for the bus,
   JWT auth (access + refresh tokens), Serilog logging, SharpZipLib for
   AES-encrypted ZIP entries (ETS6 password + KNX Secure).
@@ -19,7 +19,7 @@ end-user/install side see the [README](README.md); for version history see the
 
 ## Prerequisites
 
-- .NET 9 SDK
+- .NET 10 SDK
 - Node.js 20+ and npm
 - Docker (optional, for container builds)
 
@@ -257,7 +257,7 @@ OpenAPI (Scalar) is exposed in `Development` at
 ## Docker multi-stage build
 
 1. **Node 20** — `ng build --configuration production`.
-2. **.NET 9 SDK** — `dotnet publish -c Release -r <RID> --self-contained true
+2. **.NET 10 SDK** — `dotnet publish -c Release -r <RID> --self-contained true
    -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true`.
 3. **debian:12-slim** runtime — copies the single-file binary, installs
    `libicu72`, runs as non-root `app` (uid 1000), `ENTRYPOINT
