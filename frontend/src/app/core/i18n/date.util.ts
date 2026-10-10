@@ -3,7 +3,9 @@ import { localeTag } from './locale.util';
 
 /**
  * The single set of date/time shapes the UI is allowed to render. Every style is
- * 24-hour; the field order follows the locale (de-DE → 28.07.2026, en-GB → 28/07/2026).
+ * 24-hour (`hourCycle: 'h23'`, which unlike `hour12: false` never renders midnight as 24:00);
+ * the field order follows the browser locale (de-DE → 28.07.2026, en-GB → 28/07/2026,
+ * en-US → 07/28/2026), see {@link localeTag}.
  *
  * | style         | de-DE example            | used by                                  |
  * |---------------|--------------------------|------------------------------------------|
@@ -20,31 +22,31 @@ export type KnxDateStyle =
 
 const STYLE_OPTIONS: Record<KnxDateStyle, Intl.DateTimeFormatOptions> = {
   time: {
-    hour12: false,
+    hourCycle: 'h23',
     hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3,
   },
   dayTime: {
-    hour12: false,
+    hourCycle: 'h23',
     day: '2-digit', month: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   },
   dateTime: {
-    hour12: false,
+    hourCycle: 'h23',
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   },
   dateTimeMs: {
-    hour12: false,
+    hourCycle: 'h23',
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3,
   },
   dateTimeMin: {
-    hour12: false,
+    hourCycle: 'h23',
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   },
   hourMinute: {
-    hour12: false,
+    hourCycle: 'h23',
     hour: '2-digit', minute: '2-digit',
   },
   dayMonth: {
@@ -81,7 +83,7 @@ export function formatKnxDateIn(
   return formatter(locale, style).format(d);
 }
 
-/** Formats a timestamp in the app language's locale. */
+/** Formats a timestamp in the browser locale, falling back to the app language's. */
 export function formatKnxDate(
   value: unknown, style: KnxDateStyle, lang: Lang, fallback = '',
 ): string {

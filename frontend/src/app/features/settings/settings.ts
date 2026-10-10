@@ -159,7 +159,7 @@ export class Settings implements OnInit {
 
   private formatInstant(iso: string): string {
     return new Date(iso).toLocaleString(localeTag(this.lang.lang()), {
-      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
     });
   }
 
