@@ -17,6 +17,11 @@ export interface ChartSeries {
   /** Points available before down-sampling — lets the UI state the real ratio. */
   totalPoints: number;
   points: ChartPoint[];
+  /**
+   * Last value before the range start (original timestamp), or null when there is none or the
+   * result is truncated. Lets the curve start at the left edge instead of at the first telegram.
+   */
+  carry: ChartPoint | null;
 }
 
 export interface SeriesResponse {

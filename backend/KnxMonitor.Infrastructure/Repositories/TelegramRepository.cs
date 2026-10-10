@@ -177,6 +177,33 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
         return (rows, truncated);
     }
 
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<KnxTelegram>>> GetLatestBeforeAsync(
+        IReadOnlyCollection<string> addresses, DateTime before, int perAddress,
+        CancellationToken ct = default)
+    {
+        var result = new Dictionary<string, IReadOnlyList<KnxTelegram>>(StringComparer.Ordinal);
+
+        // One small query per address (at most 8) instead of one grouped query: SQLite walks the
+        // (Timestamp, DestinationAddress) index backwards from `before` and checks the address on
+        // the index entry itself, so only the matching rows are ever read from the table.
+        foreach (var address in addresses)
+        {
+            var rows = await _dbSet
+                .Where(t => t.DestinationAddress == address && t.Timestamp < before)
+                .OrderByDescending(t => t.Timestamp)
+                .ThenByDescending(t => t.Id)
+                .Take(perAddress)
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            if (rows.Count > 0)
+            {
+                result[address] = rows;
+            }
+        }
+        return result;
+    }
+
     public async Task<int> CountInRangeAsync(DateTime from, DateTime to, CancellationToken ct = default)
     {
         return await _dbSet
