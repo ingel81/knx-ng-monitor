@@ -13,6 +13,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { KnxDatePipe } from '../../core/i18n/date.pipe';
 import { ToastService } from '../../core/services/toast.service';
 import { LoggerService } from '../../core/logging/logger.service';
+import { SearchCache, searchTokens } from '../../shared/search.util';
 
 type LevelFilter = 'All' | 'Debug' | 'Information' | 'Warning' | 'Error';
 
@@ -50,6 +51,8 @@ export class LogsComponent implements OnInit, OnDestroy {
   readonly levels: LevelFilter[] = ['All', 'Debug', 'Information', 'Warning', 'Error'];
   level: LevelFilter = 'All';
   search = '';
+  /** Folded message + source per line; word-based like every search, see shared/search.util. */
+  private searchCache = new SearchCache<LogEntry>(e => `${e.message ?? ''} ${e.source ?? ''}`);
   paused = false;
   loading = false;
   error = false;
@@ -164,15 +167,12 @@ export class LogsComponent implements OnInit, OnDestroy {
   // --- internals -------------------------------------------------------------
 
   private recompute(): void {
-    this.filtered = this.all.filter(e => this.matches(e));
+    const tokens = searchTokens(this.search);
+    this.filtered = this.all.filter(e => this.matches(e, tokens));
   }
 
-  private matches(e: LogEntry): boolean {
-    if (!this.matchesLevel(e.level)) return false;
-    const q = this.search.trim().toLowerCase();
-    if (!q) return true;
-    return (e.message ?? '').toLowerCase().includes(q)
-        || (e.source ?? '').toLowerCase().includes(q);
+  private matches(e: LogEntry, tokens = searchTokens(this.search)): boolean {
+    return this.matchesLevel(e.level) && this.searchCache.matches(e, tokens);
   }
 
   private matchesLevel(level: string): boolean {

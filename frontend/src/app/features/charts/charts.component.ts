@@ -20,6 +20,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { DateTimeFieldComponent } from '../../shared/date-time-field/date-time-field.component';
 import { ThemeService } from '../../core/services/theme.service';
 import { OverflowTitleDirective } from '../../shared/grid/overflow-title.directive';
+import { SearchCache, foldForSearch, searchTokens } from '../../shared/search.util';
 import { RangePreset, isRangeOrdered, resolveRange } from './time-range.util';
 import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom, styleLineSeries } from './chart-skin';
 import {
@@ -47,26 +48,6 @@ const NUMERIC_DPT_MAINS = new Set([5, 6, 7, 8, 9, 12, 13, 14]);
 function csvCell(value: string): string {
   if (!/[",\r\n]/.test(value)) return value;
   return `"${value.replace(/"/g, '""')}"`;
-}
-
-/**
- * Lower-cases and drops diacritics character by character ("Küche" → "kuche"), so a search
- * works without typing umlauts. Deliberately one output character per input character — the
- * highlighting relies on the indices matching the original text.
- */
-function foldForSearch(text: string): string {
-  let out = '';
-  for (const ch of text.toLowerCase()) {
-    const base = ch.normalize('NFD')[0];
-    // Characters outside the BMP would count as two here; keep them as they are.
-    out += ch.length === 1 && base.length === 1 ? base : ch;
-  }
-  return out;
-}
-
-/** Search input split into words, each folded like the text it is matched against. */
-function searchTokens(input: string): string[] {
-  return foldForSearch(input).split(/\s+/).filter((t) => t.length > 0);
 }
 
 interface LiveSeries {
@@ -118,6 +99,8 @@ export class ChartsComponent implements OnInit, OnDestroy {
   hasActiveProject = false;
   /** Free-text filter inside the dropdown panel; reset every time it opens. */
   gaFilter = '';
+  /** Folded address + name per GA, built once per GA list instead of on every redraw. */
+  private gaSearchCache = new SearchCache<GroupAddressDto>((ga) => `${ga.address} ${ga.name ?? ''}`);
   @ViewChild('gaSearch') private gaSearch?: ElementRef<HTMLInputElement>;
 
   // --- Time range ------------------------------------------------------------
@@ -277,11 +260,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
     const selected = new Set(this.selectedAddresses);
     // Every word has to occur somewhere in address or name, in any order: "küche raum" finds
     // "EG.Küche.Heizung.Raumtemperatur" without typing the path in between.
-    return this.displayGas.filter((ga) => {
-      if (selected.has(ga.address)) return true;
-      const haystack = foldForSearch(`${ga.address} ${ga.name ?? ''}`);
-      return tokens.every((t) => haystack.includes(t));
-    });
+    return this.displayGas.filter((ga) => selected.has(ga.address) || this.gaSearchCache.matches(ga, tokens));
   }
 
   /**

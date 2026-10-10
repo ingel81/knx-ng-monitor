@@ -11,6 +11,7 @@ import { ProjectService, GroupAddressDto, GroupRangeDto } from '../../core/servi
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { DptTitleDirective } from '../../shared/grid/dpt-title.directive';
+import { SearchCache, searchTokens } from '../../shared/search.util';
 import { formatKnxDate } from '../../core/i18n/date.util';
 import { LoggerService } from '../../core/logging/logger.service';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/confirm-dialog.component';
@@ -140,8 +141,10 @@ export class GroupAddressesComponent implements OnInit, OnDestroy {
   /** Drives the open/closed state of every <details> via a single bound flag. */
   allOpen = true;
 
-  /** Free-text filter over address + name. */
+  /** Free-text filter over address + name, word by word (see shared/search.util). */
   filter = '';
+  /** Folded address + name per leaf, built once per load instead of on every keystroke. */
+  private searchCache = new SearchCache<GaLeaf>(l => `${l.address} ${l.name ?? ''}`);
 
   private telegramSub?: Subscription;
   private flushTimer?: ReturnType<typeof setTimeout>;
@@ -326,11 +329,9 @@ export class GroupAddressesComponent implements OnInit, OnDestroy {
 
   /** Apply the text filter, then rebuild the main/middle/sub tree. */
   private rebuild(): void {
-    const q = this.filter.trim().toLowerCase();
-    const leaves = q
-      ? this.allLeaves.filter(l =>
-          l.address.toLowerCase().includes(q) ||
-          (l.name ?? '').toLowerCase().includes(q))
+    const tokens = searchTokens(this.filter);
+    const leaves = tokens.length
+      ? this.allLeaves.filter(l => this.searchCache.matches(l, tokens))
       : this.allLeaves;
 
     const mainMap = new Map<number, Map<number, GaLeaf[]>>();

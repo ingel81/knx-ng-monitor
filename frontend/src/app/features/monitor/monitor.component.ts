@@ -31,6 +31,7 @@ import { LoggerService } from '../../core/logging/logger.service';
 import { ProjectService, LocationDto } from '../../core/services/project.service';
 import { DiagnosticsService } from '../../core/services/diagnostics.service';
 import { formatDurationMinutes } from '../../shared/duration.util';
+import { SearchCache, searchTokens } from '../../shared/search.util';
 
 interface KnxConfiguration {
   id: number;
@@ -114,6 +115,11 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // --- Shared quick-search (gilt in beiden Modi) -----------------------------
   quickFilterText = '';
+  // Live-Modus: wortweise Suche wie in der GA-Auswahl der Diagramme. Jedes Telegramm wird nur
+  // einmal gefaltet, nicht bei jedem neuen Telegramm im Puffer erneut.
+  private liveSearchCache = new SearchCache<KnxTelegram>((t) =>
+    [t.sourceAddress, t.sourceName, t.destinationAddress, t.groupAddressName, t.datapointType, t.value, t.valueDecoded]
+      .join(' '));
 
   // --- Live state ------------------------------------------------------------
   filtered: KnxTelegram[] = [];
@@ -378,11 +384,9 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   applyClientFilter(): void {
-    const q = this.quickFilterText.trim().toLowerCase();
-    this.filtered = q
-      ? this.telegrams.filter((t) =>
-          [t.sourceAddress, t.sourceName, t.destinationAddress, t.groupAddressName, t.datapointType, t.value, t.valueDecoded]
-            .join(' ').toLowerCase().includes(q))
+    const tokens = searchTokens(this.quickFilterText);
+    this.filtered = tokens.length
+      ? this.telegrams.filter((t) => this.liveSearchCache.matches(t, tokens))
       : this.telegrams.slice();
   }
 
