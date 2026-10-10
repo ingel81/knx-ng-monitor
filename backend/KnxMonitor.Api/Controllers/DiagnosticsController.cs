@@ -44,6 +44,7 @@ public class DiagnosticsController : ControllerBase
     {
         _logBuffer = logBuffer;
         _heartbeats = heartbeats;
+        _recording = recording;
     }
 
     /// <summary>Recent log entries from the in-memory buffer, optionally filtered.</summary>
