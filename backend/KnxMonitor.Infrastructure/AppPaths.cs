@@ -80,4 +80,27 @@ public static class AppPaths
         Directory.CreateDirectory(DataDir);
         Directory.CreateDirectory(LogsDir);
     }
+
+    /// <summary>
+    /// Creates the data directories and proves they are writable. Returns null when they are,
+    /// otherwise a message for the operator. Without this check a read-only data directory only
+    /// showed up as an API that died after the static UI had already loaded (#40).
+    /// </summary>
+    public static string? EnsureWritableDataDirectory()
+    {
+        try
+        {
+            EnsureDirectories();
+            var probe = Path.Combine(DataDir, ".write-test");
+            File.WriteAllText(probe, string.Empty);
+            File.Delete(probe);
+            return null;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            return $"The data directory '{DataDir}' is not writable ({ex.Message}). "
+                + "Give the user running KNX-NG-Monitor write access to it; in Docker, start the "
+                + "container as root (default) with PUID/PGID set to the owner of the host directory.";
+        }
+    }
 }

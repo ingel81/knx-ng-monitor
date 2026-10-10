@@ -29,8 +29,13 @@ CultureInfo.DefaultThreadCurrentUICulture = enCulture;
 CultureInfo.CurrentCulture = enCulture;
 CultureInfo.CurrentUICulture = enCulture;
 
-// Resolve the data directory relative to the executable (not the cwd), then ensure it exists.
-AppPaths.EnsureDirectories();
+// Resolve the data directory relative to the executable (not the cwd), then ensure it exists
+// and is writable. Fail fast and say why: otherwise the UI loads and the API dies behind it.
+if (AppPaths.EnsureWritableDataDirectory() is { } dataDirProblem)
+{
+    Console.Error.WriteLine($"knx-ng-monitor: {dataDirProblem}");
+    Environment.Exit(1);
+}
 
 // Log level controllable at runtime via KNX_LOG_LEVEL (Verbose/Debug/Information/Warning/Error/Fatal).
 var logLevelSwitch = new Serilog.Core.LoggingLevelSwitch(ParseLogLevel(Environment.GetEnvironmentVariable("KNX_LOG_LEVEL")));

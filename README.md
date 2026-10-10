@@ -201,9 +201,19 @@ services:
     restart: unless-stopped
     # environment:
     #   - TZ=Europe/Berlin   # log time zone, UTC if unset
+    #   - PUID=1000          # owner of ./data on the host (see below)
+    #   - PGID=1000
     ports: ["8080:8080"]
     volumes: ["./data:/app/data"]
+    # network_mode: host     # needed for routing (multicast); then drop "ports"
 ```
+
+**Permissions of `./data`.** The container starts as root, hands `/app/data` to `PUID:PGID`
+(default `1000:1000`) and then runs the application as that user, never as root. So a data
+directory that Docker created as root, or one that belongs to another user on your NAS, works
+without manual `chown`: set `PUID`/`PGID` to the owner you want (`id -u` / `id -g` on the host).
+If you start the container with `--user` (or `user:` in compose) instead, that user must already
+be able to write to `./data`; otherwise the container stops right away with a message saying so.
 
 ### Self-contained binary (no .NET required)
 
@@ -258,6 +268,7 @@ types and room/building context. The two-stage wizard walks through:
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | `Production` | `Development` enables CORS for `:4200`, the separate dev server and the scalar/v1 API docs |
 | `ASPNETCORE_URLS` | `http://0.0.0.0:8080` | Listen URL - change to use a different port. Up to 0.10.0 the shipped `appsettings.json` pinned the endpoint and silently outranked this variable; it is honoured now. Alternatives: `ASPNETCORE_HTTP_PORTS`, `ASPNETCORE_HTTPS_PORTS`, `Kestrel__Endpoints__Http__Url`, or a `Urls` key in `appsettings.json` - each of them wins over the default. The Docker image sets the equivalent `http://+:8080`; inside a container leave the port at 8080 (the `HEALTHCHECK` probes it) and remap on the host with `-p HOST:8080` |
+| `PUID` / `PGID` | `1000` / `1000` | Docker only: user and group the application runs as, and that `/app/data` is handed to on start (see [Docker](#docker-recommended)) |
 | `KNX_LOG_LEVEL` | `Information` | Log verbosity: `Verbose`, `Debug`, `Information`, `Warning`, `Error`, `Fatal` (see [Logging & diagnostics](#logging--diagnostics)) |
 | `TZ` | unset | Timezone used by the container for log timestamps and for the daily rollover of the log files, as a [tz database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List) such as `Europe/Berlin`. A container has no time zone of its own, so without this variable the log reads UTC; the self-contained binary follows the machine's zone. Telegram times in the UI are not affected |
 

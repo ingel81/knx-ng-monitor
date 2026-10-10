@@ -69,6 +69,9 @@ RUN groupadd --system --gid 1000 app && \
 # Copy self-contained application with non-root ownership.
 COPY --from=backend-build --chown=app:app /app/publish .
 
+# Entrypoint fixes /app/data ownership and drops to PUID:PGID (default 1000:1000), see #40.
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
 # Data volume directory owned by app user.
 RUN mkdir -p /app/data && chown app:app /app/data
 VOLUME /app/data
@@ -86,9 +89,11 @@ ENV DOTNET_BUNDLE_EXTRACT_BASE_DIR=/tmp/.net
 
 RUN chmod +x /app/KnxMonitor.Api
 
-USER app
+# The image starts as root so the entrypoint can hand the data directory to the right user;
+# the application itself never runs as root (setpriv drops to PUID:PGID, default 1000:1000).
+# Starting the container with --user / compose "user:" still works and skips that step.
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD wget --quiet --spider http://localhost:8080/healthz || exit 1
 
-ENTRYPOINT ["/app/KnxMonitor.Api"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
