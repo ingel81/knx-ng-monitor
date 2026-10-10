@@ -353,7 +353,7 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.13.0:** a big round of community feedback. The **tunnel survives a bad
+**Current - v0.13.1:** a big round of community feedback. The **tunnel survives a bad
 network link** (#22): Falcon's auto-reconnect is on, a lost link is rebuilt right away with
 a short backoff instead of waiting for the next poll, the transport is selectable (UDP or
 **TCP**), and the interface can be asked for a **fixed tunnel address** with a fallback to any

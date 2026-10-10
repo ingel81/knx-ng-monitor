@@ -212,7 +212,7 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 
 1. **Node 20** — `ng build --configuration production`
 2. **.NET 10 SDK** — `dotnet publish -c Release -r <RID> --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true`
-3. **debian:12-slim** runtime — copies the single-file binary, installs `libicu72`, `ENTRYPOINT ["/app/KnxMonitor.Api"]`. Final image ≈ 120 MB.
+3. **debian:12-slim** runtime — copies the single-file binary, installs `libicu72`, `ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]`: starts as root, hands `/app/data` to `PUID:PGID` (default 1000:1000) and execs the app as that user via `setpriv` (#40). The release smoke test checks the app uid, not the image user. Final image ≈ 120 MB.
 
 ## Environment Variables
 
@@ -225,7 +225,7 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 
 ## Current Implementation Status
 
-`v0.12.0` is live (Docker + binaries on GitHub Releases, see `README.md`); the next release is `v0.13.0`. Done since v0.1.0, among others: Data Secure runtime decryption with the stored keyring keys plus opt-in IP-Secure tunnel, parsing of communication objects, locations and group ranges, uploading a keyring to an existing project, Serilog logging with the in-app log viewer. Open work: the "Next" section of `README.md` and `docs/local/TODO.md` (local only, not in git). Still not parsed: ETS 6 functions.
+`v0.13.1` is live (Docker + binaries on GitHub Releases, see `README.md`; `v0.13.0` was tagged but never published); the next release is `v0.14.0`. Done since v0.1.0, among others: Data Secure runtime decryption with the stored keyring keys plus opt-in IP-Secure tunnel, parsing of communication objects, locations and group ranges, uploading a keyring to an existing project, Serilog logging with the in-app log viewer. Open work: the "Next" section of `README.md` and `docs/local/TODO.md` (local only, not in git). ETS 5 / 6 functions are parsed since v0.13 (#12).
 
 ## Design Guidelines
 

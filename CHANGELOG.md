@@ -10,7 +10,11 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
-## [0.13.0]
+## [0.13.1]
+
+The `v0.13.0` tag was never published: the release pipeline stopped at an outdated
+Docker smoke test (it still expected the image to start as uid 1000, see #40). 0.13.1 is
+the same release with that test fixed.
 
 ### Added
 - **A tunnel that survives a bad network link (#22, #20).** The tunnel used to be torn down
