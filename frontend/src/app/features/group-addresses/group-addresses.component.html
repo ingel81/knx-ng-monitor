@@ -9,6 +9,7 @@
     <div class="tb-right">
       @if (hasGroupAddresses) {
         <input class="knx-input ga-filter" type="text" knxSlashFocus
+               [matTooltip]="'common.slashHint' | translate" matTooltipShowDelay="600"
                [(ngModel)]="filter" (ngModelChange)="onFilterChange()"
                [placeholder]="'ga.filterPlaceholder' | translate" />
         <button class="knx-btn knx-btn--outline" (click)="setAllOpen(true)">

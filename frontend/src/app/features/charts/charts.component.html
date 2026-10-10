@@ -7,6 +7,8 @@
             #gaSelect
             knxSlashFocus
             (slashFocus)="gaSelect.open()"
+            [matTooltip]="'common.slashHint' | translate"
+            matTooltipShowDelay="600"
             multiple
             [ngModel]="selectedAddresses"
             (ngModelChange)="onSelectionChange($event)"

@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { ProjectService, GroupAddressDto, GroupRangeDto } from '../../core/services/project.service';
@@ -112,7 +113,7 @@ interface MainNode {
 @Component({
   selector: 'app-group-addresses',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, TranslatePipe, DptTitleDirective, SlashFocusDirective],
+  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, TranslatePipe, DptTitleDirective, SlashFocusDirective],
   templateUrl: './group-addresses.component.html',
   styleUrl: './group-addresses.component.scss'
 })
