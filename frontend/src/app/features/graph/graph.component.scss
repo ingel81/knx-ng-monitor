@@ -33,6 +33,22 @@
     color: var(--brand);
   }
 
+  // Filter toggle: mobile only, desktop always shows the filter bar (same as the monitor).
+  .filter-toggle {
+    display: none;
+    position: relative;
+
+    .filter-dot {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--brand);
+    }
+  }
+
   .page-title {
     margin: 0;
     font-size: var(--fs-lg, 16px);
@@ -57,6 +73,14 @@
     b { color: var(--ink); font-family: var(--font-mono); }
     input[type="range"] { width: 96px; accent-color: var(--brand); }
   }
+}
+
+// Graph filter bar (#17); layout and the mobile stacking come from the global .filterbar rules.
+.filterbar {
+  .fb-search { width: 230px; }
+  .fb-room select.knx-input { width: 190px; }
+  .knx-chip { min-width: 32px; justify-content: center; }
+  .knx-chip:disabled { opacity: .45; cursor: default; }
 }
 
 .graph-body {
@@ -129,6 +153,8 @@
     opacity: 0.4;
   }
   p { margin: 0; color: var(--ink-2); }
+  // Sits above the (empty) canvas, otherwise the canvas swallows the reset click.
+  &.filter-empty { z-index: 1; }
   .spin { animation: graph-spin 1s linear infinite; }
 }
 
@@ -143,4 +169,10 @@
   // Style Guide §9: Touch-Targets ≥44px — die 36px der Basis-Klasse sind auf Touch zu klein.
   .toolbar .tb-right .knx-btn { height: 44px; min-width: 44px; }
   .graph-legend { max-width: 160px; max-height: 32%; font-size: var(--fs-2xs); }
+  // The filter bar would cover most of the canvas; fold it behind the toolbar toggle.
+  .toolbar .filter-toggle { display: inline-flex; }
+  .filterbar { display: none; }
+  .filterbar.is-open { display: block; }
+  .filterbar .fb-search { width: 100%; }
+  .filterbar .fb-search .knx-input { flex: 1; }
 }

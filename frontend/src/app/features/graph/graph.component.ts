@@ -2,6 +2,7 @@ import {
   Component, OnInit, OnDestroy, AfterViewInit, ElementRef, ViewChild, NgZone, inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -15,6 +16,10 @@ import { SignalrService, KnxTelegram } from '../../core/services/signalr.service
 import { LiveBufferService } from '../../core/services/live-buffer.service';
 import { messageTypeKind } from '../../shared/grid/knx-grid.util';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { LanguageService } from '../../core/i18n/language.service';
+import { DPT_DESCRIPTIONS } from '../../shared/grid/dpt-descriptions';
+import { SearchCache, searchTokens } from '../../shared/search.util';
+import { SlashFocusDirective } from '../../shared/slash-focus.directive';
 
 type NodeKind = 'ga' | 'group' | 'room' | 'device';
 
@@ -50,6 +55,28 @@ const HUB_GREY = { building: '#475569', floor: '#64748B', room: '#94A3B8' };
 // Tasteful, well-separated floor colours (few floors → stay distinct + calm).
 const FLOOR_PALETTE = ['#3B82F6', '#10B981', '#F59E0B', '#A855F7', '#EC4899', '#14B8A6', '#EF4444'];
 const LEGEND_KEY = 'knx.graph.legend';
+const FILTER_KEY = 'knx.graph.filter';
+
+/**
+ * The four combinable graph filters (#17). Group, location and DPT narrow down which GAs may
+ * show at all; the free text then picks hits among them and keeps `depth` link levels around
+ * each hit. Building, floor and room hubs above a visible GA always stay, so nothing floats.
+ */
+interface GraphFilter {
+  /** '' | main group "1" | middle group "1/2". */
+  group: string;
+  /** '' | externalId of a location; covers everything below it. */
+  room: string;
+  /** '' | DPT main number, e.g. "9". */
+  dpt: string;
+  q: string;
+  /** Neighbourhood around a text hit, 1 to 3 link levels. */
+  depth: number;
+}
+
+const EMPTY_FILTER: GraphFilter = { group: '', room: '', dpt: '', q: '', depth: 1 };
+
+interface FilterOption { value: string; label: string; depth: number }
 
 /**
  * Force-directed building map: Building → Floor → Room → GA. Floors/rooms bind
@@ -59,7 +86,7 @@ const LEGEND_KEY = 'knx.graph.legend';
 @Component({
   selector: 'app-graph',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatTooltipModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, TranslatePipe, SlashFocusDirective],
   templateUrl: './graph.component.html',
   styleUrl: './graph.component.scss',
 })
@@ -80,6 +107,28 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Legende ein-/ausblendbar: auf Mobil verdeckt sie sonst ~40 % der Zeichenfläche.
    *  Gespeicherte Wahl gewinnt, sonst Viewport-Default (Desktop an, Mobil aus). */
   showLegend = GraphComponent.readLegendPref();
+
+  // --- filter (#17) ------------------------------------------------------------
+  filter: GraphFilter = GraphComponent.readFilterPref();
+  /** Mobile only: the filter bar is folded behind the toolbar toggle. */
+  filtersExpanded = false;
+  readonly depths = [1, 2, 3];
+  groupOptions: FilterOption[] = [];
+  roomOptions: FilterOption[] = [];
+  dptOptions: string[] = [];
+  /** Filters are set but leave nothing to draw. */
+  filterEmpty = false;
+  private lang = inject(LanguageService);
+  private searchDebounce?: ReturnType<typeof setTimeout>;
+  /** Everything buildTopology produced; the filter picks the visible part from it. */
+  private full: { nodes: GNode[]; links: GLink[] } = { nodes: [], links: [] };
+  private parentOf = new Map<string, string>();
+  private neighbours = new Map<string, string[]>();
+  /** GA addresses the graph placed per location (externalId). */
+  private gasByLoc = new Map<string, string[]>();
+  private childLocs = new Map<string, LocationDto[]>();
+  private locByExt = new Map<string, LocationDto>();
+  private nodeSearch = new SearchCache<GNode>((n) => n.kind === 'ga' ? `${n.address} ${n.label}` : n.label);
 
   private gas: GroupAddressDto[] = [];
   private devices: DeviceDto[] = [];
@@ -111,6 +160,7 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.telegramSub?.unsubscribe();
+    clearTimeout(this.searchDebounce);
     this.resizeObs?.disconnect();
     if (this.rafId) cancelAnimationFrame(this.rafId);
     this.graph?._destructor?.();
@@ -165,20 +215,261 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
   private ensureGraphAndRender(): void {
     if (!this.hostRef) return;
     if (!this.graph) this.initGraph();
-    const data = this.buildTopology();
-    this.nodeCount = data.nodes.length;
-    this.linkCount = data.links.length;
+    this.full = this.buildTopology();
+
+    // Links always point from the parent hub to the child, so the target's parent is the source.
+    this.parentOf.clear();
+    this.neighbours.clear();
+    for (const l of this.full.links) {
+      const s = this.endId(l.source);
+      const t = this.endId(l.target);
+      this.parentOf.set(t, s);
+      (this.neighbours.get(s) ?? this.neighbours.set(s, []).get(s)!).push(t);
+      (this.neighbours.get(t) ?? this.neighbours.set(t, []).get(t)!).push(s);
+    }
+    this.buildFilterOptions();
+    this.applyFilter();
+  }
+
+  private endId(end: string | GNode): string {
+    return typeof end === 'string' ? end : end.id;
+  }
+
+  /** Hands the filtered part of the full graph to force-graph. Node objects are shared, so
+   *  positions survive a filter change and the layout does not start over. */
+  private applyFilter(): void {
+    if (!this.graph) return;
+    const keep = this.visibleIds();
+    const nodes = keep ? this.full.nodes.filter((n) => keep.has(n.id)) : this.full.nodes;
+    const links = keep
+      ? this.full.links.filter((l) => keep.has(this.endId(l.source)) && keep.has(this.endId(l.target)))
+      : this.full.links;
+
+    this.nodeCount = nodes.length;
+    this.linkCount = links.length;
+    this.filterEmpty = !!keep && nodes.length === 0;
+    // Only drawn links may carry live particles.
     this.linksByNode.clear();
-    for (const l of data.links) {
-      const s = typeof l.source === 'string' ? l.source : (l.source as GNode).id;
-      const t = typeof l.target === 'string' ? l.target : (l.target as GNode).id;
+    for (const l of links) {
+      const s = this.endId(l.source);
+      const t = this.endId(l.target);
       (this.linksByNode.get(s) ?? this.linksByNode.set(s, []).get(s)!).push(l);
       (this.linksByNode.get(t) ?? this.linksByNode.set(t, []).get(t)!).push(l);
     }
-    this.pinFloors(data.nodes);
-    this.graph.graphData(data);
+    this.pinFloors(nodes);
+    this.graph.graphData({ nodes, links });
     this.graph.d3ReheatSimulation();
     setTimeout(() => this.graph?.zoomToFit(600, 40), 1400);
+  }
+
+  /** Ids of the nodes to draw, or null when no filter is set and everything shows. */
+  private visibleIds(): Set<string> | null {
+    const f = this.filter;
+    const tokens = searchTokens(f.q);
+    if (!f.group && !f.room && !f.dpt && tokens.length === 0) return null;
+
+    const roomGas = f.room ? this.gasOfLocation(f.room) : null;
+    const allowed = (n: GNode): boolean => {
+      if (n.kind !== 'ga' || !n.address) return true;
+      const addr = n.address;
+      if (f.group && addr !== f.group && !addr.startsWith(`${f.group}/`)) return false;
+      if (f.dpt && this.dptMain(this.gaByAddr.get(addr)?.datapointType) !== f.dpt) return false;
+      if (roomGas && !roomGas.has(addr)) return false;
+      return true;
+    };
+
+    const keep = new Set<string>();
+    if (tokens.length) {
+      // Hits, then breadth-first along the drawn links. Hubs may be stepped through, GAs only
+      // when the other filters allow them.
+      const byId = new Map(this.full.nodes.map((n) => [n.id, n]));
+      let frontier = this.full.nodes.filter((n) => allowed(n) && this.nodeSearch.matches(n, tokens)).map((n) => n.id);
+      frontier.forEach((id) => keep.add(id));
+      for (let level = 0; level < f.depth && frontier.length; level++) {
+        const next: string[] = [];
+        for (const id of frontier) {
+          for (const nb of this.neighbours.get(id) ?? []) {
+            const node = byId.get(nb);
+            if (keep.has(nb) || !node || !allowed(node)) continue;
+            keep.add(nb);
+            next.push(nb);
+          }
+        }
+        frontier = next;
+      }
+    } else {
+      for (const n of this.full.nodes) if (n.kind === 'ga' && allowed(n)) keep.add(n.id);
+    }
+
+    // The hub chain above every visible node, so a GA never floats without its room.
+    for (const id of [...keep]) {
+      let p = this.parentOf.get(id);
+      let guard = 0;
+      while (p && !keep.has(p) && guard++ < 50) { keep.add(p); p = this.parentOf.get(p); }
+    }
+    return keep;
+  }
+
+  private dptMain(dpt?: string): string {
+    return (dpt ?? '').match(/\d+/)?.[0] ?? '';
+  }
+
+  /**
+   * GAs belonging to a location and everything below it: the ones the graph placed there plus
+   * the ones linked to devices mounted there. The graph has no device nodes, so the devices
+   * themselves only show through their GAs.
+   */
+  private gasOfLocation(extId: string): Set<string> {
+    const out = new Set<string>();
+    const stack = [extId];
+    const seen = new Set<string>();
+    while (stack.length) {
+      const id = stack.pop()!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      for (const a of this.gasByLoc.get(id) ?? []) out.add(a);
+      const loc = this.locByExt.get(id);
+      for (const a of loc?.groupAddresses ?? []) if (this.gaByAddr.has(a)) out.add(a);
+      for (const d of loc?.deviceAddresses ?? []) for (const a of this.gasOfDevice.get(d) ?? []) out.add(a);
+      for (const c of this.childLocs.get(id) ?? []) stack.push(c.externalId);
+    }
+    return out;
+  }
+
+  /** Select options from the loaded project; a stored filter value that no longer exists
+   *  (other project, re-import) is dropped instead of leaving an empty graph. */
+  private buildFilterOptions(): void {
+    // Main and middle groups present in the project, named after their group range.
+    const mains = new Set<number>();
+    const middles = new Set<string>();
+    for (const ga of this.gas) {
+      const p = ga.address.split('/').map(Number);
+      if (!Number.isFinite(p[0])) continue;
+      mains.add(p[0]);
+      if (p.length === 3 && Number.isFinite(p[1])) middles.add(`${p[0]}/${p[1]}`);
+    }
+    const named = (value: string, name: string | null) => name ? `${value}  ${name}` : value;
+    this.groupOptions = [];
+    for (const m of [...mains].sort((a, b) => a - b)) {
+      this.groupOptions.push({ value: String(m), label: named(`${m}/x`, this.groupName(m * 2048, 2047, true)), depth: 0 });
+      const subs = [...middles].filter((k) => k.startsWith(`${m}/`))
+        .sort((a, b) => Number(a.split('/')[1]) - Number(b.split('/')[1]));
+      for (const k of subs) {
+        const mid = Number(k.split('/')[1]);
+        this.groupOptions.push({ value: k, label: named(`${k}/x`, this.groupName(m * 2048 + mid * 256, 255, false)), depth: 1 });
+      }
+    }
+
+    // Location tree in project order, indented; only places that lead to at least one GA.
+    this.childLocs.clear();
+    this.locByExt = new Map(this.locations.map((l) => [l.externalId, l]));
+    const byExt = this.locByExt;
+    const roots: LocationDto[] = [];
+    for (const l of this.locations) {
+      if (l.parentExternalId && byExt.has(l.parentExternalId)) {
+        (this.childLocs.get(l.parentExternalId) ?? this.childLocs.set(l.parentExternalId, []).get(l.parentExternalId)!).push(l);
+      } else {
+        roots.push(l);
+      }
+    }
+    this.roomOptions = [];
+    const walk = (list: LocationDto[], depth: number, guard: Set<string>) => {
+      for (const l of [...list].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))) {
+        if (guard.has(l.externalId)) continue;
+        guard.add(l.externalId);
+        if (this.gasOfLocation(l.externalId).size === 0) continue;
+        this.roomOptions.push({ value: l.externalId, label: l.name, depth });
+        walk(this.childLocs.get(l.externalId) ?? [], depth + 1, guard);
+      }
+    };
+    walk(roots, 0, new Set());
+
+    const dpts = new Set<string>();
+    for (const ga of this.gas) {
+      const m = this.dptMain(ga.datapointType);
+      if (m) dpts.add(m);
+    }
+    this.dptOptions = [...dpts].sort((a, b) => Number(a) - Number(b));
+
+    const f = this.filter;
+    if (f.group && !this.groupOptions.some((o) => o.value === f.group)) f.group = '';
+    if (f.room && !this.roomOptions.some((o) => o.value === f.room)) f.room = '';
+    if (f.dpt && !this.dptOptions.includes(f.dpt)) f.dpt = '';
+  }
+
+  /** Name of the group range covering a main (span >= 256) or middle (span < 256) block. */
+  private groupName(start: number, size: number, main: boolean): string | null {
+    const r = this.ranges.find((x) =>
+      x.rangeStart <= start + size && x.rangeEnd >= start && x.name &&
+      (main ? (x.rangeEnd - x.rangeStart) >= 256 : (x.rangeEnd - x.rangeStart) < 256));
+    return r?.name ?? null;
+  }
+
+  /** Option text with a leading indent for the nesting level (native selects ignore padding). */
+  optionLabel(o: FilterOption): string {
+    return '   '.repeat(o.depth) + o.label;
+  }
+
+  dptLabel(main: string): string {
+    const d = DPT_DESCRIPTIONS[main];
+    const text = d ? (this.lang.lang() === 'de' ? d.de : d.en) : '';
+    return text ? `DPT ${main}  ${text}` : `DPT ${main}`;
+  }
+
+  get hasActiveFilter(): boolean {
+    const f = this.filter;
+    return !!(f.group || f.room || f.dpt || f.q.trim());
+  }
+
+  onFilterChange(): void {
+    clearTimeout(this.searchDebounce);
+    this.saveFilterPref();
+    this.applyFilter();
+  }
+
+  /** Typing re-filters after a pause; every keystroke would restart the layout. */
+  onSearchInput(): void {
+    clearTimeout(this.searchDebounce);
+    this.searchDebounce = setTimeout(() => this.onFilterChange(), 250);
+  }
+
+  setDepth(d: number): void {
+    if (this.filter.depth === d) return;
+    this.filter = { ...this.filter, depth: d };
+    // Without a search term the depth has no effect; just remember it.
+    if (this.filter.q.trim()) this.onFilterChange(); else this.saveFilterPref();
+  }
+
+  clearSearch(): void {
+    this.filter = { ...this.filter, q: '' };
+    this.onFilterChange();
+  }
+
+  resetFilter(): void {
+    this.filter = { ...EMPTY_FILTER, depth: this.filter.depth };
+    this.onFilterChange();
+  }
+
+  private static readFilterPref(): GraphFilter {
+    try {
+      const raw = localStorage.getItem(FILTER_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as Partial<GraphFilter>;
+        const str = (v: unknown) => typeof v === 'string' ? v : '';
+        const depth = Number(p.depth);
+        return {
+          group: str(p.group), room: str(p.room), dpt: str(p.dpt), q: str(p.q),
+          depth: depth >= 1 && depth <= 3 ? Math.round(depth) : 1,
+        };
+      }
+    } catch { /* Kaputter oder gesperrter Speicher: ungefiltert starten. */ }
+    return { ...EMPTY_FILTER };
+  }
+
+  private saveFilterPref(): void {
+    try {
+      localStorage.setItem(FILTER_KEY, JSON.stringify(this.filter));
+    } catch { /* Nicht merken zu können ist kein Fehler, den der Nutzer sehen muss. */ }
   }
 
   /**
@@ -427,6 +718,7 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // assign each GA to exactly ONE best location (name wins, else device location)
     const gasByLoc = new Map<string, string[]>();
+    this.gasByLoc = gasByLoc;
     for (const ga of this.gas) {
       const loc = matchByName(ga) ?? deviceLoc(ga.address);
       if (!loc) continue;

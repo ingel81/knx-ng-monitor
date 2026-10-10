@@ -8,6 +8,15 @@
     </div>
 
     <div class="tb-right">
+      <button type="button" class="knx-btn knx-btn--outline knx-btn--icon filter-toggle"
+              [class.is-active]="filtersExpanded"
+              [attr.aria-pressed]="filtersExpanded"
+              [attr.aria-label]="'graph.filter.title' | translate"
+              [matTooltip]="'graph.filter.title' | translate"
+              (click)="filtersExpanded = !filtersExpanded">
+        <mat-icon>tune</mat-icon>
+        @if (hasActiveFilter) { <span class="filter-dot"></span> }
+      </button>
       <button type="button" class="knx-btn knx-btn--outline knx-btn--icon legend-toggle"
               [class.is-active]="showLegend"
               [attr.aria-pressed]="showLegend"
@@ -23,6 +32,77 @@
     </div>
   </div>
 
+  @if (hasActiveProject && !loading) {
+    <div class="filterbar" [class.is-open]="filtersExpanded">
+      <div class="filterbar-main">
+        <div class="knx-field fb-search">
+          <mat-icon class="field-icon">search</mat-icon>
+          <input class="knx-input knx-input--search" type="text" knxSlashFocus
+                 [(ngModel)]="filter.q" (ngModelChange)="onSearchInput()"
+                 [placeholder]="'graph.filter.search' | translate"
+                 [attr.aria-label]="'graph.filter.search' | translate"
+                 [matTooltip]="'common.slashHint' | translate" matTooltipShowDelay="600">
+          @if (filter.q) {
+            <button type="button" class="field-clear" (click)="clearSearch()" [attr.aria-label]="'graph.filter.clearSearch' | translate">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </div>
+
+        <div class="fb-quick" role="group" [attr.aria-label]="'graph.filter.depth' | translate"
+             [matTooltip]="'graph.filter.depthHint' | translate">
+          <span class="fb-label">{{ 'graph.filter.depth' | translate }}</span>
+          @for (d of depths; track d) {
+            <button type="button" class="knx-chip" [class.is-active]="filter.depth === d"
+                    [attr.aria-pressed]="filter.depth === d" [disabled]="!filter.q.trim()"
+                    (click)="setDepth(d)">{{ d }}</button>
+          }
+        </div>
+
+        <span class="fb-sep"></span>
+
+        <label class="fb-room">
+          <span class="fb-label">{{ 'graph.filter.group' | translate }}</span>
+          <select class="knx-input" [(ngModel)]="filter.group" (ngModelChange)="onFilterChange()">
+            <option value="">{{ 'graph.filter.groupAll' | translate }}</option>
+            @for (o of groupOptions; track o.value) {
+              <option [value]="o.value">{{ optionLabel(o) }}</option>
+            }
+          </select>
+        </label>
+
+        @if (roomOptions.length > 0) {
+          <label class="fb-room">
+            <span class="fb-label">{{ 'graph.filter.room' | translate }}</span>
+            <select class="knx-input" [(ngModel)]="filter.room" (ngModelChange)="onFilterChange()">
+              <option value="">{{ 'graph.filter.roomAll' | translate }}</option>
+              @for (o of roomOptions; track o.value) {
+                <option [value]="o.value">{{ optionLabel(o) }}</option>
+              }
+            </select>
+          </label>
+        }
+
+        <label class="fb-room">
+          <span class="fb-label">{{ 'graph.filter.dpt' | translate }}</span>
+          <select class="knx-input" [(ngModel)]="filter.dpt" (ngModelChange)="onFilterChange()">
+            <option value="">{{ 'graph.filter.dptAll' | translate }}</option>
+            @for (d of dptOptions; track d) {
+              <option [value]="d">{{ dptLabel(d) }}</option>
+            }
+          </select>
+        </label>
+
+        @if (hasActiveFilter) {
+          <button type="button" class="knx-btn knx-btn--ghost" (click)="resetFilter()">
+            <mat-icon>close</mat-icon>
+            {{ 'graph.filter.reset' | translate }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
   <div class="graph-body">
     @if (loading) {
       <div class="empty-state">
@@ -33,6 +113,14 @@
       <div class="empty-state">
         <mat-icon>hub</mat-icon>
         <p>{{ 'graph.emptyNoProject' | translate }}</p>
+      </div>
+    } @else if (filterEmpty) {
+      <div class="empty-state filter-empty">
+        <mat-icon>filter_alt_off</mat-icon>
+        <p>{{ 'graph.filter.empty' | translate }}</p>
+        <button type="button" class="knx-btn knx-btn--outline" (click)="resetFilter()">
+          {{ 'graph.filter.reset' | translate }}
+        </button>
       </div>
     }
 
