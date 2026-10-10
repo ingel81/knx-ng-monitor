@@ -948,3 +948,23 @@
 @media (max-width: 479.98px) {
   .tb-range.is-open { grid-template-columns: 1fr; }
 }
+
+// On desktop the message used to stay visually hidden, so a refused "Apply" said nothing.
+// Shown as a small callout under the date fields while it has text.
+@media (min-width: 768px) {
+  .tb-right { position: relative; }
+  .range-hint:not(:empty) {
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 20;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    padding: 6px 10px;
+    border: 1px solid var(--err);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    font-size: var(--fs-xs);
+  }
+}

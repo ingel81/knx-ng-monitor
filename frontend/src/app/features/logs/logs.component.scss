@@ -265,3 +265,15 @@
     }
   }
 }
+
+// Clear button inside the search field, same look as the monitor quick search.
+.search-field { position: relative; }
+.search-field .knx-input { padding-right: 32px; }
+.search-field .field-clear {
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
+  color: var(--ink-3); cursor: pointer; border: none; background: transparent;
+}
+.search-field .field-clear mat-icon { width: 15px; height: 15px; font-size: 15px; }
+.search-field .field-clear:hover { background: var(--surface-3); color: var(--ink); }
+.search-field .field-clear:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }

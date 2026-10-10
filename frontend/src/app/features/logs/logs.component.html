@@ -20,6 +20,12 @@
         <input class="knx-input" type="text" knxSlashFocus [matTooltip]="'common.slashHint' | translate" matTooltipShowDelay="600" [(ngModel)]="search" (ngModelChange)="onSearchInput()"
                [placeholder]="'logs.searchPlaceholder' | translate"
                [attr.aria-label]="'logs.search' | translate" />
+        @if (search) {
+          <button type="button" class="field-clear" (click)="clearSearch()"
+                  [attr.aria-label]="'logs.clearSearch' | translate" [matTooltip]="'logs.clearSearch' | translate">
+            <mat-icon svgIcon="knx:close"></mat-icon>
+          </button>
+        }
       </div>
 
       <button class="knx-btn knx-btn--outline" (click)="togglePause()"

@@ -400,8 +400,17 @@ public class KnxController : ControllerBase
             return null;
         }
 
-        // Tunneling: an IPv4 address or a DNS host name (#23).
-        if (!System.Net.IPAddress.TryParse(host, out _) && Uri.CheckHostName(host) != UriHostNameType.Dns)
+        // Tunneling: a unicast IPv4 address or a DNS host name (#23). A multicast address is a
+        // routing group entered in the wrong mode.
+        if (System.Net.IPAddress.TryParse(host, out var tunnelIp))
+        {
+            if (tunnelIp.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
+                && tunnelIp.GetAddressBytes()[0] is >= 224 and <= 239)
+            {
+                return "A multicast address is a routing group; tunneling needs the interface's own address.";
+            }
+        }
+        else if (Uri.CheckHostName(host) != UriHostNameType.Dns)
         {
             return "Enter an IP address or a host name.";
         }

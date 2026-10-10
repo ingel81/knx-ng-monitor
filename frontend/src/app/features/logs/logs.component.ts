@@ -125,6 +125,11 @@ export class LogsComponent implements OnInit, OnDestroy {
     this.searchChanged.next();
   }
 
+  clearSearch(): void {
+    this.search = '';
+    this.onSearchInput();
+  }
+
   togglePause(): void {
     this.paused = !this.paused;
     if (!this.paused && this.pending.length) {

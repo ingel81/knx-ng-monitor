@@ -771,6 +771,9 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private paintNode(n: GNode, ctx: CanvasRenderingContext2D, scale: number): void {
     const r = this.radius(n);
+    // A node that just came back through a filter change has no position until the simulation
+    // ticks once; drawing it then throws on non-finite canvas coordinates.
+    if (!Number.isFinite(n.x) || !Number.isFinite(n.y) || !Number.isFinite(r)) return;
     const heat = n.__heat || 0;
     if (n.__glow && n.__glow > 0.01) {
       const gr = r + 9 + n.__glow * 16;

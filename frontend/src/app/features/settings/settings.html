@@ -155,7 +155,7 @@
           <div class="info-line">
             <mat-icon svgIcon="knx:wifi"></mat-icon>
             <div>
-              <div><b>{{ 'settings.connectionInfo' | translate }}</b> {{ (isRouting ? 'settings.routingInfo' : 'settings.tunnelingInfo') | translate }} · <b>{{ 'settings.protocolInfo' | translate }}</b> KNXnet/IP</div>
+              <div><b>{{ 'settings.connectionInfo' | translate }}</b> {{ isRouting ? ('settings.routingInfo' | translate) : ('settings.tunnelingInfo' | translate: { protocol: knxConfig.tunnelProtocol === 'Tcp' ? 'TCP' : 'UDP' }) }} · <b>{{ 'settings.protocolInfo' | translate }}</b> KNXnet/IP</div>
               @if (isRouting) {
                 <div class="info-note" [innerHTML]="'settings.routingHostNetworkNote' | translate"></div>
               }
