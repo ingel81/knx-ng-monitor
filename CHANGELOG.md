@@ -32,7 +32,8 @@ binaries and auto-generated notes are on the
   immediately (default) or collected every 5 s up to 10 min. Collected telegrams go to the
   database in one transaction per interval, retention and the WAL checkpoint run once per
   flush, and the NDJSON archive syncs on the same rhythm. The live view is not delayed. A
-  power cut loses what is still buffered, which is why immediate stays the default.
+  power cut loses what is still buffered, which is why immediate stays the default; the
+  heartbeats are written in the same flush, so such a gap shows up in the availability report.
 - **Top group addresses and senders (#38).** A new statistics card lists, for the selected
   range, the busiest group addresses (name, DPT, count, share, telegrams per hour) and the
   busiest sending devices with their names from the project, top 10 / 20 / 50. A click opens
@@ -81,14 +82,20 @@ binaries and auto-generated notes are on the
 - **.NET 10 LTS (#16)** for backend, Docker image and release binaries. The OpenAPI document
   picks up the XML doc comments natively now.
 - **A project import parses `0.xml` once** instead of up to three times.
-- Telegrams got an index on `(Timestamp, SourceAddress)`, which covers the new top-sender
-  query.
+- The telegram index now covers `(Timestamp, DestinationAddress, SourceAddress)`, so the new
+  top-sender query is index-only as well. The upgrade rebuilds it once (a few seconds per
+  million telegrams).
 
 ### Fixed
 - **A re-import kept decoding with the old datapoint types (#24).** It keeps the project id,
   so the group-address cache skipped its reload; only deleting and importing anew helped.
 - **The last batch of telegrams could be lost on a normal stop**: shutdown now drains and
   writes the queue instead of cancelling it.
+- **Project names could inject HTML into chart tooltips and graph labels.** Group-address and
+  device names from an imported project went unescaped into HTML; a crafted `.knxproj` could
+  run script there. They are escaped now.
+- **Startup failed on an empty database file** ("attempt to write a readonly database").
+- The archive filter no longer queries everything when a typed date cannot be read.
 - **Space no longer pauses the monitor** while the focus sits in a menu or dialog.
 - `System.Security.Cryptography.Xml` lifted to 10.0.12 (the version Falcon pulls in has known
   advisories).
