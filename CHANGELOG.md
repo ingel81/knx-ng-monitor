@@ -10,6 +10,82 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
+## [0.13.0]
+
+### Added
+- **A tunnel that survives a bad network link (#22, #20).** The tunnel used to be torn down
+  at the first hiccup and only rebuilt by the 10 s auto-connect poll, so every short dropout
+  on a WLAN path turned into a gap of up to half a minute, and every reconnect occupied a
+  fresh tunnel slot until the interface ran out of them. Falcon's `AutoReconnect` is now on
+  for every tunnel (the link shows as connecting while it recovers), a lost link triggers the
+  reconnect immediately with a 1/2/4/8 s backoff for failed attempts, and the transport is
+  selectable: **UDP** (default) or **TCP**, which copes far better with lossy links.
+- **Requested tunnel address (#10).** Tunneling can ask the interface for a fixed individual
+  address instead of whatever slot is free, so reconnects stop wandering through the tunnel
+  pool. When the address is taken, or outside the pool, the monitor falls back to any free
+  slot instead of failing (can be switched off). Verified against an MDT IP router over UDP
+  and TCP.
+- **Host names for tunneling (#23).** The interface address accepts a DNS name in tunneling
+  mode; routing stays numeric, since that field is a multicast group. The existing IP Secure
+  tunnel flag finally has a switch in Settings as well.
+- **Buffered history writes to spare SD cards (#37).** New setting "Write history":
+  immediately (default) or collected every 5 s up to 10 min. Collected telegrams go to the
+  database in one transaction per interval, retention and the WAL checkpoint run once per
+  flush, and the NDJSON archive syncs on the same rhythm. The live view is not delayed. A
+  power cut loses what is still buffered, which is why immediate stays the default.
+- **Top group addresses and senders (#38).** A new statistics card lists, for the selected
+  range, the busiest group addresses (name, DPT, count, share, telegrams per hour) and the
+  busiest sending devices with their names from the project, top 10 / 20 / 50. A click opens
+  the monitor archive filtered to that address or device over the same range; the monitor
+  now understands `?mode=archive&address=&source=&from=&to=` for that. New endpoint:
+  `GET /api/telegrams/top`.
+- **Charts:** every unit gets its own y axis (#35), the tooltip lists every series at the
+  hovered time with the value in force and its age (#36), group-address selections can be
+  saved and recalled across devices (#32), the live window keeps moving with the current
+  time (#27), the value in force before the range is carried in so a rarely sending address
+  no longer starts blank, and an optional smoothed curve (#33). Switching values (DPT 1)
+  share one 0..1 axis (#30). Contributions by Elkomaster91, thank you.
+- **Graph filters (#17):** the GA network graph filters by group, room, DPT and the
+  neighbourhood of a node.
+- **The version is shown in the user menu.**
+
+### Changed
+- **Statistics are counted in the database (#39).** The histogram and the heatmap used to
+  stream every single timestamp of the range into .NET and count there, twice per page
+  load. They now come from index range counts in SQLite: on a real database with one million
+  telegrams a 30-day range drops from about 400 ms to about 55 ms per query (desktop), with
+  identical numbers, which tests comparing the old and the new counting make sure of.
+- **In-app date and time field (#15, #41).** Charts, statistics and the archive filter no
+  longer use the browser's `datetime-local` input, which accepted six-digit years such as
+  "08.10.202600". The new field has a calendar, a 24-hour time list, a mandatory four-digit
+  year, flags invalid input and an end before the start, and opens as a dialog on phones.
+- **Dates follow the browser locale (#42).** Formatting used the UI language (de-DE or
+  en-GB); it now takes the browser's regional setting, so an English UI in a de-AT browser
+  shows 24.09.2026 and an en-US browser 09/24/2026. Time stays 24-hour everywhere.
+- **Word-based search everywhere (#31, #34).** The monitor, group-address and log searches
+  match words in any order, umlauts optional, like the chart GA picker; `/` focuses the
+  search field of the current page.
+- **The weekday heatmap starts on Monday in German (#25)**, English keeps Sunday.
+- **Clearing the history is reachable from live mode**, and "Clear" became "Clear view" so
+  it no longer reads like deleting the database.
+- **.NET 10 LTS (#16)** for backend, Docker image and release binaries. The OpenAPI document
+  picks up the XML doc comments natively now.
+- **A project import parses `0.xml` once** instead of up to three times.
+
+### Fixed
+- **A re-import kept decoding with the old datapoint types (#24).** It keeps the project id,
+  so the group-address cache skipped its reload; only deleting and importing anew helped.
+- **The last batch of telegrams could be lost on a normal stop**: shutdown now drains and
+  writes the queue instead of cancelling it.
+- **Space no longer pauses the monitor** while the focus sits in a menu or dialog.
+- `System.Security.Cryptography.Xml` lifted to 10.0.12 (the version Falcon pulls in has known
+  advisories).
+
+**Note for anyone who ran the #32 pull request before it was merged:** the migration was
+recreated as `20261010104540_AddChartSelections`. Drop the `ChartSelections` table and the
+`20260921204924_AddChartSelections` row in `__EFMigrationsHistory` before updating. Regular
+installations are not affected; the database migrates on start as usual.
+
 ## [0.12.0]
 
 ### Fixed

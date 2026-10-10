@@ -148,16 +148,16 @@ A ~4-minute guided walkthrough of every feature on YouTube. The app UI itself is
 
 ## Features
 
-- **Real-time KNX monitoring** - live view of bus telegrams via SignalR, over KNXnet/IP **tunneling or routing**, **always-on**: auto-connects on startup and reconnects after gateway/network/container interruptions
+- **Real-time KNX monitoring** - live view of bus telegrams via SignalR, over KNXnet/IP **tunneling (UDP or TCP) or routing**, **always-on**: auto-connects on startup and reconnects after gateway/network/container interruptions, rides out short dropouts on the tunnel; optional fixed tunnel address with fallback, host name or IP for the interface
 - **DPT decoding** - via the Falcon datapoint catalog: full DPT range, sub-type aware, with units and enumeration names (English labels, locale-invariant numbers)
 - **ETS project import** - ETS 4 / 5 / 6 `.knxproj` files up to ETS 6.4 (project schema 23), three- / two-level / free addressing
 - **KNX Secure** - password-protected projects (incl. ETS6 PBKDF2/AES wrapping) and `.knxkeys` keyring decryption; **Data Secure** group telegrams decrypted at runtime, optional opt-in IP-Secure tunnel
 - **Unified Monitor view** - one view with a **Live / Archive** toggle and a shared filter; custom virtual-scroll grid with color-coding (Read / Write / Response), value semantics + DPST units, live bus-load badge (msg/s + %), pause (no telegram loss), auto-scroll, free-text + room filter
-- **Charts & statistics** - time-series charts for numeric DPTs (separate Y-axes per unit, live append), a statistics view (total, average msg/s, telegrams over time) and a weekday × hour activity heatmap
-- **Topology & group-address tree** - Locations (building → floor → room) and com-objects parsed across ETS 4/5/6, a Topology tree view, a 3-level group-address tree, a room filter and a "used by" device list; plus a force-directed **GA network graph (Alpha)**
+- **Charts & statistics** - time-series charts for numeric DPTs (one Y-axis per unit, live window, tooltip across all series, saved group-address selections), a statistics view (total, average msg/s, telegrams over time, top group addresses and senders) and a weekday × hour activity heatmap, all counted in the database
+- **Topology & group-address tree** - Locations (building → floor → room) and com-objects parsed across ETS 4/5/6, a Topology tree view, a 3-level group-address tree, a room filter and a "used by" device list; plus a force-directed **GA network graph (Alpha)** with group, room, DPT and neighbourhood filters
 - **Write / read from the UI** - send a GroupValueRead or write a DPT-typed value to the live bus from the detail drawer, behind a confirmation dialog
-- **Data recording** - two-tier, fully self-contained: count-based SQLite hot-tier ring buffer (bounded size) plus an opt-in NDJSON+gzip long-term archive; keyset-paginated query API and server-streamed CSV export
-- **Runtime DE / EN** - full bilingual UI, switchable without a reload
+- **Data recording** - two-tier, fully self-contained: count-based SQLite hot-tier ring buffer (bounded size) plus an opt-in NDJSON+gzip long-term archive; optional buffered writes (every 5 s up to 10 min) to spare SD cards; keyset-paginated query API and server-streamed CSV export
+- **Runtime DE / EN** - full bilingual UI, switchable without a reload; dates follow the browser's regional settings, always 24-hour
 - **JWT auth** - access tokens (15 min) + refresh tokens (7 days), secret auto-generated on first start
 - **Single-port deployment** - backend serves the Angular frontend in production
 
