@@ -27,6 +27,7 @@ namespace KnxMonitor.Infrastructure.Tests;
 /// no real installation is touched. Skips (early return, logged) where the sandbox has no
 /// multicast, exactly like <see cref="SecureLoopbackTests"/>.
 /// </summary>
+[Collection(MulticastLoopbackCollection.Name)]
 public class RoutingSourceAddressLoopbackTests
 {
     private readonly ITestOutputHelper _output;
@@ -65,7 +66,8 @@ public class RoutingSourceAddressLoopbackTests
         var config = new KnxConfiguration
         {
             ConnectionType = ConnectionType.Routing,
-            IpAddress = "224.0.23.12",
+            // Private group: the KNX default would also deliver real LAN traffic to the receiver.
+            IpAddress = "239.255.99.98",
             Port = 3671,
             PhysicalAddress = ConfiguredSource
         };

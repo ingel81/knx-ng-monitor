@@ -28,13 +28,16 @@ namespace KnxMonitor.Infrastructure.Tests;
 /// fails fast and the test SKIPS via early return (logged), so this never produces a false failure
 /// in a restricted CI — but where multicast is available it is a genuine end-to-end proof.
 /// </summary>
+[Collection(MulticastLoopbackCollection.Name)]
 public class SecureLoopbackTests
 {
     private readonly ITestOutputHelper _output;
     public SecureLoopbackTests(ITestOutputHelper output) => _output = output;
 
-    // KNX default routing multicast. A high TTL is unnecessary on loopback.
-    private static readonly IPAddress Multicast = IPAddress.Parse("224.0.23.12");
+    // A private group, not the KNX default 224.0.23.12: TTL 0 keeps our own telegrams on this
+    // host, but joining the default group also receives every real routing telegram on the LAN,
+    // and one of those arriving first made this test fail at random.
+    private static readonly IPAddress Multicast = IPAddress.Parse("239.255.99.97");
     private static readonly GroupAddress Ga = new("1/2/3");
     private const string Dpt = "9.001"; // 2-byte float, e.g. temperature
 

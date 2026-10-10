@@ -24,6 +24,7 @@ namespace KnxMonitor.Infrastructure.Tests;
 /// Both run on a private multicast group (not the KNX default), so no real installation is
 /// touched and nothing here can be confused with bus traffic.
 /// </summary>
+[Collection(MulticastLoopbackCollection.Name)]
 public class ConnectionTestOutcomeTests
 {
     private readonly ITestOutputHelper _output;
