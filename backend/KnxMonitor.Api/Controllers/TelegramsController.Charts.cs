@@ -207,18 +207,10 @@ public partial class TelegramsController
         var bucketMs = totalMs / bucketCount;
 
         var ct = HttpContext.RequestAborted;
-        var counts = new long[bucketCount];
-        long total = 0;
-
-        await foreach (var ts in _repository.StreamTimestampsInRangeAsync(rangeFrom, rangeTo, ct))
-        {
-            total++;
-            var offset = (ts - rangeFrom).TotalMilliseconds;
-            var idx = (int)(offset / bucketMs);
-            if (idx < 0) idx = 0;
-            if (idx >= bucketCount) idx = bucketCount - 1;
-            counts[idx]++;
-        }
+        // Counted per bucket in SQL (#39): only the bucket counts cross into .NET instead of one
+        // timestamp per telegram, which took seconds for a 30-day range on a Pi.
+        var counts = await _repository.CountPerBucketAsync(rangeFrom, rangeTo, bucketCount, bucketMs, ct);
+        var total = counts.Sum();
 
         var bucketList = new List<StatsBucket>(bucketCount);
         for (var i = 0; i < bucketCount; i++)
@@ -271,17 +263,9 @@ public partial class TelegramsController
         var (rangeFrom, rangeTo) = ResolveRange(from, to);
         var ct = HttpContext.RequestAborted;
 
-        var grid = new long[7][];
-        for (var d = 0; d < 7; d++) grid[d] = new long[24];
-        long total = 0;
-
-        await foreach (var ts in _repository.StreamTimestampsInRangeAsync(rangeFrom, rangeTo, ct))
-        {
-            // ts holds the UTC wall time (Kind=Unspecified from SQLite); shift into local zone.
-            var local = DateTime.SpecifyKind(ts, DateTimeKind.Utc).AddMinutes(-tz);
-            grid[(int)local.DayOfWeek][local.Hour]++;
-            total++;
-        }
+        // Counted per (weekday, hour) in SQL (#39): at most 168 rows instead of every timestamp.
+        var grid = await _repository.CountPerWeekdayHourAsync(rangeFrom, rangeTo, tz, ct);
+        var total = grid.Sum(row => row.Sum());
 
         return Ok(new HeatmapResponse { Total = total, Grid = grid });
     }

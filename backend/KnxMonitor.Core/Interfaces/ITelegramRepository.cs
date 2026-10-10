@@ -72,7 +72,26 @@ public interface ITelegramRepository : IRepository<KnxTelegram>
 
     /// <summary>
     /// Streams (Timestamp only) for telegrams in [from,to] ordered ASC, for in-memory bucketing.
+    /// The statistics endpoints aggregate in SQL instead (see <see cref="CountPerBucketAsync"/>);
+    /// this stays as the reference the SQL aggregation is tested against.
     /// </summary>
     IAsyncEnumerable<DateTime> StreamTimestampsInRangeAsync(
         DateTime from, DateTime to, CancellationToken ct = default);
+
+    /// <summary>
+    /// Telegram counts in [from,to] split into <paramref name="bucketCount"/> buckets of
+    /// <paramref name="bucketMs"/> milliseconds starting at <paramref name="from"/>, counted in
+    /// SQL. A telegram lands in bucket <c>(int)((ts - from).TotalMilliseconds / bucketMs)</c>,
+    /// clamped to the valid range, exactly like counting the streamed timestamps would.
+    /// </summary>
+    Task<long[]> CountPerBucketAsync(
+        DateTime from, DateTime to, int bucketCount, double bucketMs, CancellationToken ct = default);
+
+    /// <summary>
+    /// Telegram counts in [from,to] per weekday (0 = Sunday) and hour, counted in SQL after
+    /// shifting each UTC timestamp by <paramref name="tzOffsetMinutes"/> (minutes the display zone
+    /// is behind UTC, as JavaScript's getTimezoneOffset reports it). Returns a 7 x 24 grid.
+    /// </summary>
+    Task<long[][]> CountPerWeekdayHourAsync(
+        DateTime from, DateTime to, int tzOffsetMinutes, CancellationToken ct = default);
 }
