@@ -707,8 +707,8 @@ public abstract class BaseProjectLoader : IProjectLoader
         var path = files.FindFirstByName("0.xml")
                    ?? throw new FileNotFoundException("Project file (0.xml) not found in archive");
 
-        await using var stream = files.OpenRead(path);
-        return await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
+        // Usually already parsed by the feature detection on the same map, so this is a cache hit.
+        return await files.LoadXmlAsync(path, cancellationToken);
     }
 
     protected async Task<Dictionary<string, (string Manufacturer, string ProductName)>>

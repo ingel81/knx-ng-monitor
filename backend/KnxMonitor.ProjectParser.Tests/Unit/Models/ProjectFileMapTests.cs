@@ -97,4 +97,52 @@ public class ProjectFileMapTests
         // "a.xml" should match "deep/nested/a.xml" but NOT "ab.xml"
         map.FindFirstByName("a.xml").Should().Be("deep/nested/a.xml");
     }
+
+    [Fact]
+    public async Task LoadXmlAsync_ParsesOnce_AndSharesTheDocument()
+    {
+        var opens = 0;
+        var bytes = Encoding.UTF8.GetBytes("<KNX><Project Id=\"P-0001\" /></KNX>");
+        using var map = new ProjectFileMap(new Dictionary<string, Func<Stream>>
+        {
+            ["P-0001/0.xml"] = () =>
+            {
+                opens++;
+                return new MemoryStream(bytes);
+            }
+        });
+
+        var first = await map.LoadXmlAsync("P-0001/0.xml");
+        var second = await map.LoadXmlAsync("p-0001/0.XML");
+
+        second.Should().BeSameAs(first);
+        opens.Should().Be(1);
+        map.AccessedPaths.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task LoadXmlAsync_DoesNotCacheAFailedParse()
+    {
+        var content = "not xml";
+        using var map = new ProjectFileMap(new Dictionary<string, Func<Stream>>
+        {
+            ["0.xml"] = () => new MemoryStream(Encoding.UTF8.GetBytes(content))
+        });
+
+        var act = () => map.LoadXmlAsync("0.xml");
+        await act.Should().ThrowAsync<System.Xml.XmlException>();
+
+        content = "<KNX />";
+        (await map.LoadXmlAsync("0.xml")).Root!.Name.LocalName.Should().Be("KNX");
+    }
+
+    [Fact]
+    public async Task LoadXmlAsync_AfterDispose_Throws()
+    {
+        var map = CreateMap();
+        map.Dispose();
+
+        var act = () => map.LoadXmlAsync("0.xml");
+        await act.Should().ThrowAsync<ObjectDisposedException>();
+    }
 }

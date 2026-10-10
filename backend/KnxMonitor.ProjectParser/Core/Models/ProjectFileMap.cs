@@ -1,4 +1,6 @@
-﻿namespace KnxMonitor.ProjectParser.Core.Models;
+﻿using System.Xml.Linq;
+
+namespace KnxMonitor.ProjectParser.Core.Models;
 
 /// <summary>
 /// The inner files of a .knxproj, addressed by their archive path.
@@ -15,12 +17,19 @@
 /// reading from a disposed map throws. <see cref="AccessedPaths"/> records what was really read and
 /// exists so tests can prove the application programs stay untouched.
 /// </para>
+/// <para>
+/// <see cref="LoadXmlAsync"/> keeps every document it parsed, so the project file (<c>0.xml</c>)
+/// is parsed once per import even though feature detection, the post-unlock refinement and the
+/// loader all read it. Callers must treat those documents as read-only.
+/// </para>
 /// </summary>
 public sealed class ProjectFileMap : IDisposable
 {
     private readonly Dictionary<string, Entry> _files;
     private readonly IDisposable[] _owned;
     private readonly HashSet<string> _accessed = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, XDocument> _xmlCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _xmlParses = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _gate = new();
     private bool _disposed;
 
@@ -107,6 +116,46 @@ public sealed class ProjectFileMap : IDisposable
         return new MemoryStream(entry.Bytes, writable: false);
     }
 
+    /// <summary>
+    /// Parse one entry as XML, or hand back the document an earlier call already parsed. A failed
+    /// parse is not cached, so every caller sees the same exception it would have seen on its own.
+    /// The returned document is shared: read it, never modify it.
+    /// </summary>
+    public async Task<XDocument> LoadXmlAsync(string path, CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_xmlCache.TryGetValue(path, out var cached)) return cached;
+        }
+
+        XDocument xml;
+        await using (var stream = OpenRead(path))
+        {
+            xml = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
+        }
+
+        lock (_gate)
+        {
+            _xmlParses[path] = XmlParseCountUnlocked(path) + 1;
+            // Two concurrent first reads both parse; the first one stored wins so callers share it.
+            if (_xmlCache.TryGetValue(path, out var cached)) return cached;
+            _xmlCache[path] = xml;
+            return xml;
+        }
+    }
+
+    /// <summary>How often <see cref="LoadXmlAsync"/> really parsed this entry. Lets tests prove the reuse.</summary>
+    internal int XmlParseCount(string path)
+    {
+        lock (_gate)
+        {
+            return XmlParseCountUnlocked(path);
+        }
+    }
+
+    private int XmlParseCountUnlocked(string path) => _xmlParses.TryGetValue(path, out var n) ? n : 0;
+
     public IEnumerable<string> FindPaths(Func<string, bool> predicate)
     {
         foreach (var path in _files.Keys)
@@ -138,6 +187,7 @@ public sealed class ProjectFileMap : IDisposable
         {
             if (_disposed) return;
             _disposed = true;
+            _xmlCache.Clear();
         }
 
         // Reverse order: the readers built on top of a buffer go before the buffer itself.

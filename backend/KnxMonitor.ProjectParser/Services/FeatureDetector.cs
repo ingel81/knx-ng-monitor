@@ -1,5 +1,4 @@
-﻿using System.IO.Compression;
-using System.Xml;
+﻿using System.Xml;
 using System.Xml.Linq;
 using KnxMonitor.ProjectParser.Core.Enums;
 using KnxMonitor.ProjectParser.Core.Interfaces;
@@ -39,8 +38,7 @@ public class FeatureDetector : IFeatureDetector
 
         try
         {
-            await using var xmlStream = files.OpenRead(projectXmlPath);
-            var xml = await XDocument.LoadAsync(xmlStream, LoadOptions.None, cancellationToken);
+            var xml = await files.LoadXmlAsync(projectXmlPath, cancellationToken);
             var ns = xml.Root?.Name.Namespace ?? XNamespace.None;
 
             var secureGAs = xml.Descendants(ns + "GroupAddress")
@@ -70,61 +68,95 @@ public class FeatureDetector : IFeatureDetector
         Stream stream,
         CancellationToken cancellationToken = default)
     {
-        var features = new ProjectFeatures();
+        var (features, files) = await DetectKeepingFilesAsync(stream, cancellationToken);
+        files.Dispose();
+        return features;
+    }
+
+    /// <summary>
+    /// <see cref="DetectAsync(Stream, CancellationToken)"/>, but hands back the index of the outer
+    /// archive it ran on, together with every XML document parsed along the way. For a project
+    /// without password that index is exactly what <see cref="ZipHandler.LoadAsync"/> would build,
+    /// so <see cref="ProjectParser"/> passes it on to the loader and <c>0.xml</c> is parsed once per
+    /// import instead of once here and once more in the loader. The caller owns the returned map.
+    /// </summary>
+    internal async Task<(ProjectFeatures Features, ProjectFileMap Files)> DetectKeepingFilesAsync(
+        Stream stream,
+        CancellationToken cancellationToken = default)
+    {
+        ProjectFileMap? files = null;
 
         try
         {
-            using var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
+            // Blank features (no password) make ZipHandler index the outer archive and nothing else.
+            files = await ZipHandler.LoadAsync(
+                stream, new ProjectFeatures(), password: null, cancellationToken: cancellationToken);
 
-            // 1. Find Project ID (P-xxxx)
-            var projectEntry = archive.Entries
-                .FirstOrDefault(e => e.Name.EndsWith(".signature") && e.Name.StartsWith("P-"));
-
-            if (projectEntry != null)
-            {
-                features.ProjectId = Path.GetFileNameWithoutExtension(projectEntry.Name);
-            }
-
-            // 2. Check for Password (nested P-xxxx.zip)
-            var nestedZip = archive.Entries
-                .FirstOrDefault(e => e.FullName.EndsWith(".zip") && e.FullName.StartsWith("P-"));
-            features.HasPassword = nestedZip != null;
-
-            // 3. Detect ETS Version from knx_master.xml or project.xml
-            features.EtsVersion = await DetectEtsVersionAsync(archive, cancellationToken);
-
-            // 4. Check for KNX Secure
-            features.HasKnxSecure = await CheckKnxSecureAsync(archive, cancellationToken);
-
-            // 5. Detect Addressing Style
-            features.AddressingStyle = await DetectAddressingStyleAsync(archive, cancellationToken);
-
-            _logger.LogInformation(
-                "Detected: ETS {Version}, Password={HasPw}, Secure={HasSecure}, Style={Style}",
-                features.EtsVersion, features.HasPassword, features.HasKnxSecure, features.AddressingStyle
-            );
-
-            return features;
+            var features = await DetectAsync(files, cancellationToken);
+            return (features, files);
         }
         catch (Exception ex)
         {
+            files?.Dispose();
             _logger.LogError(ex, "Failed to detect features");
             throw;
         }
     }
 
-    private async Task<EtsVersion> DetectEtsVersionAsync(ZipArchive archive, CancellationToken cancellationToken)
+    private async Task<ProjectFeatures> DetectAsync(ProjectFileMap files, CancellationToken cancellationToken)
+    {
+        var features = new ProjectFeatures();
+
+        // 1. Find Project ID (P-xxxx)
+        var projectEntry = files.FilePaths
+            .Select(EntryName)
+            .FirstOrDefault(name => name.EndsWith(".signature") && name.StartsWith("P-"));
+
+        if (projectEntry != null)
+        {
+            features.ProjectId = Path.GetFileNameWithoutExtension(projectEntry);
+        }
+
+        // 2. Check for Password (nested P-xxxx.zip)
+        var nestedZip = files.FilePaths
+            .FirstOrDefault(path => path.EndsWith(".zip") && path.StartsWith("P-"));
+        features.HasPassword = nestedZip != null;
+
+        // 3. Detect ETS Version from knx_master.xml or project.xml
+        features.EtsVersion = await DetectEtsVersionAsync(files, cancellationToken);
+
+        // 4. Check for KNX Secure
+        features.HasKnxSecure = await CheckKnxSecureAsync(files, cancellationToken);
+
+        // 5. Detect Addressing Style
+        features.AddressingStyle = await DetectAddressingStyleAsync(files, cancellationToken);
+
+        _logger.LogInformation(
+            "Detected: ETS {Version}, Password={HasPw}, Secure={HasSecure}, Style={Style}",
+            features.EtsVersion, features.HasPassword, features.HasKnxSecure, features.AddressingStyle
+        );
+
+        return features;
+    }
+
+    /// <summary>File name part of an archive path, cut at either separator like ZipArchiveEntry.Name.</summary>
+    private static string EntryName(string path)
+    {
+        var cut = path.LastIndexOfAny(new[] { '/', '\\' });
+        return cut < 0 ? path : path[(cut + 1)..];
+    }
+
+    private async Task<EtsVersion> DetectEtsVersionAsync(ProjectFileMap files, CancellationToken cancellationToken)
     {
         // 1. knx_master.xml — the only version marker that is readable in EVERY project, including
         //    password-protected ones (project.xml / 0.xml live inside the encrypted P-XXXX.zip).
         //    Its root namespace carries the schema number, which is mapped by numeric range so new
         //    ETS releases (schema 22, 23, …) keep working instead of falling through to Unknown.
-        var knxMasterEntry = archive.Entries
-            .FirstOrDefault(e => e.Name.Equals("knx_master.xml", StringComparison.OrdinalIgnoreCase));
+        var knxMasterEntry = files.FindFirstByName("knx_master.xml");
 
         if (knxMasterEntry != null)
         {
-            await using var stream = knxMasterEntry.Open();
+            await using var stream = files.OpenRead(knxMasterEntry);
             var rootNamespace = await ReadRootNamespaceAsync(stream, cancellationToken);
             var version = EtsSchemaVersion.FromNamespace(rootNamespace);
 
@@ -139,24 +171,23 @@ public class FeatureDetector : IFeatureDetector
 
         // 2. Fallback: project.xml, then 0.xml — namespace first, then the ToolVersion / CreatedBy
         //    attributes (both only exist on the project files, never on knx_master.xml).
-        foreach (var entry in EnumerateVersionCandidates(archive))
+        foreach (var entry in EnumerateVersionCandidates(files))
         {
             try
             {
-                await using var stream = entry.Open();
-                var xml = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
+                var xml = await files.LoadXmlAsync(entry, cancellationToken);
 
                 var version = ProjectXmlMetadata.ReadEtsVersion(xml.Root);
                 if (version != EtsVersion.Unknown)
                 {
                     _logger.LogInformation(
-                        "ETS version {Version} detected from {Entry}", version, entry.FullName);
+                        "ETS version {Version} detected from {Entry}", version, entry);
                     return version;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Could not read ETS version from {Entry}", entry.FullName);
+                _logger.LogDebug(ex, "Could not read ETS version from {Entry}", entry);
             }
         }
 
@@ -164,12 +195,9 @@ public class FeatureDetector : IFeatureDetector
         return EtsVersion.Unknown;
     }
 
-    private static IEnumerable<ZipArchiveEntry> EnumerateVersionCandidates(ZipArchive archive)
+    private static IEnumerable<string> EnumerateVersionCandidates(ProjectFileMap files)
     {
-        return archive.Entries
-            .Where(e => e.Name.Equals("project.xml", StringComparison.OrdinalIgnoreCase))
-            .Concat(archive.Entries
-                .Where(e => e.Name.Equals("0.xml", StringComparison.OrdinalIgnoreCase)));
+        return files.FindAllByName("project.xml").Concat(files.FindAllByName("0.xml"));
     }
 
     /// <summary>
@@ -208,22 +236,20 @@ public class FeatureDetector : IFeatureDetector
     }
 
     private static async Task<bool> CheckKnxSecureAsync(
-        ZipArchive archive,
+        ProjectFileMap files,
         CancellationToken cancellationToken)
     {
-        // Look up 0.xml by entry name instead of the "{ProjectId}/0.xml" path: ZipArchive.GetEntry is
-        // case-sensitive and ProjectId is null when the archive carries no P-XXXX.signature, which
-        // would skip the KNX Secure check altogether.
-        var entry = archive.Entries
-            .FirstOrDefault(e => e.Name.Equals("0.xml", StringComparison.OrdinalIgnoreCase));
+        // Look up 0.xml by entry name instead of the "{ProjectId}/0.xml" path: ProjectId is null when
+        // the archive carries no P-XXXX.signature, which would skip the KNX Secure check altogether.
+        var entry = files.FindFirstByName("0.xml");
 
         if (entry == null)
             return false;
 
         try
         {
-            await using var stream = entry.Open();
-            var xml = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
+            // Cached in the map: the version / style fallbacks and the loader reuse this document.
+            var xml = await files.LoadXmlAsync(entry, cancellationToken);
             var ns = xml.Root?.Name.Namespace ?? XNamespace.None;
 
             // Check for Group Addresses with DataSecurity enabled
@@ -248,31 +274,30 @@ public class FeatureDetector : IFeatureDetector
     }
 
     private async Task<AddressingStyle> DetectAddressingStyleAsync(
-        ZipArchive archive,
+        ProjectFileMap files,
         CancellationToken cancellationToken)
     {
         // project.xml first, then 0.xml. Looked up by entry NAME rather than by the
         // "{ProjectId}/project.xml" path: ETS4 writes "P-XXXX/Project.xml" with a capital P, and
         // ZipArchive.GetEntry is case-sensitive, so the old path lookup missed those projects
         // entirely and silently returned the ThreeLevel default.
-        foreach (var entry in EnumerateVersionCandidates(archive))
+        foreach (var entry in EnumerateVersionCandidates(files))
         {
             try
             {
-                await using var stream = entry.Open();
-                var xml = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken);
+                var xml = await files.LoadXmlAsync(entry, cancellationToken);
 
                 var style = ProjectXmlMetadata.ReadAddressingStyle(xml.Root);
                 if (style.HasValue)
                 {
                     _logger.LogInformation(
-                        "Addressing style {Style} detected from {Entry}", style.Value, entry.FullName);
+                        "Addressing style {Style} detected from {Entry}", style.Value, entry);
                     return style.Value;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Could not read addressing style from {Entry}", entry.FullName);
+                _logger.LogDebug(ex, "Could not read addressing style from {Entry}", entry);
             }
         }
 

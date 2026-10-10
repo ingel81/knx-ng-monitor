@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using KnxMonitor.ProjectParser.Core.Enums;
+using KnxMonitor.ProjectParser.Core.Interfaces;
 using KnxMonitor.ProjectParser.Core.Models;
 using KnxMonitor.ProjectParser.Loaders;
 using KnxMonitor.ProjectParser.Services;
@@ -74,6 +75,40 @@ public class SelectiveExtractionTests
         accessed.Should().NotContain(p => p.Contains("Baggage"));
         accessed.Should().NotContain(p => p.EndsWith(".signature"));
         accessed.Should().NotContain(p => p.EndsWith(".dll"));
+    }
+
+    /// <summary>
+    /// Feature detection and the loader share one index, so the project file is parsed once per
+    /// import. Before, the KNX Secure check, the version / style fallbacks and the loader each
+    /// parsed their own copy.
+    /// </summary>
+    [Theory]
+    [InlineData("test_project-ets4-no_password.knxproj")]
+    [InlineData("xknx_test_project_no_password.knxproj")]
+    public async Task DetectionAndLoader_ParseTheProjectFileOnce(string sample)
+    {
+        await using var stream = File.OpenRead(TestSamples.Path(sample));
+        var detector = new FeatureDetector(NullLogger<FeatureDetector>.Instance);
+
+        var (features, files) = await detector.DetectKeepingFilesAsync(stream);
+        using (files)
+        {
+            features.HasPassword.Should().BeFalse();
+            var projectXml = files.FindFirstByName("0.xml")!;
+            files.XmlParseCount(projectXml).Should().Be(1, "the KNX Secure check reads it");
+
+            var loader = new IProjectLoader[]
+                {
+                    new Ets4ProjectLoader(NullLogger<Ets4ProjectLoader>.Instance),
+                    new Ets5ProjectLoader(NullLogger<Ets5ProjectLoader>.Instance),
+                    new Ets6ProjectLoader(NullLogger<Ets6ProjectLoader>.Instance)
+                }
+                .First(l => l.CanLoad(features));
+            var result = await loader.LoadAsync(files, features, new ParserOptions());
+
+            result.GroupAddresses.Should().NotBeEmpty();
+            files.XmlParseCount(projectXml).Should().Be(1, "the loader reuses the detector's document");
+        }
     }
 
     /// <summary>
