@@ -1,6 +1,6 @@
 // Builds the "## Screenshots" section of the README from the captured assets +
 // manifest.json, then injects it between the SCREENSHOTS:START/END markers
-// (inserted right after the badge block on first run). Idempotent — re-runnable.
+// (inserted right after the badge block on first run). Idempotent - re-runnable.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -38,7 +38,8 @@ function grid(shots, cols = 2) {
 }
 
 function mobileCell(name, caption) {
-  if (!has(`${name}-mobile.webp`)) return '';
+  // Without a thumb it is one of the YouTube-Short extras, not part of the README gallery.
+  if (!has(`${name}-mobile.webp`) || !has(`thumbs/${name}-mobile.webp`)) return '';
   return `    <td align="center">
       <a href="${REL}/${name}-mobile.webp"><img src="${REL}/thumbs/${name}-mobile.webp" alt="${caption.title} mobile" height="420"></a><br>
       <sub><b>${caption.title}</b></sub>
@@ -58,17 +59,17 @@ function mobileGrid(shots, cols = 2) {
 const present = manifest.shots.filter((s) => has(`${s.name}.webp`));
 const lines = ['## Screenshots', ''];
 
-// hero — animated GIF (renders on GitHub everywhere), linked to the crisp WebM.
+// hero - animated GIF (renders on GitHub everywhere), linked to the crisp WebM.
 if (has('hero.gif')) {
   const target = has('hero.webm') ? `${REL}/hero.webm` : `${REL}/hero.gif`;
   lines.push('<div align="center">', '',
-    `<a href="${target}"><img src="${REL}/hero.gif" alt="KNX-NG-Monitor — live bus monitoring" width="900"></a>`,
+    `<a href="${target}"><img src="${REL}/hero.gif" alt="KNX-NG-Monitor - live bus monitoring" width="900"></a>`,
     '', '</div>', '');
 } else if (has('hero-dark.webp')) {
   lines.push(`<div align="center"><img src="${REL}/hero-dark.webp" alt="Monitor (dark theme)" width="900"></div>`, '');
 }
 
-// video tour — poster frames (cut from the finished videos) linking to YouTube.
+// video tour - poster frames (cut from the finished videos) linking to YouTube.
 const VIDEOS = [
   { lang: 'en', id: 'buwyVSftH2k', alt: 'Video tour (English)', label: '🇬🇧 English' },
   { lang: 'de', id: 'C_2DSGcZmKE', alt: 'Video-Rundgang (Deutsch)', label: '🇩🇪 Deutsch' },
@@ -86,7 +87,7 @@ if (VIDEOS.length) {
 lines.push('<sub>Click any thumbnail for the full-resolution image.</sub>', '');
 lines.push('### Desktop', '', grid(present), '');
 
-const mobileShots = present.filter((s) => has(`${s.name}-mobile.webp`));
+const mobileShots = present.filter((s) => has(`${s.name}-mobile.webp`) && has(`thumbs/${s.name}-mobile.webp`));
 if (mobileShots.length) {
   lines.push('### Mobile', '', mobileGrid(mobileShots, 3), '');
 }

@@ -85,42 +85,42 @@ A ~4-minute guided walkthrough of every feature on YouTube. The app UI itself is
   </tr>
   <tr>
     <td align="center" width="50%">
+      <a href="docs/screenshots/stats-top.webp"><img src="docs/screenshots/thumbs/stats-top.webp" alt="Top group addresses" width="420"></a><br>
+      <sub><b>Top group addresses</b><br>Busiest addresses and senders in the range</sub>
+    </td>
+    <td align="center" width="50%">
       <a href="docs/screenshots/topology.webp"><img src="docs/screenshots/thumbs/topology.webp" alt="Topology" width="420"></a><br>
       <sub><b>Topology</b><br>Building tree with devices</sub>
     </td>
+  </tr>
+  <tr>
     <td align="center" width="50%">
       <a href="docs/screenshots/group-addresses.webp"><img src="docs/screenshots/thumbs/group-addresses.webp" alt="Group addresses" width="420"></a><br>
       <sub><b>Group addresses</b><br>3-level tree, read / write / chart</sub>
     </td>
-  </tr>
-  <tr>
     <td align="center" width="50%">
       <a href="docs/screenshots/projects.webp"><img src="docs/screenshots/thumbs/projects.webp" alt="Projects" width="420"></a><br>
       <sub><b>Projects</b><br>ETS import, active project, auto-connect</sub>
     </td>
+  </tr>
+  <tr>
     <td align="center" width="50%">
       <a href="docs/screenshots/settings.webp"><img src="docs/screenshots/thumbs/settings.webp" alt="Settings" width="420"></a><br>
       <sub><b>Settings</b><br>KNX interface, recording, theme & density</sub>
     </td>
-  </tr>
-  <tr>
     <td align="center" width="50%">
       <a href="docs/screenshots/graph.webp"><img src="docs/screenshots/thumbs/graph.webp" alt="GA network - Alpha" width="420"></a><br>
       <sub><b>GA network - Alpha</b><br>Force-directed building map, live activity</sub>
     </td>
+  </tr>
+  <tr>
     <td align="center" width="50%">
       <a href="docs/screenshots/projects-import.webp"><img src="docs/screenshots/thumbs/projects-import.webp" alt="Import wizard" width="420"></a><br>
       <sub><b>Import wizard</b><br>Two-stage ETS import with password / keyring</sub>
     </td>
-  </tr>
-  <tr>
     <td align="center" width="50%">
       <a href="docs/screenshots/projects-detail.webp"><img src="docs/screenshots/thumbs/projects-detail.webp" alt="Project detail" width="420"></a><br>
       <sub><b>Project detail</b><br>Group addresses & devices</sub>
-    </td>
-    <td align="center" width="50%">
-      <a href="docs/screenshots/logs.webp"><img src="docs/screenshots/thumbs/logs.webp" alt="Log viewer" width="420"></a><br>
-      <sub><b>Log viewer</b><br>Live, filterable & searchable · diagnostics download</sub>
     </td>
   </tr>
 </table>

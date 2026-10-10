@@ -177,6 +177,14 @@ Ansicht ohne sichtbare Trefferzählung.
 
 Einzelne Bilder nachschießen, ohne den ganzen Lauf zu wiederholen: `ONLY=graph,topology node gallery.mjs`.
 
+**Stand 2026-10-10 (v0.13.1):** Datenbestand 2026-10-02 bis 2026-10-10, Zeitraum 06/10 bis 08/10. Seit #15
+gibt es kein `datetime-local` mehr: `fillRange()` füllt im eigenen Datumsfeld `.dtf-date` (en-GB:
+`dd/mm/yyyy`) und `.dtf-time` getrennt. Lesebefehle laufen relativ über den Proxy (`/api/knx/read`),
+direkt auf :8080 blockt CORS bei FE-Port 4300. Neues Motiv `stats-top` (#38). Sandbox wie in
+`local-api-run-hits-live-bus`: Build-Ausgabe im Scratchpad, DB-Kopie, Demo-User nur dort, Start per
+`dotnet KnxMonitor.Api.dll`, FE `ng serve --port 4300 --proxy-config proxy.conf.json`, `FE_PORT=4300`.
+`gen-readme.mjs` nimmt Handy-Bilder nur mit Thumb auf, die Short-Extras bleiben so draußen.
+
 ### 2d. Playwright-Screenshot-Script
 Ort: `scratchpad/shotter/` (pw-core 1.61.1 ↔ Cache `~/AppData/Local/ms-playwright/chromium-1228`).
 Setup einmalig:

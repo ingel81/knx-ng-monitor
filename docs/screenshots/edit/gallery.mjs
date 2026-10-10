@@ -10,10 +10,13 @@ const OUT = process.env.SHOT_OUT || 'D:/Source/knx-ng-monitor/docs/screenshots/e
 fs.mkdirSync(OUT, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// Datenbestand der Prod-Kopie: 2026-08-08 bis 2026-08-17 (1 Mio. Telegramme).
-const FROM = '2026-08-14T00:00', TO = '2026-08-16T22:00';  // knapp 3 Tage - Tag/Nacht-Zyklen sichtbar
+// Datenbestand der Prod-Kopie: 2026-10-02 bis 2026-10-10 (1 Mio. Telegramme).
+// Datum und Uhrzeit getrennt: das eigene Datumsfeld (#15) hat ein Datums- und ein
+// Zeitfeld, das Datum im Format der Browsersprache (en-GB: dd/mm/yyyy).
+const FROM = { date: '06/10/2026', time: '00:00' }, TO = { date: '08/10/2026', time: '22:00' };  // knapp 3 Tage - Tag/Nacht-Zyklen sichtbar
 const CHARTS = ['0/2/1', '0/2/4', '10/0/195', '10/0/90'];
-const SENSOR = ['10/3/210', '10/0/90', '10/4/46', '20/1/236', '6/0/3', '10/1/65'];
+// 10/3/210 sendet nur 0 °C, deshalb eine Raumtemperatur mit echtem Verlauf.
+const SENSOR = ['10/3/66', '10/0/90', '10/4/46', '20/1/236', '6/0/3'];  // ohne Präsenz 10/1/65: schaltet so oft, dass sie alles überdeckt
 const READ_GAS = '0/2/1,3/3/149,2/0/41,3/0/160,3/2/170,3/0/250,3/6/180,10/2/120,30/1/4,1/2/85,7/1/0,1/0/91,1/0/217,1/0/45,2/0/86,10/3/126,1/2/127,1/4/126,1/4/55,1/5/65,3/0/172,4/0/40,30/2/6,1/0/66,30/7/2,10/3/140,8/1/218,3/2/45,3/2/56,1/3/115,1/2/45,4/0/41,3/3/55,30/1/12,1/3/66,1/4/110,20/0/240,2/0/77,0/0/6,4/4/45'.split(',');
 
 // Personenbezug aus dem ETS-Projekt (Projektname, Gebäude, Strasse). Wird nicht
@@ -70,7 +73,8 @@ async function auth(page, t, theme) {
 async function fireReads(page) {
   await page.evaluate(async (gas) => {
     const tok = localStorage.getItem('accessToken');
-    await Promise.all(gas.map(a => fetch('http://localhost:8080/api/knx/read', {
+    // Relativ, also über den Proxy des Dev-Servers: direkt auf :8080 blockt CORS (nur :4200 erlaubt).
+    await Promise.all(gas.map(a => fetch('/api/knx/read', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
       body: JSON.stringify({ address: a })
     }).catch(() => { })));
@@ -101,6 +105,17 @@ async function waitFilled(page, sel, budgetMs = 120000) {
   return state;
 }
 
+/** Füllt Von/Bis im eigenen Datumsfeld: erst Datum, dann Uhrzeit, jeweils mit Blur. */
+async function fillRange(page) {
+  const fields = page.locator('knx-date-time-field');
+  for (const [i, v] of [[0, FROM], [1, TO]]) {
+    const f = fields.nth(i);
+    await f.locator('.dtf-date').fill(v.date); await f.locator('.dtf-date').blur();
+    await f.locator('.dtf-time').fill(v.time); await f.locator('.dtf-time').blur();
+    await sleep(150);
+  }
+}
+
 async function pickGas(page, addrs, withRange = true) {
   await page.locator('mat-select').first().click();
   await page.waitForSelector('mat-option', { timeout: 8000 });
@@ -110,8 +125,7 @@ async function pickGas(page, addrs, withRange = true) {
   }
   await page.keyboard.press('Escape'); await sleep(400);
   if (withRange) {
-    const inputs = page.locator('input[type="datetime-local"]');
-    await inputs.nth(0).fill(FROM); await inputs.nth(1).fill(TO);
+    await fillRange(page);
     await page.getByRole('button', { name: /Anwenden|Apply/i }).first().click();
   }
   await sleep(3000);
@@ -185,11 +199,26 @@ const run = async () => {
   await screen('charts', desk, async p => { await auth(p, t); await p.goto(FE + '/charts', { waitUntil: 'networkidle' }); await sleep(1200); await pickGas(p, CHARTS); });
   await screen('charts-temp', desk, async p => { await auth(p, t); await p.goto(FE + '/charts', { waitUntil: 'networkidle' }); await sleep(1200); await pickGas(p, SENSOR); });
 
-  const pick7d = async (p) => { await p.getByRole('button', { name: /^7d$/ }).first().click().catch(() => {}); await sleep(4000); };
+  // Auf dem Phone liegen die Presets hinter dem Zeitraum-Knopf; vorher blieb es dort still bei 24h.
+  const pick7d = async (p) => {
+    const toggle = p.locator('.range-toggle');
+    const mobile = await toggle.isVisible().catch(() => false);
+    if (mobile) { await toggle.click(); await sleep(400); }
+    await p.getByRole('button', { name: /^7d$/ }).first().click().catch(() => {}); await sleep(4000);
+    if (mobile) { await toggle.click(); await sleep(600); }
+  };
+  // scrollIntoViewIfNeeded tut nichts, wenn die Karte schon sichtbar ist (bei 4K immer).
+  const scrollTop = (p, sel) => p.locator(sel).evaluate(el => el.scrollIntoView({ block: 'start' })).catch(() => { });
   await screen('stats', desk, async p => { await auth(p, t); await p.goto(FE + '/stats', { waitUntil: 'networkidle' }); await sleep(3500); await pick7d(p); });
   await screen('stats-heatmap', desk, async p => {
     await auth(p, t); await p.goto(FE + '/stats', { waitUntil: 'networkidle' }); await sleep(3500); await pick7d(p);
-    await p.locator('.heatmap-card').scrollIntoViewIfNeeded().catch(() => { }); await sleep(1500);
+    await scrollTop(p, '.heatmap-card'); await sleep(1500);
+  });
+
+  // Neu in 0.13 (#38): Top-Gruppenadressen und Sender im gewählten Zeitraum.
+  await screen('stats-top', desk, async p => {
+    await auth(p, t); await p.goto(FE + '/stats', { waitUntil: 'networkidle' }); await sleep(3500); await pick7d(p);
+    await scrollTop(p, '.top-card'); await sleep(1500);
   });
 
   await screen('topology', desk, async p => { await auth(p, t); await p.goto(FE + '/topology', { waitUntil: 'networkidle' }); await sleep(3500); });

@@ -23,7 +23,7 @@
     {
       "name": "monitor-live",
       "caption": {
-        "title": "Monitor — Live",
+        "title": "Monitor - Live",
         "desc": "Real-time KNX telegrams off the bus"
       },
       "key": true,
@@ -41,7 +41,7 @@
     {
       "name": "monitor-archive",
       "caption": {
-        "title": "Monitor — Archive",
+        "title": "Monitor - Archive",
         "desc": "Historized traffic, structured filters"
       },
       "key": false,
@@ -50,7 +50,7 @@
     {
       "name": "charts",
       "caption": {
-        "title": "Charts — power",
+        "title": "Charts - power",
         "desc": "Live value trends per group address"
       },
       "key": true,
@@ -59,7 +59,7 @@
     {
       "name": "charts-temp",
       "caption": {
-        "title": "Charts — temperature",
+        "title": "Charts - temperature",
         "desc": "Sensor curve over time"
       },
       "key": false,
@@ -79,6 +79,15 @@
       "caption": {
         "title": "Activity heatmap",
         "desc": "Telegrams by weekday × hour"
+      },
+      "key": false,
+      "optional": false
+    },
+    {
+      "name": "stats-top",
+      "caption": {
+        "title": "Top group addresses",
+        "desc": "Busiest addresses and senders in the range"
       },
       "key": false,
       "optional": false
@@ -122,7 +131,7 @@
     {
       "name": "graph",
       "caption": {
-        "title": "GA network — Alpha",
+        "title": "GA network - Alpha",
         "desc": "Force-directed building map, live activity"
       },
       "key": true,
