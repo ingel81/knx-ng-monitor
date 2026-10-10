@@ -50,13 +50,19 @@ public static class AvailabilityCalculator
     /// <see cref="AvailabilityState.Unknown"/> instead of an outage. Null means nothing was ever
     /// recorded, which makes the whole range unknown.
     /// </param>
+    /// <param name="trailingTolerance">
+    /// How old the newest beat may be before the tail counts as an outage. Defaults to the normal
+    /// missing-beat gap; with buffered history writes (#37) beats reach the database only with the
+    /// next flush, so the caller passes the write interval plus two beats.
+    /// </param>
     public static AvailabilityResponse Build(
         IReadOnlyList<MonitorHeartbeat> beats,
         DateTime from,
         DateTime to,
         TimeSpan interval,
         MonitorHeartbeat? previousBeat = null,
-        DateTime? recordStart = null)
+        DateTime? recordStart = null,
+        TimeSpan? trailingTolerance = null)
     {
         var response = new AvailabilityResponse
         {
@@ -131,7 +137,8 @@ public static class AvailabilityCalculator
             var last = ordered[^1];
             if (to > last.Timestamp)
             {
-                var trailingState = to - last.Timestamp > maxGap
+                var tailGap = trailingTolerance is { } tol && tol > maxGap ? tol : maxGap;
+                var trailingState = to - last.Timestamp > tailGap
                     ? AvailabilityState.MonitorDown
                     : Combine(last.State, last.State);
                 raw.Add(Segment(last.Timestamp, to, trailingState, 0));

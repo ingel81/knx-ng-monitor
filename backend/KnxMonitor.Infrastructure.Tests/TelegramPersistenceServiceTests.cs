@@ -84,7 +84,7 @@ public class TelegramPersistenceServiceTests : IDisposable
         {
             Enqueue(svc, 2);
             svc.TryEnqueueHeartbeat(new MonitorHeartbeat { Timestamp = DateTime.UtcNow, State = KnxLinkState.Connected })
-                .Should().BeTrue();
+                .Should().Be(HeartbeatEnqueueResult.Enqueued);
             await Task.Delay(TimeSpan.FromSeconds(1.5));
             (await BeatCountAsync()).Should().Be(0, "the beat waits for the flush of its telegrams");
 
@@ -101,7 +101,7 @@ public class TelegramPersistenceServiceTests : IDisposable
     public void ImmediateMode_LeavesHeartbeatsToTheCaller()
     {
         var svc = CreateService();
-        svc.TryEnqueueHeartbeat(new MonitorHeartbeat { Timestamp = DateTime.UtcNow }).Should().BeFalse();
+        svc.TryEnqueueHeartbeat(new MonitorHeartbeat { Timestamp = DateTime.UtcNow }).Should().Be(HeartbeatEnqueueResult.NotBuffering);
     }
 
     private async Task<int> BeatCountAsync()

@@ -170,6 +170,20 @@ public class AvailabilityCalculatorTests
     }
 
     [Fact]
+    public void Buffered_writes_widen_the_trailing_tolerance()
+    {
+        // With a 10 min write interval the newest beats are still in memory: 11 min after the last
+        // stored beat is not an outage yet (#37), 13 min is.
+        var beats = new List<MonitorHeartbeat> { Beat(0), Beat(1) };
+        var tolerance = TimeSpan.FromMinutes(10) + 2 * Interval;
+
+        AvailabilityCalculator.Build(beats, Origin, Origin.AddMinutes(12), Interval, trailingTolerance: tolerance)
+            .Outages.Should().BeEmpty();
+        AvailabilityCalculator.Build(beats, Origin, Origin.AddMinutes(14), Interval, trailingTolerance: tolerance)
+            .Outages.Should().ContainSingle(o => o.State == AvailabilityState.MonitorDown);
+    }
+
+    [Fact]
     public void Adjacent_equal_states_are_merged_into_one_interval()
     {
         var beats = Enumerable.Range(0, 5).Select(m => Beat(m)).ToList();

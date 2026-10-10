@@ -99,9 +99,14 @@ public class MonitorHeartbeatWorker : BackgroundService
 
             // With buffered history writes the beat travels with the telegrams (#37), otherwise a
             // power cut would leave beats for minutes whose telegrams never reached the disk.
-            if (_queue.TryEnqueueHeartbeat(beat))
+            switch (_queue.TryEnqueueHeartbeat(beat))
             {
-                return;
+                case HeartbeatEnqueueResult.Enqueued:
+                    return;
+                case HeartbeatEnqueueResult.Dropped:
+                    // Queue full: keep the count for the next beat instead of losing it.
+                    Interlocked.Add(ref _telegramsSinceLastBeat, count);
+                    return;
             }
 
             using var scope = _scopeFactory.CreateScope();

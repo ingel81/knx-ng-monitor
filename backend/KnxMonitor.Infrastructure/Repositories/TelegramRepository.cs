@@ -178,6 +178,9 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
         return (rows, truncated);
     }
 
+    /// <summary>A value older than this is not carried into a chart range.</summary>
+    private const int CarryMaxAgeDays = 30;
+
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<KnxTelegram>>> GetLatestBeforeAsync(
         IReadOnlyCollection<string> addresses, DateTime before, int perAddress,
         CancellationToken ct = default)
@@ -187,10 +190,13 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
         // One small query per address (at most 8) instead of one grouped query: SQLite walks the
         // (Timestamp, DestinationAddress) index backwards from `before` and checks the address on
         // the index entry itself, so only the matching rows are ever read from the table.
+        // Bounded look-back: for an address that never sent, an open-ended search walked the whole
+        // index backwards (tens of ms per address on a desktop, far more on a Pi).
+        var since = before.AddDays(-CarryMaxAgeDays);
         foreach (var address in addresses)
         {
             var rows = await _dbSet
-                .Where(t => t.DestinationAddress == address && t.Timestamp < before)
+                .Where(t => t.DestinationAddress == address && t.Timestamp < before && t.Timestamp >= since)
                 .OrderByDescending(t => t.Timestamp)
                 .ThenByDescending(t => t.Id)
                 .Take(perAddress)
@@ -307,7 +313,8 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
         // double arithmetic, which keeps every telegram in the bucket the loop would have chosen.
         int IndexOf(long ticks) => (int)(TimeSpan.FromTicks(ticks - from.Ticks).TotalMilliseconds / bucketMs);
 
-        var end = to.Ticks + 1; // [from, to] inclusive == [from, to + 1 tick)
+        // [from, to] inclusive == [from, to + 1 tick); capped so to = DateTime.MaxValue cannot overflow.
+        var end = Math.Min(to.Ticks + 1, DateTime.MaxValue.Ticks);
         var edges = new long[bucketCount + 1];
         edges[0] = from.Ticks;
         edges[bucketCount] = end;

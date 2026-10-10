@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Threading.Channels;
 using KnxMonitor.Core.Entities;
 using KnxMonitor.Core.Interfaces;
+using KnxMonitor.Infrastructure.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -89,9 +90,22 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
     /// rides the same queue and is written in the same flush. Returns false in immediate mode (or
     /// when the queue is closed or full); the caller then writes the beat itself.
     /// </summary>
-    public bool TryEnqueueHeartbeat(MonitorHeartbeat beat) =>
-        _settingsProvider.HistoryWriteIntervalSeconds > 0
-        && _channel.Writer.TryWrite(new QueueItem(null, beat));
+    public HeartbeatEnqueueResult TryEnqueueHeartbeat(MonitorHeartbeat beat)
+    {
+        // Immediate mode, or the worker already drained the queue for shutdown: nothing is
+        // buffered any more, so the caller may write the beat straight away.
+        if (_settingsProvider.HistoryWriteIntervalSeconds <= 0 || _stopping)
+        {
+            return HeartbeatEnqueueResult.NotBuffering;
+        }
+        // A full queue is already dropping telegrams. Writing the beat directly would vouch for
+        // buffered minutes that are not on disk yet, so it is dropped as well.
+        return _channel.Writer.TryWrite(new QueueItem(null, beat))
+            ? HeartbeatEnqueueResult.Enqueued
+            : HeartbeatEnqueueResult.Dropped;
+    }
+
+    private volatile bool _stopping;
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -102,6 +116,7 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        _stopping = true;
         // Complete the queue and let the worker drain and write what is buffered. Cancelling
         // first would drop it, which with a write interval can be minutes of telegrams. Only when
         // the host's shutdown timeout runs out is the worker cancelled.
@@ -245,19 +260,14 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
             // connection right after the insert, so there is only ever one SQLite writer.
             using var scope = _scopeFactory.CreateScope();
             var repo = scope.ServiceProvider.GetRequiredService<ITelegramRepository>();
-            if (batch.Count > 0)
-            {
-                await repo.AddRangeAsync(batch);
-            }
 
-            // Heartbeats only after their telegrams are stored (buffered mode only).
-            if (beats.Count > 0 && scope.ServiceProvider.GetService<IMonitorHeartbeatRepository>() is { } beatRepo)
-            {
-                foreach (var beat in beats)
-                {
-                    await beatRepo.AddAsync(beat);
-                }
-            }
+            // Telegrams and their heartbeats in ONE SaveChanges, i.e. one transaction: either both
+            // are stored or neither, and a retry never inserts telegrams a second time.
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.KnxTelegrams.AddRange(batch);
+            db.MonitorHeartbeats.AddRange(beats);
+            await db.SaveChangesAsync(ct);
+            db.ChangeTracker.Clear();
 
             // In buffered mode every flush also trims and checkpoints: the WAL is synced to the
             // database file once per interval instead of every ten seconds.

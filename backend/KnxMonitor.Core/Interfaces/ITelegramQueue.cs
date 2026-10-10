@@ -8,7 +8,16 @@ public interface ITelegramQueue
 
     /// <summary>
     /// Buffered history writes only: queues a heartbeat so it is written in the same flush as the
-    /// telegrams before it. False when nothing is buffered; the caller writes the beat itself.
+    /// telegrams before it. <see cref="HeartbeatEnqueueResult.NotBuffering"/>: the caller writes the
+    /// beat itself. <see cref="HeartbeatEnqueueResult.Dropped"/>: the queue is full; the beat must
+    /// not be written ahead of the buffered telegrams.
     /// </summary>
-    bool TryEnqueueHeartbeat(MonitorHeartbeat beat);
+    HeartbeatEnqueueResult TryEnqueueHeartbeat(MonitorHeartbeat beat);
+}
+
+public enum HeartbeatEnqueueResult
+{
+    NotBuffering,
+    Enqueued,
+    Dropped
 }
