@@ -21,6 +21,7 @@ import { DateTimeFieldComponent } from '../../shared/date-time-field/date-time-f
 import { ThemeService } from '../../core/services/theme.service';
 import { OverflowTitleDirective } from '../../shared/grid/overflow-title.directive';
 import { SearchCache, foldForSearch, searchTokens } from '../../shared/search.util';
+import { SlashFocusDirective } from '../../shared/slash-focus.directive';
 import { RangePreset, isRangeOrdered, resolveRange } from './time-range.util';
 import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom, styleLineSeries } from './chart-skin';
 import {
@@ -63,7 +64,7 @@ interface LiveSeries {
   imports: [
     CommonModule, FormsModule, MatIconModule, MatSelectModule, MatFormFieldModule,
     MatMenuModule, MatTooltipModule, NgxEchartsDirective, TranslatePipe, OverflowTitleDirective,
-    DateTimeFieldComponent
+    DateTimeFieldComponent, SlashFocusDirective
   ],
   templateUrl: './charts.component.html',
   styleUrl: './charts.component.scss'

@@ -62,7 +62,7 @@
       <!-- Shared quick-search (applies in both modes) -->
       <div class="knx-field" style="width: 230px;">
         <mat-icon class="field-icon" svgIcon="knx:search"></mat-icon>
-        <input class="knx-input knx-input--search" type="text" [(ngModel)]="quickFilterText"
+        <input class="knx-input knx-input--search" type="text" knxSlashFocus [(ngModel)]="quickFilterText"
                (ngModelChange)="onQuickFilterChanged()" [placeholder]="'monitor.search' | translate" [attr.aria-label]="'monitor.searchAria' | translate">
         @if (quickFilterText) {
           <button class="field-clear" (click)="clearQuickFilter()" [attr.aria-label]="'monitor.clearSearch' | translate">

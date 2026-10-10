@@ -14,6 +14,7 @@ import { KnxDatePipe } from '../../core/i18n/date.pipe';
 import { ToastService } from '../../core/services/toast.service';
 import { LoggerService } from '../../core/logging/logger.service';
 import { SearchCache, searchTokens } from '../../shared/search.util';
+import { SlashFocusDirective } from '../../shared/slash-focus.directive';
 
 type LevelFilter = 'All' | 'Debug' | 'Information' | 'Warning' | 'Error';
 
@@ -28,7 +29,7 @@ const MAX_ENTRIES = 2000;
  */
 @Component({
   selector: 'app-logs',
-  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, ScrollingModule, TranslatePipe, KnxDatePipe],
+  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, ScrollingModule, TranslatePipe, KnxDatePipe, SlashFocusDirective],
   templateUrl: './logs.component.html',
   styleUrl: './logs.component.scss'
 })

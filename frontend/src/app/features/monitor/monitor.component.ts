@@ -32,6 +32,7 @@ import { ProjectService, LocationDto } from '../../core/services/project.service
 import { DiagnosticsService } from '../../core/services/diagnostics.service';
 import { formatDurationMinutes } from '../../shared/duration.util';
 import { SearchCache, searchTokens } from '../../shared/search.util';
+import { SlashFocusDirective } from '../../shared/slash-focus.directive';
 
 interface KnxConfiguration {
   id: number;
@@ -56,7 +57,7 @@ type MonitorMode = 'live' | 'archive';
     CommonModule, FormsModule, MatIconModule, MatButtonModule, MatTooltipModule,
     MatMenuModule, MatSnackBarModule,
     TelegramCardsComponent, KnxTableComponent, ColumnManagerComponent, TranslatePipe,
-    DateTimeFieldComponent
+    DateTimeFieldComponent, SlashFocusDirective
   ],
   templateUrl: './monitor.component.html',
   styleUrl: './monitor.component.scss'

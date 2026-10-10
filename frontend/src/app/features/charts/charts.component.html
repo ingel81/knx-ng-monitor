@@ -4,6 +4,9 @@
       <div class="ga-picker">
         <mat-form-field appearance="outline" class="ga-select" subscriptSizing="dynamic">
           <mat-select
+            #gaSelect
+            knxSlashFocus
+            (slashFocus)="gaSelect.open()"
             multiple
             [ngModel]="selectedAddresses"
             (ngModelChange)="onSelectionChange($event)"

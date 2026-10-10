@@ -17,7 +17,7 @@
 
       <div class="field-prefix search-field">
         <mat-icon class="pfx">search</mat-icon>
-        <input class="knx-input" type="text" [(ngModel)]="search" (ngModelChange)="onSearchInput()"
+        <input class="knx-input" type="text" knxSlashFocus [(ngModel)]="search" (ngModelChange)="onSearchInput()"
                [placeholder]="'logs.searchPlaceholder' | translate"
                [attr.aria-label]="'logs.search' | translate" />
       </div>
