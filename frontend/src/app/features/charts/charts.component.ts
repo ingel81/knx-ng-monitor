@@ -836,7 +836,9 @@ export class ChartsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // One Y axis per distinct unit (max 3); extra units share the last axis. All DPT1 series
+    // One Y axis per distinct unit, so no series is ever drawn in another unit's scale (#35).
+    // Only the first few get labels and space; the rest are invisible but still scale their own
+    // series, and tooltip and table give the exact values. All DPT1 series
     // share one fixed 0..1 axis instead: their "unit" from the backend is just the label of the
     // first value ("On", "False", "Start"), so grouping by it gave two switches two axes, and a
     // switch that stayed on for the whole range got an auto-scaled 0.5..1.5 axis; its 1 then sat
@@ -848,15 +850,16 @@ export class ChartsComponent implements OnInit, OnDestroy {
       const k = axisKey(s);
       if (!keys.includes(k)) keys.push(k);
     }
-    const axisKeys = keys.slice(0, 3);
-    const keyToAxis = new Map<string, number>();
-    keys.forEach((k, i) => keyToAxis.set(k, Math.min(i, axisKeys.length - 1)));
+    const keyToAxis = new Map(keys.map((k, i) => [k, i]));
+    // Desktop fits a left axis and two on the right; a phone only one on each side.
+    const shownAxes = Math.min(keys.length, this.isMobile ? 2 : 3);
 
     const skin = readSkin();
     const singleSeries = this.series.length === 1;
     const opts = this.options;
 
-    const yAxis = axisKeys.map((k, i) => valueAxis(skin, {
+    const yAxis = keys.map((k, i) => valueAxis(skin, {
+      show: i < shownAxes,
       position: i === 0 ? 'left' : 'right',
       offset: i >= 2 ? 60 : 0,
       splitLine: { show: i === 0, lineStyle: { color: skin.line } },
@@ -969,8 +972,9 @@ export class ChartsComponent implements OnInit, OnDestroy {
       },
       // Tighter margins on mobile so axes, legend and the dataZoom slider still fit the 46vh box.
       grid: this.isMobile
-        ? { left: 42, right: axisKeys.length > 1 ? 46 : 10, top: opts.showLegend ? 34 : 20, bottom: 84 }
-        : { left: 56, right: axisKeys.length > 1 ? 72 : 24, top: opts.showLegend ? 40 : 16, bottom: 92 },
+        // The right margin grows with the axes drawn there; the third one sits 60px further out.
+        ? { left: 42, right: shownAxes > 1 ? 46 : 10, top: opts.showLegend ? 34 : 20, bottom: 84 }
+        : { left: 56, right: shownAxes > 2 ? 132 : shownAxes > 1 ? 72 : 24, top: opts.showLegend ? 40 : 16, bottom: 92 },
       xAxis: { ...timeAxis(skin, localeTag(this.lang.lang())), min: xMin, max: xMax },
       yAxis,
       dataZoom: this.keepZoom(dataZoom(skin, this.isMobile)),
