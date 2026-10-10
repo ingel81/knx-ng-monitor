@@ -151,8 +151,10 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   get isPaused(): boolean { return this.buffer.isPaused; }
 
   // Live-Rate / Bus-Last (gleitendes Fenster im Buffer-Service berechnet).
-  get messagesPerSecond(): number { return this.buffer.messagesPerSecond; }
-  get busLoadPercent(): number { return this.buffer.busLoadPercent; }
+  // Snapshots taken on each rate tick: the buffer's getters slide with the clock, so reading them
+  // straight from the template changed between two checks (NG0100 in dev mode).
+  messagesPerSecond = 0;
+  busLoadPercent = 0;
   private rateSub?: Subscription;
   private clearCountSub?: Subscription;
 
@@ -287,7 +289,10 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.mode === 'live' && this.autoScroll) setTimeout(() => this.table?.scrollToTop(), 0);
     this.subscription = this.buffer.changed$.subscribe(() => this.onBufferChanged());
     // Rate-/Bus-Last-Ticks (1×/s) sichtbar halten, auch ohne neue Telegramme.
-    this.rateSub = this.buffer.rate$.subscribe();
+    this.rateSub = this.buffer.rate$.subscribe(() => {
+      this.messagesPerSecond = this.buffer.messagesPerSecond;
+      this.busLoadPercent = this.buffer.busLoadPercent;
+    });
     this.checkConnectionStatus();
     this.checkSetupStatus();
     // Status periodisch pollen, damit Auto-Reconnect im Indikator sichtbar wird.
