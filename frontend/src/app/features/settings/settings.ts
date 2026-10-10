@@ -30,12 +30,18 @@ type ConnectionMode = 'Tunneling' | 'Routing';
 const ROUTING_MULTICAST_DEFAULT = '224.0.23.12';
 const TUNNELING_IP_DEFAULT = '192.168.10.60';
 
+type TunnelProtocol = 'Udp' | 'Tcp';
+
 interface KnxConfiguration {
   id: number;
   ipAddress: string;
   port: number;
   physicalAddress: string;
   connectionType: ConnectionMode | number;
+  useSecureTunnel?: boolean;
+  tunnelProtocol?: TunnelProtocol;
+  tunnelAddress?: string | null;
+  tunnelAddressFallback?: boolean;
 }
 
 interface KnxSettings {
@@ -43,7 +49,19 @@ interface KnxSettings {
   port: number;
   physicalAddress: string;
   connectionType: ConnectionMode;
+  /** Tunneling only (#22, #10): transport, requested tunnel address, IP Secure. */
+  useSecureTunnel: boolean;
+  tunnelProtocol: TunnelProtocol;
+  tunnelAddress: string;
+  tunnelAddressFallback: boolean;
 }
+
+const TUNNEL_DEFAULTS = {
+  useSecureTunnel: false,
+  tunnelProtocol: 'Udp' as TunnelProtocol,
+  tunnelAddress: '',
+  tunnelAddressFallback: true
+};
 
 @Component({
   selector: 'app-settings',
@@ -78,7 +96,8 @@ export class Settings implements OnInit {
     ipAddress: TUNNELING_IP_DEFAULT,
     port: 3671,
     physicalAddress: '1.0.58',
-    connectionType: 'Tunneling'
+    connectionType: 'Tunneling',
+    ...TUNNEL_DEFAULTS
   };
 
   /** Per-mode endpoint memory; see setConnectionType(). */
@@ -261,7 +280,11 @@ export class Settings implements OnInit {
           ipAddress: config.ipAddress,
           port: config.port,
           physicalAddress: config.physicalAddress,
-          connectionType: this.toConnectionMode(config.connectionType)
+          connectionType: this.toConnectionMode(config.connectionType),
+          useSecureTunnel: config.useSecureTunnel ?? TUNNEL_DEFAULTS.useSecureTunnel,
+          tunnelProtocol: config.tunnelProtocol === 'Tcp' ? 'Tcp' : 'Udp',
+          tunnelAddress: config.tunnelAddress ?? '',
+          tunnelAddressFallback: config.tunnelAddressFallback ?? TUNNEL_DEFAULTS.tunnelAddressFallback
         };
         this.endpointDrafts[this.knxConfig.connectionType] = {
           ipAddress: this.knxConfig.ipAddress,
@@ -320,20 +343,12 @@ export class Settings implements OnInit {
       if (configs && configs.length > 0) {
         // Update existing configuration
         await this.http.put(`${environment.apiUrl}/knx/configurations/${configs[0].id}`, {
-          ipAddress: this.knxConfig.ipAddress,
-          port: this.knxConfig.port,
-          physicalAddress: this.knxConfig.physicalAddress,
-          connectionType: this.knxConfig.connectionType,
-          autoConnect: this.autoConnect
+          ...this.configPayload()
         }).toPromise();
       } else {
         // Create new configuration
         await this.http.post(`${environment.apiUrl}/knx/configurations`, {
-          ipAddress: this.knxConfig.ipAddress,
-          port: this.knxConfig.port,
-          physicalAddress: this.knxConfig.physicalAddress,
-          connectionType: this.knxConfig.connectionType,
-          autoConnect: this.autoConnect
+          ...this.configPayload()
         }).toPromise();
       }
 
@@ -359,6 +374,21 @@ export class Settings implements OnInit {
     } finally {
       this.isSaving = false;
     }
+  }
+
+  /** Request body for create and update; the backend ignores the tunnel fields for routing. */
+  private configPayload() {
+    return {
+      ipAddress: this.knxConfig.ipAddress.trim(),
+      port: this.knxConfig.port,
+      physicalAddress: this.knxConfig.physicalAddress,
+      connectionType: this.knxConfig.connectionType,
+      autoConnect: this.autoConnect,
+      useSecureTunnel: this.knxConfig.useSecureTunnel,
+      tunnelProtocol: this.knxConfig.tunnelProtocol,
+      tunnelAddress: this.knxConfig.tunnelAddress.trim() || null,
+      tunnelAddressFallback: this.knxConfig.tunnelAddressFallback
+    };
   }
 
   async testConnection() {
@@ -441,7 +471,8 @@ export class Settings implements OnInit {
       ipAddress: TUNNELING_IP_DEFAULT,
       port: 3671,
       physicalAddress: '1.0.58',
-      connectionType: 'Tunneling'
+      connectionType: 'Tunneling',
+      ...TUNNEL_DEFAULTS
     };
     this.endpointDrafts = {
       Tunneling: { ipAddress: TUNNELING_IP_DEFAULT, port: 3671 },
@@ -480,17 +511,23 @@ export class Settings implements OnInit {
   }
 
   isFormValid(): boolean {
-    // IP Address validation
+    const address = this.knxConfig.ipAddress.trim();
     const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
-    if (!ipPattern.test(this.knxConfig.ipAddress)) {
-      return false;
-    }
-
-    // The address means different things per mode, and the two ranges are disjoint:
-    // routing joins a multicast group, tunneling opens a unicast connection to a single
-    // gateway. A mismatch only surfaces as a failed connect buried in the log.
-    if (this.isRouting !== this.isMulticastAddress(this.knxConfig.ipAddress)) {
-      return false;
+    if (this.isRouting) {
+      // Routing joins a multicast group, so only an IPv4 address in the multicast range works.
+      if (!ipPattern.test(address) || !this.isMulticastAddress(address)) {
+        return false;
+      }
+    } else {
+      // Tunneling: a unicast IPv4 address or a host name, e.g. for a router on DHCP (#23).
+      // An address in the multicast range is a routing group typed into the wrong mode.
+      if (ipPattern.test(address) ? this.isMulticastAddress(address) : !this.isHostName(address)) {
+        return false;
+      }
+      const tunnel = this.knxConfig.tunnelAddress.trim();
+      if (tunnel && !this.isIndividualAddress(tunnel)) {
+        return false;
+      }
     }
 
     // Port validation
@@ -511,6 +548,20 @@ export class Settings implements OnInit {
     }
 
     return true;
+  }
+
+  /** DNS host name: dot-separated labels of letters, digits and inner hyphens. */
+  private isHostName(value: string): boolean {
+    if (value.length === 0 || value.length > 253 || /^[0-9.]+$/.test(value)) {
+      return false;
+    }
+    return value.split('.').every(label => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label));
+  }
+
+  /** True when the tunnel address field holds something that is not a valid individual address. */
+  get tunnelAddressInvalid(): boolean {
+    const tunnel = this.knxConfig.tunnelAddress.trim();
+    return tunnel.length > 0 && !this.isIndividualAddress(tunnel);
   }
 
   /** KNX individual address ranges: area 0-15, line 0-15, device 0-255. */

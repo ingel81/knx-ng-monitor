@@ -82,3 +82,8 @@
   .avail-table td { border-top: 0; padding: 1px 0; }
   .avail-duration { text-align: left; padding-right: 0 !important; }
 }
+
+// Tunnel address that is not a valid individual address (see tunnelAddressInvalid).
+.knx-input.is-invalid { border-color: var(--err); }
+.knx-input.is-invalid + .set-hint,
+.set-field:has(.is-invalid) .set-hint { color: var(--err); }

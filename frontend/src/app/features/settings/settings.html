@@ -63,7 +63,7 @@
               <div class="field-prefix">
                 <mat-icon class="pfx" svgIcon="knx:globe"></mat-icon>
                 <input class="knx-input" [(ngModel)]="knxConfig.ipAddress"
-                       [placeholder]="isRouting ? '224.0.23.12' : '192.168.1.100'">
+                       [placeholder]="isRouting ? '224.0.23.12' : ('settings.ipAddressPlaceholder' | translate)">
               </div>
               <span class="set-hint">{{ (isRouting ? 'settings.multicastAddressHint' : 'settings.ipAddressHint') | translate }}</span>
             </div>
@@ -86,8 +86,61 @@
                 </div>
                 <span class="set-hint">{{ 'settings.physicalAddressRoutingHint' | translate }}</span>
               </div>
+            } @else {
+              <!-- Tunneling only (#10): a fixed address lets a reconnect reclaim its own slot
+                   instead of occupying another one until the old one times out. -->
+              <div class="set-field span2">
+                <label class="knx-label" for="tunnel-address">{{ 'settings.tunnelAddress' | translate }}</label>
+                <div class="field-prefix">
+                  <mat-icon class="pfx" svgIcon="knx:plug"></mat-icon>
+                  <input id="tunnel-address" class="knx-input" [(ngModel)]="knxConfig.tunnelAddress"
+                         [class.is-invalid]="tunnelAddressInvalid" [attr.aria-invalid]="tunnelAddressInvalid"
+                         [placeholder]="'settings.tunnelAddressPlaceholder' | translate">
+                </div>
+                <span class="set-hint">{{ (tunnelAddressInvalid ? 'settings.tunnelAddressInvalid' : 'settings.tunnelAddressHint') | translate }}</span>
+              </div>
             }
           </div>
+          @if (!isRouting) {
+            <div class="set-row">
+              <div>
+                <div class="set-row-label">{{ 'settings.tunnelProtocol' | translate }}</div>
+                <div class="set-row-sub">{{ 'settings.tunnelProtocolSub' | translate }}</div>
+              </div>
+              <div class="knx-seg" role="group" [attr.aria-label]="'settings.tunnelProtocol' | translate">
+                <button type="button" [class.is-active]="knxConfig.tunnelProtocol === 'Udp'"
+                        (click)="knxConfig.tunnelProtocol = 'Udp'"
+                        [matTooltip]="'settings.tunnelProtocolUdpTooltip' | translate">UDP</button>
+                <button type="button" [class.is-active]="knxConfig.tunnelProtocol === 'Tcp'"
+                        (click)="knxConfig.tunnelProtocol = 'Tcp'"
+                        [matTooltip]="'settings.tunnelProtocolTcpTooltip' | translate">TCP</button>
+              </div>
+            </div>
+            @if (knxConfig.tunnelAddress.trim()) {
+              <div class="set-row">
+                <div>
+                  <div class="set-row-label">{{ 'settings.tunnelAddressFallback' | translate }}</div>
+                  <div class="set-row-sub">{{ 'settings.tunnelAddressFallbackSub' | translate }}</div>
+                </div>
+                <label class="knx-switch" [matTooltip]="'settings.tunnelAddressFallback' | translate">
+                  <input type="checkbox" [(ngModel)]="knxConfig.tunnelAddressFallback"
+                         [attr.aria-label]="'settings.tunnelAddressFallback' | translate">
+                  <span class="track"></span>
+                </label>
+              </div>
+            }
+            <div class="set-row">
+              <div>
+                <div class="set-row-label">{{ 'settings.secureTunnel' | translate }}</div>
+                <div class="set-row-sub">{{ 'settings.secureTunnelSub' | translate }}</div>
+              </div>
+              <label class="knx-switch" [matTooltip]="'settings.secureTunnelTooltip' | translate">
+                <input type="checkbox" [(ngModel)]="knxConfig.useSecureTunnel"
+                       [attr.aria-label]="'settings.secureTunnel' | translate">
+                <span class="track"></span>
+              </label>
+            </div>
+          }
           <div class="set-row">
             <div>
               <div class="set-row-label">{{ 'settings.autoConnect' | translate }}</div>
