@@ -1,4 +1,4 @@
-﻿using System.Xml.Linq;
+using System.Xml.Linq;
 using KnxMonitor.ProjectParser.Core.Enums;
 using KnxMonitor.ProjectParser.Core.Interfaces;
 using KnxMonitor.ProjectParser.Core.Models;
@@ -110,6 +110,7 @@ public class ProjectParser : IProjectParser
                 GroupAddressCount = result.GroupAddresses.Count,
                 DeviceCount = result.Devices.Count,
                 LocationCount = result.Locations.Count,
+                FunctionCount = result.Functions.Count,
                 CommunicationObjectCount = result.CommunicationObjects.Count
             };
 

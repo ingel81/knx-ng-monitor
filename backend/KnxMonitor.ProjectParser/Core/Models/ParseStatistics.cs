@@ -6,6 +6,7 @@ public class ParseStatistics
     public int GroupAddressCount { get; set; }
     public int DeviceCount { get; set; }
     public int LocationCount { get; set; }
+    public int FunctionCount { get; set; }
     public int CommunicationObjectCount { get; set; }
     public List<string> Warnings { get; set; } = new();
 }

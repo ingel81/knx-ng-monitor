@@ -143,7 +143,7 @@ public class ParseCommand : Command
             Console.WriteLine(output);
 
             Console.WriteLine();
-            Console.WriteLine($"Locations: {result.Locations.Count}, CommunicationObjects: {result.CommunicationObjects.Count}");
+            Console.WriteLine($"Locations: {result.Locations.Count}, Functions: {result.Functions.Count}, CommunicationObjects: {result.CommunicationObjects.Count}");
 
             if (result.Keyring != null)
             {

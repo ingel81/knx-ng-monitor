@@ -121,6 +121,8 @@ public abstract class BaseProjectLoader : IProjectLoader
                 cancellationToken
             );
 
+            result.Functions = ParseFunctions(projectXml, groupAddressMap);
+
             progress?.Report(new ParserProgress
             {
                 Step = ParseStep.ParseLocations,
@@ -219,6 +221,50 @@ public abstract class BaseProjectLoader : IProjectLoader
 
         _logger.LogInformation("Parsed {Count} locations", locations.Count);
         return Task.FromResult(locations);
+    }
+
+    /// <summary>
+    /// Parse the ETS functions (ETS 5/6): every &lt;Function&gt; with its &lt;GroupAddressRef&gt;
+    /// children, resolved to m/m/s. They sit inside the &lt;Space&gt; they belong to, which is why
+    /// the location walk does not see their group-address refs (it only reads a space's direct
+    /// children). ETS 4 projects have no such elements, so the list simply stays empty.
+    /// References to group addresses the project does not contain are skipped.
+    /// </summary>
+    private List<ProjectFunction> ParseFunctions(
+        XDocument projectXml,
+        IReadOnlyDictionary<string, string> groupAddressMap)
+    {
+        var ns = GetNamespace(projectXml);
+        var functions = new List<ProjectFunction>();
+
+        foreach (var element in projectXml.Descendants(ns + "Function"))
+        {
+            var parent = element.Parent;
+            var function = new ProjectFunction
+            {
+                Id = element.Attribute("Id")?.Value ?? string.Empty,
+                Name = element.Attribute("Name")?.Value ?? string.Empty,
+                Type = element.Attribute("Type")?.Value ?? string.Empty,
+                SpaceId = parent?.Name.LocalName is "Space" or "BuildingPart"
+                    ? parent.Attribute("Id")?.Value
+                    : null
+            };
+
+            foreach (var gaRef in element.Elements(ns + "GroupAddressRef"))
+            {
+                var refId = gaRef.Attribute("RefId")?.Value;
+                if (refId != null && groupAddressMap.TryGetValue(refId, out var address)
+                    && !function.GroupAddresses.Contains(address))
+                {
+                    function.GroupAddresses.Add(address);
+                }
+            }
+
+            functions.Add(function);
+        }
+
+        _logger.LogInformation("Parsed {Count} functions", functions.Count);
+        return functions;
     }
 
     /// <summary>
