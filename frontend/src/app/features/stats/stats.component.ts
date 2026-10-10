@@ -30,8 +30,10 @@ export class StatsComponent implements OnInit {
   private lastGrid: number[][] | null = null;
 
   constructor() {
+    // Rebuild on a theme toggle and on a language switch (day labels and the first weekday).
     effect(() => {
       this.theme.theme();
+      this.lang.lang();
       if (this.lastData) this.buildChart(this.lastData);
       if (this.lastGrid) this.buildHeatmap(this.lastGrid);
     });
@@ -135,13 +137,19 @@ export class StatsComponent implements OnInit {
     this.buildHeatmap(res.grid);
   }
 
-  /** weekday(Mon..Sun) × hour heatmap. Backend grid is [0=Sun..6=Sat][hour]. */
+  /**
+   * weekday × hour heatmap. Backend grid is [0=Sun..6=Sat][hour] (the .NET count); the week
+   * follows the app language instead (#25): German starts on Monday, English on Sunday.
+   */
   private buildHeatmap(grid: number[][]): void {
     const skin = readSkin();
-    const order = [1, 2, 3, 4, 5, 6, 0];                 // Mon..Sun
-    const de = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-    const en = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const days = this.lang.lang() === 'de' ? de : en;
+    const de = this.lang.lang() === 'de';
+    // Backend day index per row, first row on top.
+    const order = de ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6];
+    const labels = de
+      ? ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = order.map((d) => labels[d]);
     const hours = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0'));
 
     const data: [number, number, number][] = [];
@@ -180,6 +188,8 @@ export class StatsComponent implements OnInit {
       },
       yAxis: {
         type: 'category', data: days, splitArea: { show: true },
+        // A category axis starts at the bottom; inverted, the week reads top to bottom.
+        inverse: true,
         axisLabel: { color: skin.ink3, fontFamily: skin.mono, fontSize: 11 },
         axisLine: { lineStyle: { color: skin.line2 } }, axisTick: { show: false },
       },
