@@ -208,7 +208,9 @@ public class TelegramArchiveService : IHostedService, IAsyncDisposable
 
     private void MaybeFlush()
     {
-        if (_dirty && _clock() - _lastFlush >= FlushInterval)
+        // The archive syncs on the same rhythm as the history (#37), never more often than every 5 s.
+        var interval = TimeSpan.FromSeconds(Math.Max(FlushInterval.TotalSeconds, _settings.HistoryWriteIntervalSeconds));
+        if (_dirty && _clock() - _lastFlush >= interval)
         {
             try
             {

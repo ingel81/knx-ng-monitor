@@ -201,6 +201,19 @@
               </div>
               <span class="set-hint">{{ 'settings.archiveRetentionHint' | translate }}</span>
             </div>
+            <!-- #37: fewer, larger writes spare SD cards and eMMC; the live view is not delayed. -->
+            <div class="set-field span2">
+              <label class="knx-label" for="history-write-interval">{{ 'settings.historyWriteInterval' | translate }}</label>
+              <div class="field-prefix">
+                <mat-icon class="pfx" svgIcon="knx:save"></mat-icon>
+                <select id="history-write-interval" class="knx-input" [(ngModel)]="recording.historyWriteIntervalSeconds">
+                  @for (option of historyWriteIntervals; track option.seconds) {
+                    <option [ngValue]="option.seconds">{{ option.label | translate }}</option>
+                  }
+                </select>
+              </div>
+              <span class="set-hint">{{ (recording.historyWriteIntervalSeconds > 0 ? 'settings.historyWriteIntervalBufferedHint' : 'settings.historyWriteIntervalHint') | translate }}</span>
+            </div>
           </div>
           <div class="set-row">
             <div>

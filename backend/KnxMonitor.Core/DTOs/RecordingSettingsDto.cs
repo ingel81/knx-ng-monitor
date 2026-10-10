@@ -5,4 +5,5 @@ public class RecordingSettingsDto
     public int HotBufferMaxCount { get; set; }
     public bool ArchiveEnabled { get; set; }
     public int? ArchiveRetentionDays { get; set; }
+    public int HistoryWriteIntervalSeconds { get; set; }
 }

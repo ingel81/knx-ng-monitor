@@ -149,6 +149,7 @@ public class TelegramArchiveServiceTests : IDisposable
         public int HotBufferMaxCount => Current.HotBufferMaxCount;
         public bool ArchiveEnabled => Current.ArchiveEnabled;
         public int? ArchiveRetentionDays => Current.ArchiveRetentionDays;
+        public int HistoryWriteIntervalSeconds => Current.HistoryWriteIntervalSeconds;
         public Task InitializeAsync(CancellationToken ct = default) => Task.CompletedTask;
         public Task UpdateAsync(RecordingSettings updated, CancellationToken ct = default)
         {

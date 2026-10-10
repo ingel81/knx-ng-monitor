@@ -481,6 +481,11 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
                     b.Property<int?>("ArchiveRetentionDays")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("HistoryWriteIntervalSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("HotBufferMaxCount")
                         .HasColumnType("INTEGER");
 

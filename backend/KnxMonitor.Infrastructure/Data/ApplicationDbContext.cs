@@ -249,6 +249,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.HotBufferMaxCount).IsRequired();
             entity.Property(e => e.ArchiveEnabled).IsRequired();
             entity.Property(e => e.ArchiveRetentionDays);
+            entity.Property(e => e.HistoryWriteIntervalSeconds).IsRequired().HasDefaultValue(0);
             entity.Property(e => e.UpdatedAt).IsRequired();
         });
 

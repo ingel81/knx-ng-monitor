@@ -1472,7 +1472,7 @@
           "Recording"
         ],
         "summary": "Updates the recording settings; they take effect on the running recording.",
-        "description": "The values are persisted and swapped into the snapshot the recording workers read, so no\r\nrestart is needed. What the fields do:\r\nHotBufferMaxCount is the number of telegrams kept in the database — a retention pass\r\nperiodically deletes everything older than the newest HotBufferMaxCount rows, so lowering\r\nthe value discards the oldest telegrams. Deletion happens chunked on the following passes,\r\nnot the instant the value is saved.\r\nArchiveEnabled toggles the additional NDJSON+gzip day-files; switching it off stops new\r\nwrites but leaves existing archive files untouched.\r\nArchiveRetentionDays deletes archive day-files older than that many days, null keeps them\r\nforever. The sweep runs at startup and at the daily file rollover, so a shortened retention\r\nonly takes effect at the next sweep.\r\nValidation: HotBufferMaxCount must be greater than 0, ArchiveRetentionDays must be null or\r\ngreater than 0 — otherwise 400 and nothing is changed.",
+        "description": "The values are persisted and swapped into the snapshot the recording workers read, so no\r\nrestart is needed. What the fields do:\r\nHotBufferMaxCount is the number of telegrams kept in the database — a retention pass\r\nperiodically deletes everything older than the newest HotBufferMaxCount rows, so lowering\r\nthe value discards the oldest telegrams. Deletion happens chunked on the following passes,\r\nnot the instant the value is saved.\r\nArchiveEnabled toggles the additional NDJSON+gzip day-files; switching it off stops new\r\nwrites but leaves existing archive files untouched.\r\nArchiveRetentionDays deletes archive day-files older than that many days, null keeps them\r\nforever. The sweep runs at startup and at the daily file rollover, so a shortened retention\r\nonly takes effect at the next sweep.\r\nHistoryWriteIntervalSeconds collects telegrams for that long and writes them to the history\r\nin one transaction (0 = right away). It spares SD cards and eMMC; a power cut loses what is\r\nstill buffered, the live view is not delayed. The NDJSON archive syncs on the same rhythm.\r\nValidation: HotBufferMaxCount must be greater than 0, ArchiveRetentionDays must be null or\r\ngreater than 0, HistoryWriteIntervalSeconds 0 to 600 — otherwise 400 and nothing is changed.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2333,6 +2333,14 @@
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "historyWriteIntervalSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
               "integer",
               "string"
             ],

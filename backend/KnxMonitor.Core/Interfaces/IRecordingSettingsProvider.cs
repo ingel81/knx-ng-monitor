@@ -14,6 +14,7 @@ public interface IRecordingSettingsProvider
     int HotBufferMaxCount { get; }
     bool ArchiveEnabled { get; }
     int? ArchiveRetentionDays { get; }
+    int HistoryWriteIntervalSeconds { get; }
 
     /// <summary>Loads the initial snapshot from the database (call once at startup).</summary>
     Task InitializeAsync(CancellationToken ct = default);

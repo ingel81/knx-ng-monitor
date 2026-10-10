@@ -29,6 +29,7 @@ public class RecordingSettingsProvider : IRecordingSettingsProvider
     public int HotBufferMaxCount => _current.HotBufferMaxCount;
     public bool ArchiveEnabled => _current.ArchiveEnabled;
     public int? ArchiveRetentionDays => _current.ArchiveRetentionDays;
+    public int HistoryWriteIntervalSeconds => _current.HistoryWriteIntervalSeconds;
 
     public async Task InitializeAsync(CancellationToken ct = default)
     {
@@ -50,6 +51,7 @@ public class RecordingSettingsProvider : IRecordingSettingsProvider
         entity.HotBufferMaxCount = updated.HotBufferMaxCount;
         entity.ArchiveEnabled = updated.ArchiveEnabled;
         entity.ArchiveRetentionDays = updated.ArchiveRetentionDays;
+        entity.HistoryWriteIntervalSeconds = updated.HistoryWriteIntervalSeconds;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await repo.UpdateAsync(entity);
@@ -57,8 +59,8 @@ public class RecordingSettingsProvider : IRecordingSettingsProvider
         // Atomic swap of an isolated snapshot (callers must not mutate the shared instance).
         _current = Snapshot(entity);
         _logger.LogInformation(
-            "Recording settings updated: HotBufferMaxCount={Count}, ArchiveEnabled={Archive}, ArchiveRetentionDays={Retention}",
-            _current.HotBufferMaxCount, _current.ArchiveEnabled, _current.ArchiveRetentionDays);
+            "Recording settings updated: HotBufferMaxCount={Count}, ArchiveEnabled={Archive}, ArchiveRetentionDays={Retention}, HistoryWriteIntervalSeconds={Interval}",
+            _current.HotBufferMaxCount, _current.ArchiveEnabled, _current.ArchiveRetentionDays, _current.HistoryWriteIntervalSeconds);
     }
 
     private static RecordingSettings Snapshot(RecordingSettings source) => new()
@@ -67,6 +69,7 @@ public class RecordingSettingsProvider : IRecordingSettingsProvider
         HotBufferMaxCount = source.HotBufferMaxCount,
         ArchiveEnabled = source.ArchiveEnabled,
         ArchiveRetentionDays = source.ArchiveRetentionDays,
+        HistoryWriteIntervalSeconds = source.HistoryWriteIntervalSeconds,
         UpdatedAt = source.UpdatedAt
     };
 }

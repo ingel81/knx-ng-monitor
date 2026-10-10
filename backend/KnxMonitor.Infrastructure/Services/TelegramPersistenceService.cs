@@ -13,6 +13,10 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
     private const int Capacity = 10_000;
     private const int BatchSize = 100;
 
+    // With a write interval (#37) one flush covers the whole interval. Capped so a busy bus
+    // cannot grow the buffer without bound; at the cap it is written early.
+    private const int MaxBufferedTelegrams = 20_000;
+
     // Retention cadence — run at most ~every 10s OR every N batches, whichever comes first.
     private const int RetentionEveryBatches = 20;
     private static readonly TimeSpan RetentionInterval = TimeSpan.FromSeconds(10);
@@ -84,8 +88,10 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        // Complete the queue and let the worker drain and write what is buffered. Cancelling
+        // first would drop it, which with a write interval can be minutes of telegrams. Only when
+        // the host's shutdown timeout runs out is the worker cancelled.
         _channel.Writer.TryComplete();
-        _cts.Cancel();
 
         if (_workerTask != null)
         {
@@ -93,7 +99,10 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
             {
                 await _workerTask.WaitAsync(cancellationToken);
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException)
+            {
+                _cts.Cancel();
+            }
         }
         _logger.LogInformation("Telegram persistence worker stopped");
     }
@@ -101,47 +110,110 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
     private async Task RunAsync(CancellationToken ct)
     {
         var batch = new List<KnxTelegram>(BatchSize);
+        var reader = _channel.Reader;
         try
         {
-            await foreach (var first in _channel.Reader.ReadAllAsync(ct))
+            // Ends once the queue is completed (shutdown) and fully drained.
+            while (await reader.WaitToReadAsync(ct))
             {
-                batch.Add(first);
-
-                // Drain anything immediately available so we batch under bursts.
-                while (batch.Count < BatchSize && _channel.Reader.TryRead(out var more))
+                var interval = TimeSpan.FromSeconds(Math.Max(0, _settingsProvider.HistoryWriteIntervalSeconds));
+                if (interval == TimeSpan.Zero)
                 {
-                    batch.Add(more);
-                }
-
-                try
-                {
-                    // Single scope/connection per batch — retention runs on the SAME
-                    // connection right after the insert, so there is only ever one SQLite writer.
-                    using var scope = _scopeFactory.CreateScope();
-                    var repo = scope.ServiceProvider.GetRequiredService<ITelegramRepository>();
-                    await repo.AddRangeAsync(batch);
-
-                    _batchesSinceRetention++;
-                    if (_batchesSinceRetention >= RetentionEveryBatches ||
-                        DateTime.UtcNow - _lastRetention >= RetentionInterval)
+                    // Immediate mode: write what is there right now, batching only under bursts.
+                    while (batch.Count < BatchSize && reader.TryRead(out var item))
                     {
-                        await RunRetentionAsync(repo, ct);
-                        _batchesSinceRetention = 0;
-                        _lastRetention = DateTime.UtcNow;
+                        batch.Add(item);
                     }
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogError(ex, "Failed to persist batch of {Count} telegrams", batch.Count);
+                    await CollectForIntervalAsync(batch, interval, ct);
                 }
 
+                if (batch.Count == 0)
+                {
+                    continue;
+                }
+
+                await PersistAsync(batch, retentionDue: interval > TimeSpan.Zero, ct);
                 batch.Clear();
                 LogDropsIfAny();
             }
         }
         catch (OperationCanceledException)
         {
-            // expected on shutdown
+            // Shutdown timeout ran out; whatever is still buffered is lost.
+            if (batch.Count > 0)
+            {
+                _logger.LogWarning("Shutdown cut the history write short; {Count} buffered telegrams were not written", batch.Count);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Buffered mode (#37): keeps reading until the interval since the first telegram has passed,
+    /// the buffer reaches its cap, or the queue is completed. Returns early on shutdown so the
+    /// final write happens right away instead of after the interval.
+    /// </summary>
+    private async Task CollectForIntervalAsync(List<KnxTelegram> batch, TimeSpan interval, CancellationToken ct)
+    {
+        var reader = _channel.Reader;
+        var deadline = DateTime.UtcNow + interval;
+
+        while (batch.Count < MaxBufferedTelegrams)
+        {
+            while (batch.Count < MaxBufferedTelegrams && reader.TryRead(out var item))
+            {
+                batch.Add(item);
+            }
+
+            var remaining = deadline - DateTime.UtcNow;
+            if (remaining <= TimeSpan.Zero || batch.Count >= MaxBufferedTelegrams)
+            {
+                return;
+            }
+
+            using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            wait.CancelAfter(remaining);
+            try
+            {
+                if (!await reader.WaitToReadAsync(wait.Token))
+                {
+                    return; // queue completed: shutdown, write now
+                }
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                return; // interval over
+            }
+        }
+    }
+
+    private async Task PersistAsync(List<KnxTelegram> batch, bool retentionDue, CancellationToken ct)
+    {
+        try
+        {
+            // Single scope/connection per batch — retention runs on the SAME
+            // connection right after the insert, so there is only ever one SQLite writer.
+            using var scope = _scopeFactory.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<ITelegramRepository>();
+            await repo.AddRangeAsync(batch);
+
+            // In buffered mode every flush also trims and checkpoints: the WAL is synced to the
+            // database file once per interval instead of every ten seconds.
+            _batchesSinceRetention++;
+            if (retentionDue ||
+                _batchesSinceRetention >= RetentionEveryBatches ||
+                DateTime.UtcNow - _lastRetention >= RetentionInterval)
+            {
+                await RunRetentionAsync(repo, ct);
+                _batchesSinceRetention = 0;
+                _lastRetention = DateTime.UtcNow;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Failed to persist batch of {Count} telegrams", batch.Count);
         }
     }
 

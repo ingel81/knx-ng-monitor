@@ -118,9 +118,20 @@ export class Settings implements OnInit {
   recording: RecordingSettings = {
     hotBufferMaxCount: 1_000_000,
     archiveEnabled: false,
-    archiveRetentionDays: null
+    archiveRetentionDays: null,
+    historyWriteIntervalSeconds: 0
   };
   isSavingRecording = false;
+
+  /** Choices for the history write interval (#37); the backend accepts 0 to 600 seconds. */
+  readonly historyWriteIntervals = [
+    { seconds: 0, label: 'settings.historyWriteImmediate' },
+    { seconds: 5, label: 'settings.historyWrite5s' },
+    { seconds: 30, label: 'settings.historyWrite30s' },
+    { seconds: 60, label: 'settings.historyWrite1m' },
+    { seconds: 300, label: 'settings.historyWrite5m' },
+    { seconds: 600, label: 'settings.historyWrite10m' }
+  ];
 
   ngOnInit() {
     this.loadSettings();
