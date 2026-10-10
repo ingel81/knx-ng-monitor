@@ -20,6 +20,7 @@ import { LanguageService } from '../../core/i18n/language.service';
 import { DPT_DESCRIPTIONS } from '../../shared/grid/dpt-descriptions';
 import { SearchCache, searchTokens } from '../../shared/search.util';
 import { SlashFocusDirective } from '../../shared/slash-focus.directive';
+import { escapeHtml } from '../../shared/html.util';
 
 type NodeKind = 'ga' | 'group' | 'room' | 'device';
 
@@ -497,7 +498,8 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
         .nodeId('id')
         .nodeRelSize(4)
         .nodeVal((n: GNode) => n.val)
-        .nodeLabel((n: GNode) => n.kind === 'ga' ? `${n.address} — ${n.label}` : n.label)
+        // force-graph renders the label as HTML; names come from the ETS project.
+        .nodeLabel((n: GNode) => escapeHtml(n.kind === 'ga' ? `${n.address} · ${n.label}` : n.label))
         .linkColor((l: GLink) => this.withAlpha(this.skin.line, l.lvl === 'rg' ? 0.32 : 0.6))
         .linkWidth((l: GLink) => l.lvl === 'bf' ? 1.4 : l.lvl === 'fr' ? 1.0 : 0.5)
         .linkCurvature(0.12)

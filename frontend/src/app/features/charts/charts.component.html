@@ -89,7 +89,10 @@
 
       @if (savedOpen) {
         <div class="opts-backdrop" (click)="savedOpen = false"></div>
-        <div class="saved-panel" role="dialog" [attr.aria-label]="'charts.saved.title' | translate">
+        <!-- cdkTrapFocus with auto-capture moves focus into the panel and back to the toggle when it
+             closes; Escape closes it (WCAG 2.1.2, 2.4.3). -->
+        <div class="saved-panel" role="dialog" [attr.aria-label]="'charts.saved.title' | translate"
+             cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (keydown.escape)="savedOpen = false">
           <div class="opts-title">{{ 'charts.saved.title' | translate }}</div>
 
           <form class="saved-form" (ngSubmit)="saveSelection()">
@@ -293,7 +296,8 @@
         @if (optionsOpen) {
           <!-- Click-catcher so the panel closes on any outside click without a global listener. -->
           <div class="opts-backdrop" (click)="optionsOpen = false"></div>
-          <div class="opts-panel">
+          <div class="opts-panel" role="dialog" [attr.aria-label]="'charts.options' | translate"
+               cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (keydown.escape)="optionsOpen = false">
             <div class="opts-title">{{ 'charts.options' | translate }}</div>
 
             <div class="opts-row opts-row--stack">

@@ -32,7 +32,10 @@ function resolveBrowserLocale(): string | null {
     try {
       // Throws on malformed tags, returns [] for tags the Intl data cannot serve.
       const [supported] = Intl.DateTimeFormat.supportedLocalesOf(tag);
-      if (supported) return supported;
+      // Keep the regional field order and separators, but pin the Gregorian calendar and Latin
+      // digits: th-TH would otherwise show the year 2569 and ar-EG Arabic-Indic digits, neither
+      // of which the date field can read back.
+      if (supported) return new Intl.Locale(supported, { calendar: 'gregory', numberingSystem: 'latn' }).toString();
     } catch {
       // Not a valid BCP-47 tag, try the next one.
     }

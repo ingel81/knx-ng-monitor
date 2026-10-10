@@ -38,7 +38,8 @@ let nextId = 0;
   ],
   template: `
     <div class="dtf" [class.is-invalid]="showInvalid" [class.is-disabled]="dateCtrl.disabled">
-      <input #dateInput class="dtf-date" type="text" inputmode="decimal" autocomplete="off" maxlength="10"
+      <input #dateInput class="dtf-date" type="text" inputmode="decimal" autocomplete="off"
+             [attr.maxlength]="dateMaxLength()"
              [formControl]="dateCtrl" [matDatepicker]="picker"
              [placeholder]="datePlaceholder()"
              [attr.aria-label]="fieldLabel('dateTime.date')"
@@ -169,6 +170,12 @@ export class DateTimeFieldComponent implements ControlValueAccessor {
       .join('');
   });
 
+  /** Length of a formatted date in this locale: 10 for 24.09.2026, 13 for hu-HU's "2026. 09. 24.".
+   *  Caps typing there, so a six-digit year cannot even be entered (#41). */
+  readonly dateMaxLength = computed(() =>
+    new Intl.DateTimeFormat(localeTag(this.lang.lang()), KNX_DATE_FORMATS.display.dateInput)
+      .format(new Date(2026, 11, 28)).length);
+
   private value = '';
   private onChange: (value: string) => void = () => { };
   private onTouched: () => void = () => { };
@@ -220,6 +227,25 @@ export class DateTimeFieldComponent implements ControlValueAccessor {
 
   focus(): void {
     this.dateInput.nativeElement.focus();
+  }
+
+  /** True while the typed date or time cannot be read; the bound value is '' then. */
+  get hasInvalidInput(): boolean { return this.dateInvalid || this.timeInvalid; }
+
+  /**
+   * Empties both inputs, including unreadable text. Setting the model to '' alone does not reach
+   * the field when it is '' already (an invalid entry), so the red text would stay on screen.
+   */
+  clear(): void {
+    for (const ctrl of [this.dateCtrl, this.timeCtrl]) {
+      ctrl.setValue(null, { emitEvent: false });
+      ctrl.markAsUntouched();
+      ctrl.updateValueAndValidity({ emitEvent: false });
+    }
+    if (this.value !== '') {
+      this.value = '';
+      this.onChange('');
+    }
   }
 
   writeValue(value: string | null): void {

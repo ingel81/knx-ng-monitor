@@ -28,6 +28,7 @@ import { SlashFocusDirective } from '../../shared/slash-focus.directive';
 import { RangePreset, isRangeOrdered, resolveRange } from './time-range.util';
 import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom, styleLineSeries, TooltipRow } from './chart-skin';
 import { formatDurationMinutes } from '../../shared/duration.util';
+import { A11yModule } from '@angular/cdk/a11y';
 import {
   ChartDisplayOptions, CurveMode, DEFAULT_CHART_OPTIONS,
   loadChartOptions, saveChartOptions, loadChartQuery, saveChartQuery
@@ -72,6 +73,7 @@ interface LiveSeries {
 @Component({
   selector: 'app-charts',
   imports: [
+    A11yModule,
     CommonModule, FormsModule, MatIconModule, MatSelectModule, MatFormFieldModule,
     MatMenuModule, MatTooltipModule, NgxEchartsDirective, TranslatePipe, OverflowTitleDirective,
     DateTimeFieldComponent, SlashFocusDirective
@@ -557,6 +559,12 @@ export class ChartsComponent implements OnInit, OnDestroy {
       }
     }
     this.liveAppend = !this.liveAppend;
+    if (this.liveAppend) {
+      // Telegrams that arrived while live was off were not kept, so the series would extend a
+      // stale last value flat up to now. Reload the preset window instead.
+      this.load();
+      return;
+    }
     this.syncFollow();
     // Animation is disabled while live so appended points don't re-animate the whole
     // curve every flush; rebuild so the change takes effect immediately.
@@ -587,10 +595,16 @@ export class ChartsComponent implements OnInit, OnDestroy {
     this.followTimer = undefined;
   }
 
-  /** Drops points that slid out of the live window on the left. */
-  private trimToWindow(now: number): void {
+  /** Drops points that slid out of the live window on the left; true when any did. */
+  private trimToWindow(now: number): boolean {
     const cutoff = now - this.rangeSpanMs;
-    for (const s of this.series) this.dropBefore(s, cutoff);
+    let dropped = false;
+    for (const s of this.series) {
+      const before = s.data.length;
+      this.dropBefore(s, cutoff);
+      dropped ||= s.data.length !== before;
+    }
+    return dropped;
   }
 
   /**
@@ -1021,8 +1035,9 @@ export class ChartsComponent implements OnInit, OnDestroy {
    */
   private followTick(): void {
     if (!this.following || this.series.length === 0 || this.loading || document.hidden) return;
-    this.trimToWindow(Date.now());
-    if (!this.chart) {
+    // Points falling out on the left change min, max, average and the mean line: rebuild then
+    // (rebuildChart keeps the zoom); otherwise only the window moves and a merge is enough.
+    if (this.trimToWindow(Date.now()) || !this.chart) {
       this.rebuildChart();
       return;
     }

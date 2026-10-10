@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, AfterViewInit, ElementRef, NgZone, inject, ViewChild, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ElementRef, NgZone, inject, ViewChild, ViewChildren, QueryList, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -80,6 +80,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   private subscription?: Subscription;
 
   @ViewChild(KnxTableComponent) table?: KnxTableComponent;
+  @ViewChildren(DateTimeFieldComponent) private dateFields?: QueryList<DateTimeFieldComponent>;
   @ViewChild('gridScroll') gridScrollRef?: ElementRef<HTMLElement>;
 
   /** "Scroll to top" FAB — visible once the active scroll body is scrolled down. */
@@ -181,7 +182,8 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   address = '';
   source = '';
   types = new Set<string>();
-  timeRange: 'all' | 'hour' | 'today' | '7d' = 'all';
+  /** 'custom' = a range set by hand or by a deep link; no chip is active then. */
+  timeRange: 'all' | 'hour' | 'today' | '7d' | 'custom' = 'all';
   // Terms match the (often German) group-address names in the imported project,
   // so only the display labels are translated — not the search terms.
   // label = Übersetzungs-Key (Template übersetzt); term = Suchbegriff, bleibt as-is
@@ -352,11 +354,19 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     if (from) this.fromValue = this.toLocalInput(from);
     if (to) this.toValue = this.toLocalInput(to);
 
+    if (from || to) this.timeRange = 'custom';
+
     if (q.get('mode') === 'archive' || address || source || from || to) {
       this.mode = 'archive';
       // Mobil ist die Filterleiste sonst zugeklappt und der gesetzte Filter unsichtbar.
       this.filtersExpanded = true;
       void this.loadRoomsIfNeeded();
+    }
+
+    // Die Parameter sind nur der Einstieg: aus der URL entfernen, sonst stellt ein Reload später
+    // den alten Filter wieder her, obwohl längst etwas anderes eingestellt ist.
+    if (q.keys.length) {
+      void this.router.navigate([], { relativeTo: this.route, queryParams: {}, replaceUrl: true });
     }
   }
 
@@ -560,6 +570,11 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
 
   /** Liefert false, wenn der Filter abgelehnt wurde (Ende vor Start). */
   applyFilters(): boolean {
+    // Ein unlesbares Datum ergibt '' und würde sonst als "keine Grenze" das ganze Archiv abfragen.
+    if (this.dateFields?.some(f => f.hasInvalidInput)) {
+      this.toast(this.lang.translate('monitor.filter.invalidDate'));
+      return false;
+    }
     // Ein Zeitraum mit Ende vor dem Start liefert nie etwas; das Bis-Feld ist bereits rot markiert.
     const from = this.toIso(this.fromValue);
     const to = this.toIso(this.toValue);
@@ -573,6 +588,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   resetFilters(): void {
+    this.dateFields?.forEach(f => f.clear());
     this.fromValue = '';
     this.toValue = '';
     this.address = '';
@@ -628,6 +644,7 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     if (range === 'hour') from = new Date(now.getTime() - 3600_000);
     else if (range === 'today') { from = new Date(now); from.setHours(0, 0, 0, 0); }
     else if (range === '7d') from = new Date(now.getTime() - 7 * 86_400_000);
+    if (range === 'all') this.dateFields?.forEach(f => f.clear());
     this.fromValue = from ? this.toLocalInput(from) : '';
     this.toValue = range === 'all' ? '' : this.toLocalInput(now);
     this.applyFilters();

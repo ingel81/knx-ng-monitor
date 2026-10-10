@@ -6,6 +6,7 @@
  */
 
 import { formatKnxDateIn } from '../../core/i18n/date.util';
+import { escapeHtml } from '../../shared/html.util';
 
 export interface ChartSkin {
   series: string;
@@ -125,20 +126,21 @@ export function tooltipCfg(
   rowsAt?: (time: number) => TooltipRow[],
 ): Record<string, unknown> {
   const rowHtml = (r: TooltipRow): string => {
-    const v = typeof r.value === 'number'
+    // Names and units come from the imported ETS project and end up in innerHTML: escape them.
+    const v = escapeHtml(typeof r.value === 'number'
       ? r.value.toLocaleString(locale, { maximumFractionDigits: 2 })
-      : r.value;
+      : r.value);
     const unitHtml = r.unit
-      ? ` <span style="color:${skin.ink3};font-weight:500;font-size:11px">${r.unit}</span>`
+      ? ` <span style="color:${skin.ink3};font-weight:500;font-size:11px">${escapeHtml(r.unit)}</span>`
       : '';
     const ageHtml = r.age
-      ? ` <span style="color:${skin.ink3};font-family:${skin.mono};font-weight:400;font-size:10px">${r.age}</span>`
+      ? ` <span style="color:${skin.ink3};font-family:${skin.mono};font-weight:400;font-size:10px">${escapeHtml(r.age)}</span>`
       : '';
     return (
       `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin:3px 0">` +
         `<span style="display:inline-flex;align-items:center;gap:7px;color:${skin.ink2};font-size:12px">` +
           `<span style="width:8px;height:8px;border-radius:2px;background:${r.color};display:inline-block"></span>` +
-          `${r.name}</span>` +
+          `${escapeHtml(r.name)}</span>` +
         `<span style="font-family:${skin.mono};font-weight:700;font-size:13px;color:${skin.ink}">${v}${unitHtml}${ageHtml}</span>` +
       `</div>`
     );
