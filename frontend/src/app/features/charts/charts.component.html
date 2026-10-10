@@ -16,6 +16,7 @@
             [placeholder]="'charts.pickGroupAddresses' | translate"
             [disabled]="!hasActiveProject || availableGas.length === 0"
             panelClass="ga-panel"
+            [panelWidth]="gaPanelWidth"
           >
             <!-- Without a custom trigger Material concatenates every selected label, which grows
                  the field until the toolbar wraps. Show one name plus a counter instead. -->
@@ -128,12 +129,14 @@
 
       <button
         class="knx-btn knx-btn--outline"
-        [class.is-active]="liveAppend"
+        [class.is-active]="liveAppend && preset !== 'custom'"
+        [class.is-inert]="preset === 'custom'"
+        [attr.aria-disabled]="preset === 'custom'"
         (click)="toggleLive()"
         [matTooltip]="liveTooltip()"
         [attr.aria-label]="'charts.live' | translate"
       >
-        <mat-icon>{{ liveAppend ? 'sensors' : 'sensors_off' }}</mat-icon>
+        <mat-icon>{{ liveAppend && preset !== 'custom' ? 'sensors' : 'sensors_off' }}</mat-icon>
         <span class="lbl">{{ 'charts.live' | translate }}</span>
       </button>
 
