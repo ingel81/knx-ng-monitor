@@ -220,6 +220,15 @@ tar -xzf knx-ng-monitor-linux-x64.tar.gz
 Windows: download `knx-ng-monitor-win-x64.zip` (or `-win-arm64.zip`), extract,
 run `KnxMonitor.Api.exe`.
 
+### Home Assistant add-on (community)
+
+[devTabSel/HAOS-knx-ng-monitor](https://github.com/devTabSel/HAOS-knx-ng-monitor)
+wraps the Docker image as a Home Assistant OS add-on. It is a community project,
+maintained outside this repository, and follows new releases automatically. There
+is no Ingress: open the UI on the port the add-on publishes instead of from the
+HA sidebar. For KNXnet/IP routing see the `host_network` note under
+[KNX connection](#knx-connection).
+
 ### First-time setup
 
 1. Open `http://localhost:8080`

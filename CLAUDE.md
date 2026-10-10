@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-KNX-NG-Monitor is a KNX bus monitoring tool with a web UI that displays, historizes and presents KNX telegrams in real time. It ships as a Docker image or as a single self-contained binary. As of v0.1.0 the parser supports ETS 4 / 5 / 6, password-protected projects (incl. ETS6 PBKDF2/AES wrapping) and `.knxkeys` keyring decryption.
+KNX-NG-Monitor is a KNX bus monitoring tool with a web UI that displays, historizes and presents KNX telegrams in real time. It ships as a Docker image or as a single self-contained binary. The parser supports ETS 4 / 5 / 6, password-protected projects (incl. ETS6 PBKDF2/AES wrapping) and `.knxkeys` keyring decryption.
 
 ## Tech Stack
 
@@ -19,7 +19,8 @@ KNX-NG-Monitor is a KNX bus monitoring tool with a web UI that displays, histori
 ### Frontend
 - **Angular 20** (standalone components)
 - **Angular Material** (dialogs, forms, theming)
-- **AG-Grid Community** (live-view, virtual scrolling)
+- **Custom CDK table** (`shared/grid/knx-table`, virtual scrolling; replaced AG-Grid in 0.3.0)
+- **ECharts** via `ngx-echarts` (charts, statistics, heatmap)
 - **RxJS**, SignalR client, Angular CDK virtual scrolling
 
 ### Database
@@ -34,13 +35,14 @@ knx-ng-monitor/
 │   ├── KnxMonitor.Core/                  # Domain layer (Entities, Interfaces, DTOs, Enums)
 │   ├── KnxMonitor.Infrastructure/        # EF Core, repositories, KNX bus, project import, adapter to ProjectParser
 │   ├── KnxMonitor.ProjectParser/         # Standalone parser library (ETS 4/5/6 loaders, FeatureDetector, KeyringReader, ZipHandler)
-│   ├── KnxMonitor.ProjectParser.Tests/   # xUnit tests (206, ~99 % line cov), uses Xunit.SkippableFact for proprietary fixtures
+│   ├── KnxMonitor.ProjectParser.Tests/   # xUnit tests (~400), uses Xunit.SkippableFact for proprietary fixtures
+│   ├── KnxMonitor.Infrastructure.Tests/  # xUnit tests for services, repositories, KNX connection, availability
 │   └── KnxMonitor.ParserTool/            # CLI: `parse` / `detect` with --password / --keyring / --keyring-password
 ├── frontend/
 │   └── src/app/
 │       ├── core/                         # Singleton services (auth, signalr, project)
-│       ├── features/                     # Feature modules (login, live-view, projects/import-wizard, settings)
-│       └── shared/                       # Reusable components, models, layout
+│       ├── features/                     # Feature modules (monitor, charts, stats, graph, group-addresses, topology, logs, projects/import-wizard, settings, login, initial-setup)
+│       └── shared/                       # Reusable components (grid/knx-table, date-time-field), models, layout
 ├── docs/
 │   ├── samples/xknxproject/              # Public test fixtures (MIT, mirrored from XKNX/xknxproject)
 │   ├── samples/own/                      # Private fixtures (gitignored)
@@ -50,8 +52,7 @@ knx-ng-monitor/
 │   └── ai/{PROJECT_PLAN,RELEASE_PLAN,DOKUMENTATION,TODO}.md
 ├── scripts/                              # build.sh / run-release.sh (+ .ps1 / .bat) — local prod-build mirror of CI
 ├── test-all-samples.sh / .ps1            # CLI smoke-test against every sample (skips own/ when missing)
-├── Dockerfile                            # Multi-stage build (Node → SDK → debian:12-slim, ~120 MB)
-└── docker-compose.yml
+└── Dockerfile                            # Multi-stage build (Node → SDK → debian:12-slim, ~120 MB)
 ```
 
 ## Architecture Principles
@@ -64,7 +65,7 @@ knx-ng-monitor/
 - **Patterns** — Repository, Dependency Injection, async/await throughout.
 
 ### Frontend
-- Standalone components (no NgModules), Angular Material + AG-Grid
+- Standalone components (no NgModules), Angular Material + the custom CDK table (`shared/grid/knx-table`)
 - Reactive programming with RxJS
 - Smart/dumb component split, route guards, JWT HTTP interceptor, lazy loading per feature
 
@@ -125,7 +126,7 @@ bash scripts/run-release.sh     # runs ./publish/KnxMonitor.Api on :8080
 ```bash
 docker build -t knx-ng-monitor .
 docker run -p 8080:8080 -v ./data:/app/data knx-ng-monitor
-docker-compose up --build       # dev/prod stack
+# No compose file in the repo; README.md has a docker-compose.yml snippet for users.
 ```
 
 ### Release
@@ -140,30 +141,34 @@ There is a `/release` skill in `.claude/skills/release/SKILL.md` that automates 
 | `Projects` | Imported `.knxproj`; exactly one is `IsActive` |
 | `GroupAddresses` | Per-project (Address `m/m/s`, Name, Description, DPT, …) |
 | `Devices` | Per-project (PhysicalAddress `a.l.d`, Name, Manufacturer, ProductName) |
+| `Locations` / `CommunicationObjects` / `GroupRanges` | Per-project building structure, com objects with their GA links, GA range tree |
+| `ProjectKeyringKeys` / `ProjectKeyringBlobs` | Decrypted keyring keys and the stored keyring for KNX Secure runtime decryption |
 | `KnxTelegrams` | Logged bus traffic (timestamp, source, dest, type, raw + decoded value) |
 | `KnxConfigurations` | KNX interface settings |
+| `RecordingSettings` | Ring-buffer size, archive on/off, retention |
 | `MonitorHeartbeats` | One beat per minute (timestamp, link state, telegrams since last) — turns a hole in `KnxTelegrams` into an answerable question |
 
 Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 
 ## API Endpoints
 
-- `/api/auth/*` — login, refresh, logout
-- `/api/projects/*` — list, import (multipart), `provide-input`, activate, delete
-- Group addresses come with the project (`/api/projects/{id}` and `/{id}/groupranges`) — there is no separate controller for them
-- `/api/telegrams/*` — query, search, export
-- `/api/knx/*` — config, test-connection, status (status also carries `ConnectedSince`, `LastDisconnectedAt` and the drop counters)
-- `/api/diagnostics/*` — logs, `availability` (uptime / link state per interval), download bundle
-- `/hubs/telegram` — SignalR hub (JWT-authenticated)
+- `/api/auth/*`: login, refresh, logout, logout-all, needs-setup, setup
+- `/api/projects/*`: list, upload (multipart), import status, `provide-input`, activate / deactivate, delete, locations, commobjects, keyring upload
+- Group addresses come with the project (`/api/projects/{id}` and `/{id}/groupranges`); there is no separate controller for them
+- `/api/telegrams/*`: query, count, clear, export, archive days, chart series / stats / heatmap
+- `/api/recording/settings`
+- `/api/knx/*`: configurations, connect / disconnect, autoconnect, write / read, test-connection, status (status also carries `ConnectedSince`, `LastDisconnectedAt` and the drop counters)
+- `/api/diagnostics/*`: logs, `availability` (uptime / link state per interval), download bundle
+- `/hubs/telegram`: SignalR hub (JWT-authenticated); `/hubs/logs` for the live log viewer; `/healthz` anonymous liveness probe
 
 ## Key Implementation Notes
 
 ### Project parser library (`KnxMonitor.ProjectParser`)
-- **ZipHandler.LoadAsync** returns a `ProjectFileMap` (in-memory `Dictionary<string, byte[]>` over the inner files). For password-protected archives it copies the inner `P-XXXX.zip` into a `MemoryStream` and reads it with `SharpZipFile` (AES-capable). For ETS6 the user password is first run through `PBKDF2-HMAC-SHA256(UTF-16-LE, salt="21.project.ets.knx.org", 65536, 32)` → Base64 before being given to SharpZipLib.
+- **ZipHandler.LoadAsync** returns a lazy `ProjectFileMap`: it indexes the entries and decompresses one only when it is read (the manufacturer application programs are 87 to 99 % of the unpacked volume and are streamed, never held). For password-protected archives it copies the encrypted inner `P-XXXX.zip` into a `MemoryStream` and reads it with `SharpZipFile` (AES-capable). `ProjectFileMap.LoadXmlAsync` caches parsed documents, so `0.xml` is parsed once per import (detection and loader share the map). For ETS6 the user password is first run through `PBKDF2-HMAC-SHA256(UTF-16-LE, salt="21.project.ets.knx.org", 65536, 32)` → Base64 before being given to SharpZipLib.
 - **Loaders (`Ets4/5/6ProjectLoader`)** consume a `ProjectFileMap` (no `ZipArchive` plumbing). ETS6 also handles the `Line → Segment → DeviceInstance` nesting introduced by ETS 6.
 - **FeatureDetector** has both `DetectAsync(stream)` (cheap pre-scan) and `DetectAfterUnlockAsync(stream, password)` (re-scans the decrypted inner XML for KNX Secure indicators).
 - **KeyringReader** parses `.knxkeys` XML and decrypts ToolKey, BackboneKey, ManagementPassword, Authentication and per-GA keys with PBKDF2-HMAC-SHA256(UTF-8, salt="1.keyring.ets.knx.org", 65536, 16) + AES-128-CBC. IV is `SHA-256(Created)[:16]`.
-- **`ParserOptions`** carries `Password`, `KeyringStream`, `KeyringPassword`. Library returns `ParseResult` with `Features`, `GroupAddresses`, `Devices`, `Statistics` and (optional) `Keyring`.
+- **`ParserOptions`** carries `Password`, `KeyringStream`, `KeyringPassword`. Library returns `ParseResult` with `Features`, `GroupAddresses`, `GroupRanges`, `Devices`, `Locations`, `CommunicationObjects`, `Statistics` and (optional) `Keyring`.
 
 ### Sample fixtures — do not duplicate
 - Master location: `docs/samples/`
@@ -195,7 +200,7 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 - Both writer queues (`TelegramPersistenceService`, `TelegramArchiveService`) use `FullMode.Wait` + `TryWrite` so an overflow is counted and logged instead of silently dropping. `DropOldest` would make `TryWrite` always succeed.
 
 ### Performance
-- Virtual scrolling in AG-Grid for live view (1000+ rows)
+- Virtual scrolling in the CDK table (`knx-table`) for live view and archive (1000+ rows)
 - `ProjectCacheService` (singleton) — `ConcurrentDictionary` of the active project's GAs **and devices**, refreshed only on project change. Devices share the cache because they share its lifetime; a second cache would have to be refreshed at every call site that refreshes this one
 - DB indices on `Timestamp`, `DestinationAddress`
 - SignalR throttling on bursts; debounced filter inputs in the UI
@@ -220,12 +225,7 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 
 ## Current Implementation Status
 
-`v0.1.0` is live (Docker + binaries on GitHub Releases, see `README.md`). Parser library + wizard + tests are stable. Open work — see `docs/ai/TODO.md` and the "Next" section of `README.md`:
-
-- Telegram-time decryption with the stored tool keys (KNX Secure runtime)
-- Communication objects, topology, locations, functions parsing (currently out of scope)
-- Frontend: nachträgliches Bearbeiten / Hochladen des Keyrings am Projekt
-- Logging cleanup (Serilog templates, removal of `Console.WriteLine` in `ProjectImportService`)
+`v0.12.0` is live (Docker + binaries on GitHub Releases, see `README.md`); the next release is `v0.13.0`. Done since v0.1.0, among others: Data Secure runtime decryption with the stored keyring keys plus opt-in IP-Secure tunnel, parsing of communication objects, locations and group ranges, uploading a keyring to an existing project, Serilog logging with the in-app log viewer. Open work: the "Next" section of `README.md` and `docs/local/TODO.md` (local only, not in git). Still not parsed: ETS 6 functions.
 
 ## Design Guidelines
 
