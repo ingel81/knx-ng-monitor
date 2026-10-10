@@ -87,14 +87,14 @@ public interface ITelegramRepository : IRepository<KnxTelegram>
     Task<long[]> CountPerBucketAsync(
         DateTime from, DateTime to, int bucketCount, double bucketMs, CancellationToken ct = default);
 
+    /// <summary>Oldest and newest stored timestamp, or null when no telegram is stored.</summary>
+    Task<(DateTime Oldest, DateTime Newest)?> GetTimestampBoundsAsync(CancellationToken ct = default);
+
     /// <summary>
     /// Telegram counts in [from,to] per weekday (0 = Sunday) and hour, counted in SQL after
     /// shifting each UTC timestamp by <paramref name="tzOffsetMinutes"/> (minutes the display zone
     /// is behind UTC, as JavaScript's getTimezoneOffset reports it). Returns a 7 x 24 grid.
     /// </summary>
-    /// <summary>Oldest and newest stored timestamp, or null when no telegram is stored.</summary>
-    Task<(DateTime Oldest, DateTime Newest)?> GetTimestampBoundsAsync(CancellationToken ct = default);
-
     Task<long[][]> CountPerWeekdayHourAsync(
         DateTime from, DateTime to, int tzOffsetMinutes, CancellationToken ct = default);
 

@@ -82,6 +82,25 @@ public class KnxAutoConnectWorkerTests
         }
     }
 
+    [Fact]
+    public async Task AFlappingLinkIsRetriedWithBackoff()
+    {
+        // Every connect succeeds but the link drops right away: without a stable-link rule this
+        // reconnected once a second forever.
+        var knx = new FakeKnx { Connected = false, DropRightAfterConnect = true };
+        using var worker = CreateWorker(knx);
+        await worker.StartAsync(default);
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(13)); // 3 s startup + 10 s
+            knx.ConnectCalls.Should().BeInRange(2, 5, "attempts back off 1, 2, 4, 8 s instead of every second");
+        }
+        finally
+        {
+            await worker.StopAsync(default);
+        }
+    }
+
     private static KnxAutoConnectWorker CreateWorker(IKnxConnectionService knx)
     {
         var repo = new Mock<IKnxConfigurationRepository>();
@@ -116,6 +135,7 @@ public class KnxAutoConnectWorkerTests
         private int _connectCalls;
         public volatile bool Connected;
         public volatile bool Recovering;
+        public volatile bool DropRightAfterConnect;
         public int ConnectCalls => Volatile.Read(ref _connectCalls);
 
 #pragma warning disable CS0067 // TelegramReceived is part of the contract but irrelevant here
@@ -135,7 +155,11 @@ public class KnxAutoConnectWorkerTests
         public Task<bool> ConnectAsync(KnxConfiguration configuration)
         {
             Interlocked.Increment(ref _connectCalls);
-            Connected = true;
+            Connected = !DropRightAfterConnect;
+            if (DropRightAfterConnect)
+            {
+                _ = Task.Run(async () => { await Task.Delay(50); RaiseLinkLost(); });
+            }
             return Task.FromResult(true);
         }
 

@@ -33,6 +33,9 @@ if [ "$(id -u)" = "0" ]; then
 
     # setpriv keeps the environment, including root's HOME; the "app" user's home is /app.
     export HOME=/app
+    # The single-file bundle extracts under this directory. Per user, so a restart with another
+    # PUID does not hit an extraction left behind by the previous one.
+    export DOTNET_BUNDLE_EXTRACT_BASE_DIR="/tmp/.net-$PUID"
     exec setpriv --reuid="$PUID" --regid="$PGID" --clear-groups "$APP" "$@"
 fi
 

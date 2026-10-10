@@ -170,6 +170,12 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             }
 
             _activeConfiguration = configuration;
+            // The link can drop between Falcon's ConnectAsync and this line; its event then said
+            // Disconnected and must not be overwritten with Connected.
+            if (_knxBus.ConnectionState != BusConnectionState.Connected)
+            {
+                throw new InvalidOperationException($"Link dropped right after connecting ({_knxBus.ConnectionState})");
+            }
             SetState(KnxLinkState.Connected);
 
             _logger.LogInformation("Successfully connected to KNX bus. InterfaceAddress: {IndividualAddress}",
@@ -180,6 +186,8 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to connect to KNX bus");
+            // A Broken event during the failed attempt may have started a recovery window.
+            Interlocked.Exchange(ref _recoveringSinceTicks, 0);
             SetState(KnxLinkState.Disconnected);
             await CleanupBusConnection();
             return false;

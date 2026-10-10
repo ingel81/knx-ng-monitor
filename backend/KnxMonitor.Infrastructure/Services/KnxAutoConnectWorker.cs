@@ -27,6 +27,10 @@ public class KnxAutoConnectWorker : BackgroundService
     private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan FirstRetryDelay = TimeSpan.FromSeconds(1);
 
+    // A link has to hold this long before the backoff starts over. Otherwise a link that drops
+    // right after every connect would be retried once a second forever.
+    private static readonly TimeSpan StableLinkTime = TimeSpan.FromSeconds(30);
+
     // Released by LinkLost; the loop waits on it instead of a plain delay.
     private readonly SemaphoreSlim _wake = new(0, 1);
 
@@ -54,6 +58,7 @@ public class KnxAutoConnectWorker : BackgroundService
             catch (OperationCanceledException) { return; }
 
             var failures = 0;
+            var connectedAt = DateTime.MinValue;
             while (!stoppingToken.IsCancellationRequested)
             {
                 var attempted = false;
@@ -86,8 +91,24 @@ public class KnxAutoConnectWorker : BackgroundService
                     _logger.LogWarning(ex, "Auto-connect attempt failed; will retry");
                 }
 
-                failures = attempted && !succeeded ? failures + 1 : 0;
-                try { await WaitForNextAttemptAsync(NextDelay(failures, _knx.IsRecovering), stoppingToken); }
+                if (attempted && succeeded)
+                {
+                    // Counted as a failure until the link has proven stable (see StableLinkTime).
+                    connectedAt = DateTime.UtcNow;
+                    failures++;
+                }
+                else if (attempted)
+                {
+                    failures++;
+                }
+                else if (_knx.IsConnected && DateTime.UtcNow - connectedAt >= StableLinkTime)
+                {
+                    failures = 0;
+                }
+
+                var delay = attempted && succeeded ? PollInterval : NextDelay(failures, _knx.IsRecovering);
+                var settle = failures == 0 ? FirstRetryDelay : NextDelay(failures, false);
+                try { await WaitForNextAttemptAsync(delay, settle, stoppingToken); }
                 catch (OperationCanceledException) { break; }
             }
         }
@@ -117,13 +138,14 @@ public class KnxAutoConnectWorker : BackgroundService
         return backoff < PollInterval ? backoff : PollInterval;
     }
 
-    private async Task WaitForNextAttemptAsync(TimeSpan delay, CancellationToken ct)
+    private async Task WaitForNextAttemptAsync(TimeSpan delay, TimeSpan settleAfterWake, CancellationToken ct)
     {
         // Returns early when LinkLost fires; then give the transport a moment to settle before
-        // the reconnect, otherwise the first attempt often hits the same outage.
+        // the reconnect (1 s, growing with the backoff when the link keeps dropping), otherwise the
+        // first attempt often hits the same outage.
         if (await _wake.WaitAsync(delay, ct))
         {
-            await Task.Delay(FirstRetryDelay, ct);
+            await Task.Delay(settleAfterWake < FirstRetryDelay ? FirstRetryDelay : settleAfterWake, ct);
         }
     }
 
