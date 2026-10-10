@@ -292,16 +292,11 @@ jobs:
           IMAGE="ingel81/knx-ng-monitor@${{ steps.build.outputs.digest }}"
           docker pull -q "$IMAGE"
 
-          # 8) must not run as root
-          UID_IN_IMAGE=$(docker run --rm --entrypoint sh "$IMAGE" -c 'id -u')
-          [ "$UID_IN_IMAGE" = "1000" ] \
-            || { echo "::error::image runs as uid $UID_IN_IMAGE, expected 1000"; exit 1; }
-
-          # 7) a bind-mounted data directory has to actually receive the database
+          # 7) a bind-mounted data directory has to actually receive the database. It belongs
+          # to the runner user, not to uid 1000: the entrypoint has to hand it over (#40).
           DATA="$RUNNER_TEMP/dockerdata"
           rm -rf "$DATA"
           mkdir -p "$DATA"
-          chmod 777 "$DATA"   # the container writes as uid 1000, the runner user is not
           CID=$(docker run -d -p 8099:8080 -v "$DATA:/app/data" "$IMAGE")
           trap 'docker rm -f "$CID" >/dev/null 2>&1 || true' EXIT
 
@@ -319,6 +314,15 @@ jobs:
             exit 1
           fi
 
+          # 8) the entrypoint starts as root, but the application must not run as root: PID 1
+          # is the app after the entrypoint's exec, and the database belongs to PUID (1000).
+          APP_UID=$(docker exec "$CID" sh -c "awk '/^Uid:/{print \$2}' /proc/1/status")
+          [ "$APP_UID" = "1000" ] \
+            || { echo "::error::application runs as uid $APP_UID, expected 1000"; docker logs "$CID"; exit 1; }
+          DB_UID=$(stat -c %u "$DATA/knxmonitor.db")
+          [ "$DB_UID" = "1000" ] \
+            || { echo "::error::database owned by uid $DB_UID, expected 1000"; exit 1; }
+
           # 9) the built-in HEALTHCHECK has to reach "healthy" (15s start period)
           for _ in $(seq 90); do
             [ "$(docker inspect -f '{{.State.Health.Status}}' "$CID")" = "healthy" ] && break
@@ -328,7 +332,7 @@ jobs:
           [ "$STATUS" = "healthy" ] \
             || { echo "::error::HEALTHCHECK reports '$STATUS'"; docker logs "$CID"; exit 1; }
 
-          echo "image smoke test OK — uid 1000, volume written, healthcheck healthy"
+          echo "image smoke test OK — app as uid 1000, volume handed over and written, healthcheck healthy"
 
       - name: Export digest
         run: |
