@@ -10,7 +10,7 @@ import { LanguageService } from '../../core/i18n/language.service';
 import { localeTag } from '../../core/i18n/locale.util';
 import { formatKnxDateIn } from '../../core/i18n/date.util';
 
-export type ColumnKind = 'time' | 'datetime' | 'mono' | 'muted-mono' | 'dpt' | 'name' | 'type' | 'value';
+export type ColumnKind = 'time' | 'datetime' | 'mono' | 'muted-mono' | 'dpt' | 'name' | 'type' | 'value' | 'location' | 'functions';
 
 export interface KnxColumn {
   key: keyof KnxTelegram | string;
@@ -102,6 +102,19 @@ export class KnxTableComponent {
   // KG/UG/EG/OG/DG token out into a badge and stripped it from the name, which guessed
   // wrong on other naming schemes (e.g. "OG1_TP_..." kept the prefix while "OG F_..."
   // lost it) and differed from the mobile cards and the detail panel, which never did it.
+
+  // --- Gebäudeteil + Funktionen (#12) --------------------------------------
+  // Feste Zeilenhöhe der virtuellen Tabelle: mehrere Funktionen werden nicht aufgeklappt,
+  // sondern als "erste +N" gezeigt, die vollständige Liste steht im Tooltip und im Detail.
+  functionsText(row: KnxTelegram): string {
+    const f = row.functions ?? [];
+    if (f.length === 0) return '';
+    return f.length === 1 ? f[0] : `${f[0]} +${f.length - 1}`;
+  }
+  functionsTitle(row: KnxTelegram): string | null {
+    const f = row.functions ?? [];
+    return f.length ? f.join('\n') : null;
+  }
 
   // --- Typ -------------------------------------------------------------------
   typeKind(row: KnxTelegram): string { return messageTypeKind(row.messageType) || ''; }

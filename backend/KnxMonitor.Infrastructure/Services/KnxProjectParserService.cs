@@ -104,6 +104,8 @@ public class KnxProjectParserService : IKnxProjectParserService
                         : new List<ProjectKeyringKey>()
                 };
 
+                AttachFunctions(parsed.GroupAddresses, result.Functions);
+
                 _logger.LogInformation(
                     "Parsed: {GAs} GAs, {Devices} Devices, {Locations} Locations, {ComObjects} ComObjects, {GroupRanges} GroupRanges in {Duration}ms",
                     parsed.GroupAddresses.Count,
@@ -147,6 +149,37 @@ public class KnxProjectParserService : IKnxProjectParserService
     }
 
     // Mapping: Library DTO → Infrastructure Entity
+    /// <summary>
+    /// Writes the names of the ETS functions onto the group addresses they link (#12). Stored on
+    /// the group address rather than in a table of their own: the monitor only ever asks "which
+    /// functions does this destination belong to", and the group address already is the per-project
+    /// row a re-import merges. Functions without a name have nothing to show and are skipped.
+    /// </summary>
+    internal static void AttachFunctions(
+        IReadOnlyList<GroupAddress> groupAddresses,
+        IEnumerable<KnxMonitor.ProjectParser.Core.Models.ProjectFunction> functions)
+    {
+        var namesByAddress = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var function in functions)
+        {
+            var name = function.Name.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            if (name.Length == 0) continue;
+            foreach (var address in function.GroupAddresses)
+            {
+                if (!namesByAddress.TryGetValue(address, out var names))
+                    namesByAddress[address] = names = new List<string>();
+                if (!names.Contains(name)) names.Add(name);
+            }
+        }
+
+        foreach (var ga in groupAddresses)
+        {
+            ga.Functions = namesByAddress.TryGetValue(ga.Address, out var names)
+                ? string.Join('\n', names)
+                : null;
+        }
+    }
+
     private GroupAddress MapGroupAddressToEntity(LibraryGroupAddress dto, int projectId)
     {
         return new GroupAddress

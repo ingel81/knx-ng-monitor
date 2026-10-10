@@ -11,7 +11,13 @@ export interface KnxTelegram {
   sourceAddress: string;
   /** Gerätename hinter `sourceAddress`, aufgelöst über das aktive Projekt. Fehlt, wenn unbekannt. */
   sourceName?: string;
+  /** Gebäudeteil des Senders, kompakt (direkter Raum plus jede höhere Ebene mit Geschwistern). */
+  sourceLocation?: string;
+  /** Voller Gebäudepfad des Senders, für den Tooltip. */
+  sourceLocationPath?: string;
   destinationAddress: string;
+  /** ETS-Funktionen der Ziel-GA (ETS 5/6), aufgelöst über das aktive Projekt. */
+  functions?: string[];
   groupAddressName?: string;
   datapointType?: string;
   messageType: string;

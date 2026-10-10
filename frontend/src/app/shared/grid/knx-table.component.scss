@@ -128,6 +128,19 @@
   .name-text.empty { color: var(--ink-3); font-weight: var(--fw-normal); }
 }
 
+// Gebäudeteil + Funktionen (#12): Text wie der Name, aber in normaler Schrift, damit der
+// GA-Name die Zeile weiter anführt.
+.knx-td.location,
+.knx-td.functions {
+  .name-text {
+    color: var(--ink-2);
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
 // Typ-Pill
 .knx-type {
   display: inline-flex;

@@ -47,6 +47,7 @@ public class TelegramBroadcastService : IHostedService
             string? groupAddressName = null;
             string? datapointType = null;
             var sourceName = _cache.GetDeviceByAddress(telegram.SourceAddress)?.Name;
+            var buildingPart = _cache.GetBuildingPart(telegram.SourceAddress);
 
             if (telegram.GroupAddressId.HasValue)
             {
@@ -64,7 +65,10 @@ public class TelegramBroadcastService : IHostedService
                 telegram.Timestamp,
                 telegram.SourceAddress,
                 SourceName = sourceName,
+                SourceLocation = buildingPart?.Compact,
+                SourceLocationPath = buildingPart?.Full,
                 telegram.DestinationAddress,
+                Functions = _cache.GetFunctions(telegram.DestinationAddress),
                 GroupAddressName = groupAddressName,
                 DatapointType = datapointType,
                 telegram.MessageType,

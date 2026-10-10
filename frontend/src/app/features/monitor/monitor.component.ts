@@ -120,7 +120,8 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   // Live-Modus: wortweise Suche wie in der GA-Auswahl der Diagramme. Jedes Telegramm wird nur
   // einmal gefaltet, nicht bei jedem neuen Telegramm im Puffer erneut.
   private liveSearchCache = new SearchCache<KnxTelegram>((t) =>
-    [t.sourceAddress, t.sourceName, t.destinationAddress, t.groupAddressName, t.datapointType, t.value, t.valueDecoded]
+    [t.sourceAddress, t.sourceName, t.sourceLocationPath, t.destinationAddress, t.groupAddressName,
+      ...(t.functions ?? []), t.datapointType, t.value, t.valueDecoded]
       .join(' '));
 
   // --- Live state ------------------------------------------------------------
@@ -210,8 +211,10 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     { key: 'timestamp', header: 'columns.timestamp', kind: 'datetime', width: 220, sortable: true },
     { key: 'sourceAddress', header: 'columns.source', kind: 'mono', width: 105 },
     { key: 'sourceName', header: 'columns.sourceName', kind: 'name', grow: 1, minWidth: 150 },
+    { key: 'sourceLocation', header: 'columns.sourceLocation', kind: 'location', grow: 1, minWidth: 150 },
     { key: 'destinationAddress', header: 'columns.dest', kind: 'mono', width: 105 },
     { key: 'groupAddressName', header: 'columns.name', kind: 'name', grow: 1.4, minWidth: 200 },
+    { key: 'functions', header: 'columns.functions', kind: 'functions', grow: 1, minWidth: 150 },
     { key: 'datapointType', header: 'columns.dpt', kind: 'dpt', width: 120, align: 'right' },
     { key: 'messageType', header: 'columns.type', kind: 'type', width: 110 },
     { key: 'value', header: 'columns.raw', kind: 'muted-mono', width: 140, align: 'right' },
@@ -221,7 +224,9 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   ];
   // sourceName ist zuschaltbar statt vorbelegt: die volle Spaltenliste braucht schon ohne sie
   // ~1162 px, ein weiteres Namensfeld drängt auf Laptop-Breiten die Wert-Spalte heraus.
-  readonly defaultHiddenCols = ['priority', 'flags', 'sourceName'];
+  // Gebäudeteil und Funktion (#12) aus demselben Grund; die seen-Liste im Spalten-Manager blendet
+  // sie auch bei bestehenden Nutzern erst einmal aus.
+  readonly defaultHiddenCols = ['priority', 'flags', 'sourceName', 'sourceLocation', 'functions'];
   columnOptions = this.allColumns.map((c) => ({ key: c.key as string, header: c.header }));
   hiddenCols = new Set<string>();
   readonly lockedCols = ['groupAddressName', 'valueDecoded'];
@@ -432,12 +437,13 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   clearTelegrams(): void { this.buffer.clear(); }
 
   exportLiveCsv(): void {
-    const header = ['Time', 'Source', 'SourceName', 'Dest', 'Name', 'DPT', 'Type', 'Raw', 'Value'];
+    const header = ['Time', 'Source', 'SourceName', 'SourceLocation', 'Dest', 'Name', 'Functions', 'DPT', 'Type', 'Raw', 'Value'];
     const lines = [header.join(',')];
     for (const t of this.filtered) {
       lines.push([
         formatKnxDate(t.timestamp, 'dateTime', this.lang.lang()),
-        t.sourceAddress, t.sourceName ?? '', t.destinationAddress, t.groupAddressName ?? '', t.datapointType ?? '',
+        t.sourceAddress, t.sourceName ?? '', t.sourceLocationPath ?? '', t.destinationAddress, t.groupAddressName ?? '',
+        (t.functions ?? []).join('; '), t.datapointType ?? '',
         messageTypeName(t.messageType), t.value, t.valueDecoded ?? ''
       ].map((v) => this.csv(String(v ?? ''))).join(','));
     }

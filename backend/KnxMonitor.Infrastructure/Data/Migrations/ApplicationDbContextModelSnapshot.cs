@@ -153,6 +153,9 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Functions")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -305,6 +308,8 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
                     b.HasIndex("GroupAddressId");
 
                     b.HasIndex("Timestamp", "DestinationAddress");
+
+                    b.HasIndex("Timestamp", "SourceAddress");
 
                     b.ToTable("KnxTelegrams");
                 });

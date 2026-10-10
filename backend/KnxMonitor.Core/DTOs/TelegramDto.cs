@@ -19,7 +19,25 @@ public class TelegramDto
     /// recorded under an older project therefore show today's device names.
     /// </summary>
     public string? SourceName { get; set; }
+
+    /// <summary>
+    /// Building part of the sender, compact: the space the device sits in plus every higher level
+    /// that has siblings, joined by " › " (e.g. "00/2_WR › 00/3_EG › 01_EGD"). Resolved from the
+    /// active project like <see cref="SourceName"/>; null when the device is in no location.
+    /// </summary>
+    public string? SourceLocation { get; set; }
+
+    /// <summary>Full building path of the sender, root first, same separator. Null like <see cref="SourceLocation"/>.</summary>
+    public string? SourceLocationPath { get; set; }
+
     public string DestinationAddress { get; set; } = string.Empty;
+
+    /// <summary>
+    /// ETS functions the destination group address belongs to in the active project (ETS 5/6
+    /// only). Empty when it is in none. Resolved per request like <see cref="SourceName"/>.
+    /// </summary>
+    public IReadOnlyList<string> Functions { get; set; } = Array.Empty<string>();
+
     public string? GroupAddressName { get; set; }
     public string? DatapointType { get; set; }
     public MessageType MessageType { get; set; }

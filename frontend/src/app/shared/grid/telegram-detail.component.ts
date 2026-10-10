@@ -37,6 +37,11 @@ export interface TelegramDetailData {
   sourceAddress?: string;
   destinationAddress?: string;
   groupAddressName?: string;
+  /** Building part of the sender (compact) and its full path, from the active project. */
+  sourceLocation?: string;
+  sourceLocationPath?: string;
+  /** ETS functions of the destination group address. */
+  functions?: string[];
   datapointType?: string;
   messageType?: string | number;
   value?: string;
@@ -77,10 +82,16 @@ export interface TelegramDetailData {
       <dl class="knx-sheet-grid">
         <div class="field field--wide"><dt>{{ 'detail.timestamp' | translate }}</dt><dd class="mono">{{ formatTime(data.timestamp) }}</dd></div>
         <div class="field field--wide"><dt>{{ 'detail.source' | translate }}</dt><dd class="mono">{{ data.sourceAddress || '–' }}@if (sourceDevice?.name) {<span class="dd-extra"> · {{ sourceDevice!.name }}</span>}</dd></div>
+        @if (data.sourceLocation) {
+          <div class="field field--wide"><dt>{{ 'detail.sourceLocation' | translate }}</dt><dd [attr.title]="data.sourceLocationPath">{{ data.sourceLocationPath || data.sourceLocation }}</dd></div>
+        }
         <div class="field"><dt>{{ 'detail.destGa' | translate }}</dt><dd class="mono">{{ data.destinationAddress || '–' }}</dd></div>
         <div class="field"><dt>{{ 'detail.dpt' | translate }}</dt><dd class="mono" [knxDptTitle]="data.datapointType">{{ data.datapointType || '–' }}</dd></div>
         <div class="field"><dt>{{ 'detail.raw' | translate }}</dt><dd class="mono">{{ data.value || '–' }}</dd></div>
         <div class="field"><dt>{{ 'detail.type' | translate }}</dt><dd>{{ typeName || '–' }}</dd></div>
+        @if (data.functions?.length) {
+          <div class="field field--wide"><dt>{{ (data.functions!.length > 1 ? 'detail.functions' : 'detail.function') | translate }}</dt><dd>@for (f of data.functions; track $index) {<div>{{ f }}</div>}</dd></div>
+        }
         @if (data.priority !== undefined && data.priority !== null && data.priority !== '') {
           <div class="field"><dt>{{ 'detail.priority' | translate }}</dt><dd class="mono">{{ data.priority }}</dd></div>
         }

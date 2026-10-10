@@ -8,6 +8,14 @@ public class GroupAddress
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? DatapointType { get; set; }
+
+    /// <summary>
+    /// Names of the ETS functions this group address belongs to, newline-separated in project
+    /// order; null when it is in none (always for ETS 4, which has no functions). A function name
+    /// may contain commas but never a line break, hence the separator.
+    /// </summary>
+    public string? Functions { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     // Navigation properties

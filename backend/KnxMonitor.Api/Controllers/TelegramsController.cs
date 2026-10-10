@@ -135,8 +135,10 @@ public partial class TelegramsController : ControllerBase
     /// <c>knx-telegrams-{UTC timestamp}.csv</c>.
     /// </para>
     /// <para>
-    /// Columns: Timestamp, SourceAddress, SourceName, DestinationAddress, GroupAddressName, DatapointType,
-    /// MessageType, Value, ValueDecoded. <c>Value</c> is the raw payload as uppercase hex without
+    /// Columns: Timestamp, SourceAddress, SourceName, SourceLocation, DestinationAddress, GroupAddressName,
+    /// Functions, DatapointType, MessageType, Value, ValueDecoded. SourceLocation is the sender's full
+    /// building path ("Building › Floor › Room"), Functions the ETS functions of the destination
+    /// joined by "; "; both resolve against the active project like SourceName. <c>Value</c> is the raw payload as uppercase hex without
     /// separators. <c>Timestamp</c> is the UTC value in ISO-8601 round-trip format but carries no
     /// zone designator — unlike the JSON responses, which end in <c>Z</c>. GroupAddressName and
     /// DatapointType are empty when the telegram has no linked group address; SourceName is empty
@@ -161,7 +163,7 @@ public partial class TelegramsController : ControllerBase
 
         await using var writer = new StreamWriter(Response.Body, new UTF8Encoding(false));
         await writer.WriteLineAsync(
-            "Timestamp,SourceAddress,SourceName,DestinationAddress,GroupAddressName,DatapointType,MessageType,Value,ValueDecoded");
+            "Timestamp,SourceAddress,SourceName,SourceLocation,DestinationAddress,GroupAddressName,Functions,DatapointType,MessageType,Value,ValueDecoded");
 
         await foreach (var t in _repository.StreamByFilterAsync(request.ToFilter(), ct))
         {
@@ -169,8 +171,10 @@ public partial class TelegramsController : ControllerBase
                 Csv(t.Timestamp.ToString("O", CultureInfo.InvariantCulture)),
                 Csv(t.SourceAddress),
                 Csv(_projectCache.GetDeviceByAddress(t.SourceAddress)?.Name),
+                Csv(_projectCache.GetBuildingPart(t.SourceAddress)?.Full),
                 Csv(t.DestinationAddress),
                 Csv(t.GroupAddress?.Name),
+                Csv(string.Join("; ", _projectCache.GetFunctions(t.DestinationAddress))),
                 Csv(t.GroupAddress?.DatapointType),
                 Csv(t.MessageType.ToString()),
                 Csv(Convert.ToHexString(t.Value)),
@@ -238,7 +242,10 @@ public partial class TelegramsController : ControllerBase
         // No stored link for the sender (unlike the group address), so this resolves against the
         // project that is active right now — see TelegramDto.SourceName.
         SourceName = _projectCache.GetDeviceByAddress(t.SourceAddress)?.Name,
+        SourceLocation = _projectCache.GetBuildingPart(t.SourceAddress)?.Compact,
+        SourceLocationPath = _projectCache.GetBuildingPart(t.SourceAddress)?.Full,
         DestinationAddress = t.DestinationAddress,
+        Functions = _projectCache.GetFunctions(t.DestinationAddress),
         GroupAddressName = t.GroupAddress?.Name,
         DatapointType = t.GroupAddress?.DatapointType,
         MessageType = t.MessageType,

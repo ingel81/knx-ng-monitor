@@ -210,6 +210,9 @@ public class ApplicationDbContext : DbContext
             // delete cost was EF's tracked cascade, which ProjectRepository.DeleteProjectFastAsync
             // now bypasses with set-based ExecuteUpdate/ExecuteDelete.
             entity.HasIndex(e => new { e.Timestamp, e.DestinationAddress });
+            // Same shape for the sender: the top-senders statistic (#38) groups a time range by
+            // SourceAddress and is covered by this index instead of reading every row.
+            entity.HasIndex(e => new { e.Timestamp, e.SourceAddress });
 
             entity.HasOne(e => e.GroupAddress)
                 .WithMany(g => g.Telegrams)

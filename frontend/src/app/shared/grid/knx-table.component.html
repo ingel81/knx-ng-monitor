@@ -29,6 +29,13 @@
               <!-- col.key, nicht fest groupAddressName: dieselbe Darstellung trägt auch den Quellnamen -->
               <span class="name-text" [class.empty]="!val(row, col.key)" knxOverflowTitle>{{ val(row, col.key) || ('detail.unknown' | translate) }}</span>
             }
+            @case ('location') {
+              <!-- Kompakter Pfad in der Zelle, voller Pfad als Tooltip -->
+              <span class="name-text" [class.empty]="!row.sourceLocation" [attr.title]="row.sourceLocationPath || null">{{ row.sourceLocation }}</span>
+            }
+            @case ('functions') {
+              <span class="name-text" [class.empty]="!row.functions?.length" [attr.title]="functionsTitle(row)">{{ functionsText(row) }}</span>
+            }
             @case ('type') {
               @if (typeName(row)) {
                 <span class="knx-type" [ngClass]="'knx-type--' + typeKind(row)">

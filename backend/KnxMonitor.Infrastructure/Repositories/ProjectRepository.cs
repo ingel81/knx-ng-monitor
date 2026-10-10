@@ -207,6 +207,7 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
                 existing.Name = ng.Name;
                 existing.Description = ng.Description;
                 existing.DatapointType = ng.DatapointType;
+                existing.Functions = ng.Functions;
             }
             else
             {
