@@ -220,7 +220,8 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<KnxConfiguration>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.IpAddress).IsRequired().HasMaxLength(50);
+            // 253 = longest DNS name; a tunneling gateway may be addressed by host name (#23).
+            entity.Property(e => e.IpAddress).IsRequired().HasMaxLength(253);
             entity.Property(e => e.Port).IsRequired();
             entity.Property(e => e.ConnectionType)
                 .IsRequired()
@@ -229,6 +230,13 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsActive).IsRequired();
             entity.Property(e => e.AutoConnect).IsRequired().HasDefaultValue(true);
             entity.Property(e => e.UseSecureTunnel).IsRequired().HasDefaultValue(false);
+            entity.Property(e => e.TunnelProtocol)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(10)
+                .HasDefaultValue(TunnelProtocol.Udp);
+            entity.Property(e => e.TunnelAddress).HasMaxLength(20);
+            entity.Property(e => e.TunnelAddressFallback).IsRequired().HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
         });

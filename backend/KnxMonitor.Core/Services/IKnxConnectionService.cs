@@ -40,6 +40,19 @@ public interface IKnxConnectionService
     /// </summary>
     bool ManualDisconnect { get; }
 
+    /// <summary>
+    /// True while Falcon's own AutoReconnect is re-establishing a dropped tunnel. The
+    /// auto-connect worker stays out of this window (a parallel reconnect would open a second
+    /// tunnel) unless it lasts longer than the grace period.
+    /// </summary>
+    bool IsRecovering { get; }
+
+    /// <summary>
+    /// Raised when an established link is lost for good (not by a manual disconnect), so the
+    /// auto-connect worker can reconnect right away instead of waiting for its next poll.
+    /// </summary>
+    event EventHandler? LinkLost;
+
     Task<KnxConfiguration?> GetActiveConfigurationAsync();
 
     /// <summary>

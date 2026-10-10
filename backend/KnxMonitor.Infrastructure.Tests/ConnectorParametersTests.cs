@@ -2,6 +2,7 @@ using System.Net;
 using FluentAssertions;
 using Knx.Falcon;
 using Knx.Falcon.Configuration;
+using IpProtocol = Knx.Falcon.KnxnetIp.IpProtocol;
 using KnxMonitor.Core.Entities;
 using KnxMonitor.Core.Enums;
 using KnxMonitor.Core.Interfaces;
@@ -48,6 +49,69 @@ public class ConnectorParametersTests
         var tunnel = parameters.Should().BeOfType<IpTunnelingConnectorParameters>().Subject;
         tunnel.HostAddress.Should().Be("192.168.10.60");
         tunnel.IpPort.Should().Be(3671);
+    }
+
+    [Fact]
+    public async Task Tunneling_KeepsTheTunnelAcrossShortOutages()
+    {
+        // #22: without AutoReconnect Falcon drops the tunnel on the first lost heartbeat.
+        var parameters = await CreateService().BuildConnectorParameters(
+            Config(ConnectionType.Tunneling, "192.168.10.60"), keyringBlob: null);
+
+        parameters.AutoReconnect.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(TunnelProtocol.Udp, IpProtocol.Udp)]
+    [InlineData(TunnelProtocol.Tcp, IpProtocol.Tcp)]
+    public async Task Tunneling_UsesTheConfiguredProtocol(TunnelProtocol configured, IpProtocol expected)
+    {
+        var config = Config(ConnectionType.Tunneling, "192.168.10.60");
+        config.TunnelProtocol = configured;
+
+        var tunnel = (IpTunnelingConnectorParameters)await CreateService().BuildConnectorParameters(config, keyringBlob: null);
+
+        tunnel.ProtocolType.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task Tunneling_AcceptsAHostName()
+    {
+        // #23: Falcon resolves the name itself, the configuration only has to pass it through.
+        var tunnel = (IpTunnelingConnectorParameters)await CreateService().BuildConnectorParameters(
+            Config(ConnectionType.Tunneling, "knx-gateway.local"), keyringBlob: null);
+
+        tunnel.HostAddress.Should().Be("knx-gateway.local");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Tunneling_RequestsTheConfiguredTunnelAddress(bool fallback)
+    {
+        // #10: reclaiming the same slot instead of occupying a new one on every reconnect.
+        var config = Config(ConnectionType.Tunneling, "192.168.10.60");
+        config.TunnelAddress = " 1.1.251 ";
+        config.TunnelAddressFallback = fallback;
+
+        var tunnel = (IpTunnelingConnectorParameters)await CreateService().BuildConnectorParameters(config, keyringBlob: null);
+
+        tunnel.IndividualAddress.Should().Be(new IndividualAddress("1.1.251"));
+        tunnel.FallbackToAnyIndividualAddress.Should().Be(fallback);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("not-an-address")]
+    public async Task Tunneling_LetsTheInterfaceChoose_WithoutAUsableTunnelAddress(string? tunnelAddress)
+    {
+        var config = Config(ConnectionType.Tunneling, "192.168.10.60");
+        config.TunnelAddress = tunnelAddress;
+
+        var tunnel = (IpTunnelingConnectorParameters)await CreateService().BuildConnectorParameters(config, keyringBlob: null);
+
+        tunnel.IndividualAddress.Should().BeNull();
     }
 
     [Fact]

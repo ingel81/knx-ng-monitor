@@ -15,7 +15,7 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.10");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
             modelBuilder.Entity("KnxMonitor.Core.Entities.CommunicationObject", b =>
                 {
@@ -186,7 +186,7 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
 
                     b.Property<string>("IpAddress")
                         .IsRequired()
-                        .HasMaxLength(50)
+                        .HasMaxLength(253)
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsActive")
@@ -199,6 +199,22 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
 
                     b.Property<int>("Port")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("TunnelAddress")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("TunnelAddressFallback")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("TunnelProtocol")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Udp");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");

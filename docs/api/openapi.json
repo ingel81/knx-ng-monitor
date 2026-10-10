@@ -636,7 +636,7 @@
           "Knx"
         ],
         "summary": "Stores a new KNX interface configuration.",
-        "description": "Storing alone does not touch the bus: the entry is created inactive and no connection is\r\nopened here. Connect explicitly, or leave AutoConnect on — the auto-connect worker picks a\r\nconfiguration only while no link is up, preferring the active one, else the first with\r\nAutoConnect enabled. The payload carries no secure-tunnel flag, so that option stays off for\r\nnew entries.",
+        "description": "Storing alone does not touch the bus: the entry is created inactive and no connection is\r\nopened here. Connect explicitly, or leave AutoConnect on — the auto-connect worker picks a\r\nconfiguration only while no link is up, preferring the active one, else the first with\r\nAutoConnect enabled. Tunneling accepts a host name as well as an IP address; routing needs a\r\nmulticast IP. The tunnel options (protocol, requested address, IP Secure) are ignored for routing.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -723,7 +723,7 @@
           "Knx"
         ],
         "summary": "Updates a stored KNX interface configuration; may re-establish the live bus link.",
-        "description": "When the gateway endpoint actually changes (IP address, port or connection type), the\r\nconfiguration has AutoConnect enabled and a link is currently up, the running connection is\r\nre-opened with the new settings — that briefly interrupts recording. Changing only the\r\nphysical address or the auto-connect flag does not trigger a reconnect. A failed reconnect\r\nis not an error: the response reports Reconnected=false and the auto-connect worker retries.\r\nThe payload carries no secure-tunnel flag, so that setting stays as stored.",
+        "description": "When the connection actually changes (address, port, connection type or one of the tunnel\r\noptions), the configuration has AutoConnect enabled and a link is currently up, the running\r\nconnection is re-opened with the new settings — that briefly interrupts recording. Changing\r\nonly the physical address or the auto-connect flag does not trigger a reconnect. A failed\r\nreconnect is not an error: the response reports Reconnected=false and the auto-connect\r\nworker retries.",
         "parameters": [
           {
             "name": "id",
@@ -2048,6 +2048,23 @@
           "autoConnect": {
             "type": "boolean",
             "default": true
+          },
+          "useSecureTunnel": {
+            "type": "boolean",
+            "default": false
+          },
+          "tunnelProtocol": {
+            "$ref": "#/components/schemas/TunnelProtocol"
+          },
+          "tunnelAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tunnelAddressFallback": {
+            "type": "boolean",
+            "default": true
           }
         }
       },
@@ -2190,6 +2207,10 @@
             "type": "boolean"
           }
         }
+      },
+      "TunnelProtocol": {
+        "type": "integer",
+        "default": 0
       },
       "WriteGroupValueRequest": {
         "required": [

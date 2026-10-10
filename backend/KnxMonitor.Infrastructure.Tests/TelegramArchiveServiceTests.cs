@@ -127,6 +127,10 @@ public class TelegramArchiveServiceTests : IDisposable
         public KnxMonitor.Core.Enums.KnxLinkState State => KnxMonitor.Core.Enums.KnxLinkState.Disconnected;
         public bool ManualDisconnect => false;
         public bool TestInProgress => false;
+        public bool IsRecovering => false;
+#pragma warning disable CS0067 // never raised: the archive does not care about link loss
+        public event EventHandler? LinkLost;
+#pragma warning restore CS0067
         public DateTime? ConnectedSince => null;
         public DateTime? LastDisconnectedAt => null;
         public Task<bool> ConnectAsync(KnxConfiguration configuration) => Task.FromResult(false);

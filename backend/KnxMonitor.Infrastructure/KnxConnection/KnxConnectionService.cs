@@ -33,6 +33,10 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     private long _lastDisconnectedAtTicks;
     private volatile bool _manualDisconnect;
     private volatile bool _testInProgress;
+    // Whether the live bus was opened with Falcon's AutoReconnect (tunneling only), and since when
+    // Falcon has been trying to bring a dropped tunnel back (ticks, 0 = not recovering).
+    private volatile bool _autoReconnectActive;
+    private long _recoveringSinceTicks;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     // Serializes the whole connect / cleanup / disconnect / test path. Without it, overlapping
     // callers (auto-connect worker, controller, project activate, import) could race on _knxBus:
@@ -41,13 +45,29 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     // lock is already held and must NOT re-acquire it.
     private readonly SemaphoreSlim _busLock = new(1, 1);
 
+    /// <summary>
+    /// How long Falcon's AutoReconnect may try on its own before the auto-connect worker gives up
+    /// on the old bus and opens a fresh one.
+    /// </summary>
+    public static readonly TimeSpan RecoveryGrace = TimeSpan.FromSeconds(15);
+
     public event EventHandler<KnxTelegram>? TelegramReceived;
+    public event EventHandler? LinkLost;
     public bool IsConnected => _state == KnxLinkState.Connected;
     public KnxLinkState State => _state;
     public DateTime? ConnectedSince => ReadInstant(ref _connectedSinceTicks);
     public DateTime? LastDisconnectedAt => ReadInstant(ref _lastDisconnectedAtTicks);
     public bool ManualDisconnect => _manualDisconnect;
     public bool TestInProgress => _testInProgress;
+
+    public bool IsRecovering
+    {
+        get
+        {
+            var since = Interlocked.Read(ref _recoveringSinceTicks);
+            return since != 0 && DateTime.UtcNow.Ticks - since < RecoveryGrace.Ticks;
+        }
+    }
 
     public KnxConnectionService(
         ILogger<KnxConnectionService> logger,
@@ -107,7 +127,10 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             var keyringBlob = await TryGetActiveKeyringBlobAsync();
 
             // Create KNX bus instance
-            _knxBus = new KnxBus(await BuildConnectorParameters(configuration, keyringBlob));
+            var parameters = await BuildConnectorParameters(configuration, keyringBlob);
+            _autoReconnectActive = parameters.AutoReconnect;
+            Interlocked.Exchange(ref _recoveringSinceTicks, 0);
+            _knxBus = new KnxBus(parameters);
 
             // Apply KNX Data Secure group communication BEFORE subscribing to GroupMessageReceived
             // (Falcon requires GroupCommunicationSecurity to be set before any group communication /
@@ -177,7 +200,11 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             // security). Passing null keyringBlob => identical to the previous behavior
             // (UseSecureTunnel is the only thing that could change params, and with a null blob it
             // falls straight through to the existing non-secure tunnel).
-            probe = new KnxBus(await BuildConnectorParameters(configuration, null));
+            var probeParameters = await BuildConnectorParameters(configuration, null);
+            // A probe answers "reachable right now?"; quietly retrying in the background would only
+            // blur that answer and keep a tunnel slot busy after the probe is gone.
+            probeParameters.AutoReconnect = false;
+            probe = new KnxBus(probeParameters);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await probe.ConnectAsync(cts.Token);
 
@@ -285,11 +312,11 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
                     + "falling back to the non-secure tunnel");
             }
 
-            return new IpTunnelingConnectorParameters(
+            return ConfigureTunnel(new IpTunnelingConnectorParameters(
                 configuration.IpAddress,
                 configuration.Port,
-                IpProtocol.Udp,
-                true /* NAT mode */);
+                ToFalconProtocol(configuration.TunnelProtocol),
+                true /* NAT mode */), configuration);
         }
 
         // KNXnet/IP routing: join the multicast group instead of opening a tunnel to one
@@ -324,6 +351,43 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
     }
 
     /// <summary>
+    /// Settings every tunnel shares, secure or not (#22, #10):
+    /// <list type="bullet">
+    /// <item>AutoReconnect: Falcon keeps the tunnel across short network outages instead of
+    /// dropping it on the first lost heartbeat, which is how ETS survives the same network. Falcon
+    /// implements it for unicast IP only, so routing does not get it.</item>
+    /// <item>A requested individual address, so a reconnect reclaims the same tunnel slot instead
+    /// of occupying a new one while the old one waits for its timeout. With the fallback on, a
+    /// taken address degrades to "any free slot" rather than a failed connect.</item>
+    /// </list>
+    /// </summary>
+    private IpTunnelingConnectorParameters ConfigureTunnel(IpTunnelingConnectorParameters p, KnxConfiguration configuration)
+    {
+        p.AutoReconnect = true;
+
+        if (!string.IsNullOrWhiteSpace(configuration.TunnelAddress))
+        {
+            if (IndividualAddress.TryParse(configuration.TunnelAddress.Trim(), out var requested))
+            {
+                p.IndividualAddress = requested;
+                p.FallbackToAnyIndividualAddress = configuration.TunnelAddressFallback;
+            }
+            else
+            {
+                // The API validates this; reaching here means the value was stored some other way.
+                _logger.LogWarning(
+                    "Tunnel address '{TunnelAddress}' is not a valid individual address; letting the interface choose",
+                    configuration.TunnelAddress);
+            }
+        }
+
+        return p;
+    }
+
+    private static IpProtocol ToFalconProtocol(TunnelProtocol protocol) =>
+        protocol == TunnelProtocol.Tcp ? IpProtocol.Tcp : IpProtocol.Udp;
+
+    /// <summary>
     /// Builds KNX IP Secure tunnel parameters. UNVERIFIED ON HARDWARE: no secure gateway was
     /// available to test against. This follows the documented Falcon contract:
     /// <see cref="IpUnicastConnectorParameters"/> is abstract, so the concrete secure tunnel is an
@@ -349,11 +413,11 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             // Concrete secure-capable tunnel parameters. IpUnicastConnectorParameters (the type the
             // task contract names) is abstract; IpTunnelingConnectorParameters derives from it and
             // exposes the same IsSecure/HostAddress/IpPort/UseNat/UserId/credential surface.
-            var p = new IpTunnelingConnectorParameters(
+            var p = ConfigureTunnel(new IpTunnelingConnectorParameters(
                 configuration.IpAddress,
                 configuration.Port,
-                IpProtocol.Udp,
-                true /* NAT mode */);
+                ToFalconProtocol(configuration.TunnelProtocol),
+                true /* NAT mode */), configuration);
 
             // Load UserId + UserPasswordHash + DeviceAuthenticationCodeHash from the keyring's
             // tunnel slot via the supported Falcon API. Returns true if relevant secure data was
@@ -647,12 +711,32 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             var state = bus.ConnectionState;
             _logger.LogInformation("KNX connection state changed to: {ConnectionState}", state);
 
-            // Map Falcon's bus state onto our link state. A drop here (Closed/Broken/
-            // MediumFailure, not user-initiated) leaves State=Disconnected, which the
-            // auto-connect worker picks up to reconnect.
-            SetState(state == BusConnectionState.Connected
-                ? KnxLinkState.Connected
-                : KnxLinkState.Disconnected);
+            // Map Falcon's bus state onto our link state. A manual disconnect never gets here:
+            // CleanupBusConnection unsubscribes before disposing the bus.
+            switch (state)
+            {
+                case BusConnectionState.Connected:
+                    if (Interlocked.Exchange(ref _recoveringSinceTicks, 0) != 0)
+                    {
+                        _logger.LogInformation("KNX tunnel recovered by AutoReconnect");
+                    }
+                    SetState(KnxLinkState.Connected);
+                    break;
+
+                case BusConnectionState.Broken when _autoReconnectActive:
+                    // Falcon is already reconnecting this bus. Show it as connecting and keep the
+                    // worker out for the grace period; a second bus now would cost a tunnel slot.
+                    Interlocked.CompareExchange(ref _recoveringSinceTicks, DateTime.UtcNow.Ticks, 0);
+                    SetState(KnxLinkState.Connecting);
+                    break;
+
+                default:
+                    // Closed, MediumFailure, or Broken without AutoReconnect: the link is gone.
+                    Interlocked.Exchange(ref _recoveringSinceTicks, 0);
+                    SetState(KnxLinkState.Disconnected);
+                    LinkLost?.Invoke(this, EventArgs.Empty);
+                    break;
+            }
         }
     }
 

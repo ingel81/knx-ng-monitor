@@ -248,20 +248,29 @@ public class KnxController : ControllerBase
     /// Storing alone does not touch the bus: the entry is created inactive and no connection is
     /// opened here. Connect explicitly, or leave AutoConnect on — the auto-connect worker picks a
     /// configuration only while no link is up, preferring the active one, else the first with
-    /// AutoConnect enabled. The payload carries no secure-tunnel flag, so that option stays off for
-    /// new entries.
+    /// AutoConnect enabled. Tunneling accepts a host name as well as an IP address; routing needs a
+    /// multicast IP. The tunnel options (protocol, requested address, IP Secure) are ignored for routing.
     /// </remarks>
     /// <returns>The stored configuration including its assigned id.</returns>
     [HttpPost("configurations")]
     public async Task<IActionResult> CreateConfiguration([FromBody] CreateConfigRequest request)
     {
+        if (Validate(request) is { } problem)
+        {
+            return BadRequest(new { error = problem });
+        }
+
         var config = new Core.Entities.KnxConfiguration
         {
-            IpAddress = request.IpAddress,
+            IpAddress = request.IpAddress.Trim(),
             Port = request.Port,
             PhysicalAddress = request.PhysicalAddress,
             ConnectionType = request.ConnectionType,
             AutoConnect = request.AutoConnect,
+            UseSecureTunnel = request.UseSecureTunnel,
+            TunnelProtocol = request.TunnelProtocol,
+            TunnelAddress = NormalizeTunnelAddress(request.TunnelAddress),
+            TunnelAddressFallback = request.TunnelAddressFallback,
             IsActive = false,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -295,12 +304,12 @@ public class KnxController : ControllerBase
 
     /// <summary>Updates a stored KNX interface configuration; may re-establish the live bus link.</summary>
     /// <remarks>
-    /// When the gateway endpoint actually changes (IP address, port or connection type), the
-    /// configuration has AutoConnect enabled and a link is currently up, the running connection is
-    /// re-opened with the new settings — that briefly interrupts recording. Changing only the
-    /// physical address or the auto-connect flag does not trigger a reconnect. A failed reconnect
-    /// is not an error: the response reports Reconnected=false and the auto-connect worker retries.
-    /// The payload carries no secure-tunnel flag, so that setting stays as stored.
+    /// When the connection actually changes (address, port, connection type or one of the tunnel
+    /// options), the configuration has AutoConnect enabled and a link is currently up, the running
+    /// connection is re-opened with the new settings — that briefly interrupts recording. Changing
+    /// only the physical address or the auto-connect flag does not trigger a reconnect. A failed
+    /// reconnect is not an error: the response reports Reconnected=false and the auto-connect
+    /// worker retries.
     /// </remarks>
     /// <param name="id">Id of the stored configuration; 404 when it does not exist.</param>
     /// <param name="request">The new values — same payload shape as when creating a configuration.</param>
@@ -314,16 +323,31 @@ public class KnxController : ControllerBase
             return NotFound();
         }
 
-        var connectionRelevantChange =
-            config.IpAddress != request.IpAddress ||
-            config.Port != request.Port ||
-            config.ConnectionType != request.ConnectionType;
+        if (Validate(request) is { } problem)
+        {
+            return BadRequest(new { error = problem });
+        }
 
-        config.IpAddress = request.IpAddress;
+        var ipAddress = request.IpAddress.Trim();
+        var tunnelAddress = NormalizeTunnelAddress(request.TunnelAddress);
+        var connectionRelevantChange =
+            config.IpAddress != ipAddress ||
+            config.Port != request.Port ||
+            config.ConnectionType != request.ConnectionType ||
+            config.UseSecureTunnel != request.UseSecureTunnel ||
+            config.TunnelProtocol != request.TunnelProtocol ||
+            config.TunnelAddress != tunnelAddress ||
+            config.TunnelAddressFallback != request.TunnelAddressFallback;
+
+        config.IpAddress = ipAddress;
         config.Port = request.Port;
         config.PhysicalAddress = request.PhysicalAddress;
         config.ConnectionType = request.ConnectionType;
         config.AutoConnect = request.AutoConnect;
+        config.UseSecureTunnel = request.UseSecureTunnel;
+        config.TunnelProtocol = request.TunnelProtocol;
+        config.TunnelAddress = tunnelAddress;
+        config.TunnelAddressFallback = request.TunnelAddressFallback;
         config.UpdatedAt = DateTime.UtcNow;
 
         await _configRepository.UpdateAsync(config);
@@ -347,6 +371,48 @@ public class KnxController : ControllerBase
 
         return Ok(new { Configuration = config, Reconnected = reconnected });
     }
+
+    /// <summary>
+    /// Server-side guard for what the settings form already checks, so a configuration stored
+    /// through the API cannot break the connect path. Returns an error text or null.
+    /// </summary>
+    internal static string? Validate(CreateConfigRequest request)
+    {
+        var host = request.IpAddress?.Trim() ?? string.Empty;
+        if (host.Length == 0)
+        {
+            return "Address is required.";
+        }
+        if (request.Port is < 1 or > 65535)
+        {
+            return "Port must be between 1 and 65535.";
+        }
+
+        if (request.ConnectionType == ConnectionType.Routing)
+        {
+            // Routing joins a multicast group, a host name makes no sense there.
+            if (!System.Net.IPAddress.TryParse(host, out var ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+            {
+                return "Routing needs an IPv4 multicast address.";
+            }
+            return null;
+        }
+
+        // Tunneling: an IPv4 address or a DNS host name (#23).
+        if (!System.Net.IPAddress.TryParse(host, out _) && Uri.CheckHostName(host) != UriHostNameType.Dns)
+        {
+            return "Enter an IP address or a host name.";
+        }
+        if (NormalizeTunnelAddress(request.TunnelAddress) is { } tunnel
+            && !Knx.Falcon.IndividualAddress.TryParse(tunnel, out _))
+        {
+            return "Tunnel address must be an individual address like 1.1.251.";
+        }
+        return null;
+    }
+
+    private static string? NormalizeTunnelAddress(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
 public record CreateConfigRequest(
@@ -354,7 +420,11 @@ public record CreateConfigRequest(
     int Port,
     string PhysicalAddress,
     ConnectionType ConnectionType,
-    bool AutoConnect = true
+    bool AutoConnect = true,
+    bool UseSecureTunnel = false,
+    TunnelProtocol TunnelProtocol = TunnelProtocol.Udp,
+    string? TunnelAddress = null,
+    bool TunnelAddressFallback = true
 );
 
 public record SetAutoConnectRequest(bool Enabled);
