@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\KnxMonitor.Core\KnxMonitor.Core.csproj" />
@@ -12,6 +12,9 @@
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Knx.Falcon.Sdk" Version="6.3.7959" />
+    <!-- Falcon pulls System.Security.Cryptography.Xml 8.0.0, which has known high-severity
+         advisories (NU1903). Lift it to the patched version shipped with .NET 10. -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
