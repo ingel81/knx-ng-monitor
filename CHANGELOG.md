@@ -47,6 +47,16 @@ binaries and auto-generated notes are on the
   share one 0..1 axis (#30). Contributions by Elkomaster91, thank you.
 - **Graph filters (#17):** the GA network graph filters by group, room, DPT and the
   neighbourhood of a node.
+- **Building part and function columns (#12).** Two opt-in monitor columns: the building
+  part of the sending device (compact path, only levels with siblings, the full path in the
+  tooltip) and the ETS functions of the destination address ("Name +N" with the list in the
+  tooltip). ETS 5/6 functions are parsed now; existing projects show them after a re-import.
+  Both columns are in the live view, the archive, both CSV exports and the telegram details.
+- **Docker: PUID / PGID (#40).** The container starts as root, hands `/app/data` to
+  `PUID:PGID` (default `1000:1000`) and runs the application as that user. A bind mount that
+  Docker created as root, or one owned by another NAS user, no longer needs a manual `chown`.
+  Started with `--user` and an unwritable data directory, the container stops with a clear
+  message instead of serving an empty login page; the binary fails fast the same way.
 - **The version is shown in the user menu.**
 
 ### Changed
@@ -71,6 +81,8 @@ binaries and auto-generated notes are on the
 - **.NET 10 LTS (#16)** for backend, Docker image and release binaries. The OpenAPI document
   picks up the XML doc comments natively now.
 - **A project import parses `0.xml` once** instead of up to three times.
+- Telegrams got an index on `(Timestamp, SourceAddress)`, which covers the new top-sender
+  query.
 
 ### Fixed
 - **A re-import kept decoding with the old datapoint types (#24).** It keeps the project id,
