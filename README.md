@@ -353,7 +353,23 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.12.0:** ETS 4 projects finally import with datapoint types (#24). The type
+**Current - v0.13.0:** a big round of community feedback. The **tunnel survives a bad
+network link** (#22): Falcon's auto-reconnect is on, a lost link is rebuilt right away with
+a short backoff instead of waiting for the next poll, the transport is selectable (UDP or
+**TCP**), and the interface can be asked for a **fixed tunnel address** with a fallback to any
+free slot (#10); a host name works in place of the IP (#23). **Buffered history writes**
+(every 5 s up to 10 min) spare SD cards (#37), and statistics are **counted in SQLite**
+instead of streaming every timestamp into .NET, about 7x faster on a million telegrams
+(#39), with a new card for the **busiest group addresses and senders** (#38). The charts
+got one y-axis per unit, a tooltip across all series, saved selections, a moving live window
+and the value in force before the range, much of it contributed by Elkomaster91 (#27, #30,
+#32, #33, #35, #36). Also new: an in-app **date and time field** that no longer accepts
+six-digit years (#15, #41), dates in the browser's regional format (#42), word-based search
+everywhere with `/` to focus it (#34), filters in the GA graph (#17), building-part and
+function columns in the monitor (#12), and **PUID / PGID** for the Docker image, so a
+root-owned bind mount no longer needs a manual `chown` (#40). Runs on **.NET 10 LTS** (#16).
+
+**Previous - v0.12.0:** ETS 4 projects finally import with datapoint types (#24). The type
 was only ever read from the group address, where ETS 4 never puts it - so the value column
 stayed empty and the charts page reported nothing to plot. It is now resolved through the
 linked communication object and the manufacturer's application program in the archive, and
