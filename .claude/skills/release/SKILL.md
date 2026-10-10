@@ -91,9 +91,14 @@ In `README.md`:
 - If the **Features** section needs a new top-level capability (e.g. a new ETS
   version, a new auth flow), add it there too.
 
+In `backend/KnxMonitor.Api/KnxMonitor.Api.csproj`:
+- Set `<Version>` to `X.Y.Z`. CI overrides it with the tag, but self-built
+  images (`docker build` without `VERSION`) and `dotnet run` fall back to it;
+  it sat at 0.11.0 through v0.13.1 and users saw the wrong version.
+
 Stage and commit:
 ```bash
-git add README.md
+git add README.md backend/KnxMonitor.Api/KnxMonitor.Api.csproj
 git commit -m "Update README for vX.Y.Z (<one-line headline>)"
 ```
 
