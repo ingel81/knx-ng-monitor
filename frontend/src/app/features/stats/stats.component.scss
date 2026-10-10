@@ -75,17 +75,12 @@
   color: var(--err);
 }
 
-.knx-input.is-missing {
-  border-color: var(--err);
-  box-shadow: 0 0 0 3px var(--err-tint);
-}
-
 // Filter controls all share the same height + vertical centre so presets, date
 // inputs and the apply button line up on one baseline (and wrap cleanly).
 .tb-right {
   .knx-seg,
   .knx-btn,
-  .range-field .knx-input { height: 36px; }
+  .range-field knx-date-time-field { --dtf-height: 36px; }
 }
 
 .range-field {
@@ -98,10 +93,8 @@
 
   > span { flex: none; }
 
-  .knx-input {
-    height: 36px;
-    width: auto;
-  }
+  // Fits dd.mm.yyyy, hh:mm and the calendar button in the mono font.
+  knx-date-time-field { width: 200px; }
 }
 
 .knx-btn.is-active {
@@ -284,8 +277,8 @@
       white-space: normal;
     }
 
-    // Label above the input so From and To end up the same width. `min-width: 0` is required —
-    // datetime-local has an intrinsic minimum around 200px that would otherwise burst the grid.
+    // Label above the input so From and To end up the same width. `min-width: 0` keeps the
+    // field's 200px desktop width from bursting the grid.
     .range-field {
       flex-direction: column;
       align-items: stretch;
@@ -299,11 +292,10 @@
         color: var(--ink-3);
       }
 
-      .knx-input {
+      knx-date-time-field {
         width: 100%;
         min-width: 0;
-        height: 44px;
-        font-size: var(--fs-sm);
+        --dtf-height: 44px;
       }
     }
   }
@@ -341,4 +333,10 @@
   }
 
   .heatmap-card { min-height: 260px; }
+}
+
+// Narrow phones: two columns would leave each date-time field under the ~190px it needs for
+// date, time and the calendar button, so From and To stack instead.
+@media (max-width: 479.98px) {
+  .tb-range.is-open { grid-template-columns: 1fr; }
 }

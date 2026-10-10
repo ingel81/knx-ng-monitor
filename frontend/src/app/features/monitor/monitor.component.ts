@@ -24,6 +24,7 @@ import { ColumnManagerComponent } from '../../shared/grid/column-manager.compone
 import { messageTypeName } from '../../shared/grid/knx-grid.util';
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { DateTimeFieldComponent } from '../../shared/date-time-field/date-time-field.component';
 import { localeTag } from '../../core/i18n/locale.util';
 import { formatKnxDate } from '../../core/i18n/date.util';
 import { LoggerService } from '../../core/logging/logger.service';
@@ -53,7 +54,8 @@ type MonitorMode = 'live' | 'archive';
   imports: [
     CommonModule, FormsModule, MatIconModule, MatButtonModule, MatTooltipModule,
     MatMenuModule, MatSnackBarModule,
-    TelegramCardsComponent, KnxTableComponent, ColumnManagerComponent, TranslatePipe
+    TelegramCardsComponent, KnxTableComponent, ColumnManagerComponent, TranslatePipe,
+    DateTimeFieldComponent
   ],
   templateUrl: './monitor.component.html',
   styleUrl: './monitor.component.scss'
@@ -504,9 +506,18 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  applyFilters(): void {
+  /** Liefert false, wenn der Filter abgelehnt wurde (Ende vor Start). */
+  applyFilters(): boolean {
+    // Ein Zeitraum mit Ende vor dem Start liefert nie etwas; das Bis-Feld ist bereits rot markiert.
+    const from = this.toIso(this.fromValue);
+    const to = this.toIso(this.toValue);
+    if (from && to && from > to) {
+      this.toast(this.lang.translate('range.orderHint'));
+      return false;
+    }
     this.loadCount();
     this.resetArchive();
+    return true;
   }
 
   resetFilters(): void {

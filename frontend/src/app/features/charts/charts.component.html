@@ -72,7 +72,7 @@
       <button
         class="knx-btn knx-btn--outline range-toggle"
         [class.is-active]="rangeOpen"
-        (click)="rangeOpen = !rangeOpen; rangeHint = false"
+        (click)="rangeOpen = !rangeOpen; rangeHint = ''"
         [attr.aria-label]="'range.title' | translate"
         [attr.aria-expanded]="rangeOpen"
         aria-controls="range-panel"
@@ -96,27 +96,27 @@
 
         <span class="tb-divider"></span>
 
-        <label class="range-field">
-          <span>{{ 'range.from' | translate }}</span>
-          <input #fromInput class="knx-input" type="datetime-local"
-                 [class.is-missing]="rangeHint && !customFrom"
-                 [attr.aria-invalid]="rangeHint && !customFrom"
-                 [ngModel]="customFrom" (ngModelChange)="customFrom = $event; rangeHint = false" />
-        </label>
-        <label class="range-field">
-          <span>{{ 'range.to' | translate }}</span>
-          <input #toInput class="knx-input" type="datetime-local"
-                 [class.is-missing]="rangeHint && !customTo"
-                 [attr.aria-invalid]="rangeHint && !customTo"
-                 [ngModel]="customTo" (ngModelChange)="customTo = $event; rangeHint = false" />
-        </label>
+        <!-- A group rather than a <label>: the field holds two inputs and a calendar button. -->
+        <div class="range-field" role="group" [attr.aria-label]="'range.from' | translate">
+          <span aria-hidden="true">{{ 'range.from' | translate }}</span>
+          <knx-date-time-field #fromInput [label]="'range.from' | translate"
+                 [invalid]="rangeHint === 'missing' && !customFrom"
+                 [ngModel]="customFrom" (ngModelChange)="customFrom = $event; rangeHint = ''" />
+        </div>
+        <div class="range-field" role="group" [attr.aria-label]="'range.to' | translate">
+          <span aria-hidden="true">{{ 'range.to' | translate }}</span>
+          <knx-date-time-field #toInput [label]="'range.to' | translate" defaultTime="23:59"
+                 [invalid]="rangeHint === 'missing' && !customTo"
+                 [min]="customFrom"
+                 [ngModel]="customTo" (ngModelChange)="customTo = $event; rangeHint = ''" />
+        </div>
         <button class="knx-btn knx-btn--outline" (click)="applyCustom()">
           {{ 'range.apply' | translate }}
         </button>
 
         <!-- Always rendered, only the text is switched: a live region that is inserted together
              with its content is not announced. Visually hidden outside the mobile layout. -->
-        <span class="range-hint" role="status" aria-live="polite">{{ rangeHint ? ('range.applyHint' | translate) : '' }}</span>
+        <span class="range-hint" role="status" aria-live="polite">{{ rangeHint === 'missing' ? ('range.applyHint' | translate) : rangeHint === 'order' ? ('range.orderHint' | translate) : '' }}</span>
       </div>
 
       <span class="tb-divider"></span>

@@ -44,6 +44,35 @@ $dark-theme: mat.define-theme((
 html { @include mat.all-component-themes($light-theme); }
 html.theme-dark { @include mat.all-component-colors($dark-theme); }
 
+// Calendar + time list of the date-time field (shared/date-time-field): pinned to the design
+// tokens, which already switch with the theme, instead of Material's cyan surfaces.
+html {
+  @include mat.datepicker-overrides((
+    calendar-container-background-color: var(--surface),
+    calendar-container-text-color: var(--ink),
+    calendar-container-shape: var(--r-lg),
+    calendar-container-elevation-shadow: var(--sh-pop),
+    calendar-container-touch-elevation-shadow: var(--sh-pop),
+    calendar-date-text-color: var(--ink),
+    calendar-body-label-text-color: var(--ink-2),
+    calendar-header-text-color: var(--ink-3),
+    calendar-period-button-text-color: var(--ink),
+    calendar-period-button-icon-color: var(--ink-2),
+    calendar-navigation-button-icon-color: var(--ink-2),
+    calendar-date-selected-state-background-color: var(--brand),
+    calendar-date-selected-state-text-color: #fff,
+    calendar-date-today-outline-color: var(--brand),
+    calendar-date-today-selected-state-outline-color: var(--brand),
+    calendar-date-hover-state-background-color: var(--surface-3),
+    calendar-date-focus-state-background-color: var(--brand-tint),
+  ));
+  @include mat.timepicker-overrides((
+    container-background-color: var(--surface),
+    container-shape: var(--r-sm),
+    container-elevation-shadow: var(--sh-pop),
+  ));
+}
+
 * {
   margin: 0;
   padding: 0;

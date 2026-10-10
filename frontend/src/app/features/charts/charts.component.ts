@@ -17,9 +17,10 @@ import { SignalrService, KnxTelegram } from '../../core/services/signalr.service
 import { LanguageService } from '../../core/i18n/language.service';
 import { localeTag } from '../../core/i18n/locale.util';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { DateTimeFieldComponent } from '../../shared/date-time-field/date-time-field.component';
 import { ThemeService } from '../../core/services/theme.service';
 import { OverflowTitleDirective } from '../../shared/grid/overflow-title.directive';
-import { RangePreset, resolveRange } from './time-range.util';
+import { RangePreset, isRangeOrdered, resolveRange } from './time-range.util';
 import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom, styleLineSeries } from './chart-skin';
 import {
   ChartDisplayOptions, CurveMode, DEFAULT_CHART_OPTIONS,
@@ -80,7 +81,8 @@ interface LiveSeries {
   selector: 'app-charts',
   imports: [
     CommonModule, FormsModule, MatIconModule, MatSelectModule, MatFormFieldModule,
-    MatMenuModule, MatTooltipModule, NgxEchartsDirective, TranslatePipe, OverflowTitleDirective
+    MatMenuModule, MatTooltipModule, NgxEchartsDirective, TranslatePipe, OverflowTitleDirective,
+    DateTimeFieldComponent
   ],
   templateUrl: './charts.component.html',
   styleUrl: './charts.component.scss'
@@ -126,11 +128,14 @@ export class ChartsComponent implements OnInit, OnDestroy {
 
   /** Mobile only: the range controls are collapsed behind a toolbar toggle. */
   rangeOpen = false;
-  /** Apply was pressed with an incomplete custom range — marks the empty field. */
-  rangeHint = false;
+  /**
+   * Why Apply was refused: an incomplete custom range (marks the empty field) or an end
+   * before the start.
+   */
+  rangeHint: '' | 'missing' | 'order' = '';
   isMobile = window.innerWidth < 768;
-  @ViewChild('fromInput') private fromInput?: ElementRef<HTMLInputElement>;
-  @ViewChild('toInput') private toInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('fromInput') private fromInput?: DateTimeFieldComponent;
+  @ViewChild('toInput') private toInput?: DateTimeFieldComponent;
 
   // --- State -----------------------------------------------------------------
   loading = false;
@@ -365,7 +370,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
   // --- Time range ------------------------------------------------------------
   setPreset(p: RangePreset): void {
     // A preset supersedes the custom range, so a pending "pick both dates" hint is stale.
-    this.rangeHint = false;
+    this.rangeHint = '';
     this.preset = p;
     this.load();
   }
@@ -376,11 +381,16 @@ export class ChartsComponent implements OnInit, OnDestroy {
    */
   applyCustom(): void {
     if (!this.customFrom || !this.customTo) {
-      this.rangeHint = true;
-      (this.customFrom ? this.toInput : this.fromInput)?.nativeElement.focus();
+      this.rangeHint = 'missing';
+      (this.customFrom ? this.toInput : this.fromInput)?.focus();
       return;
     }
-    this.rangeHint = false;
+    if (!isRangeOrdered(this.customFrom, this.customTo)) {
+      this.rangeHint = 'order';
+      this.toInput?.focus();
+      return;
+    }
+    this.rangeHint = '';
     this.preset = 'custom';
     this.load();
   }

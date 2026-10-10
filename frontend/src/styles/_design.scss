@@ -127,6 +127,7 @@
 .fb-sep { width: 1px; height: 20px; background: var(--line-2); flex: none; }
 .fb-label { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); }
 .fb-room { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.fb-dt { display: inline-flex; align-items: center; gap: var(--sp-2); }
 
 /* Mobile: drop the desktop vertical separators (they orphan on wrap) and let each
    chip group / input row span the full width instead of breaking raggedly. */
@@ -137,8 +138,10 @@
   .fb-room { width: 100%; }
   .fb-room select.knx-input { flex: 1; width: auto !important; }
   .filterbar-main > input.knx-input { width: auto !important; min-width: 0; }
-  .filterbar-main > input.knx-input[type="datetime-local"] { flex: 1 1 100%; }
-  .filterbar-main > input.knx-input:not([type="datetime-local"]) { flex: 1 1 calc(50% - var(--sp-2)); }
+  .filterbar-main > input.knx-input { flex: 1 1 calc(50% - var(--sp-2)); }
+  .fb-dt { width: 100%; }
+  .fb-dt .fb-label { flex: 0 0 3.5em; }
+  .fb-dt knx-date-time-field { flex: 1; width: auto; }
   .filterbar-main > .knx-btn { flex: 1 1 100%; justify-content: center; }
 }
 
@@ -270,6 +273,14 @@
     background-clip: padding-box;
   }
 }
+
+/* Time suggestions of the date-time field: the panel takes the width of the narrow time
+   input, so the options get compact padding and the panel a floor that fits hh:mm. */
+.mat-timepicker-panel {
+  min-width: 88px;
+  .mat-mdc-option { min-height: 36px; padding: 0 var(--sp-3); font-family: var(--font-mono); font-size: var(--fs-sm); }
+}
+.mat-datepicker-content { border: 1px solid var(--line-2); }
 
 /* ============================================================================
    USER MENU (header account dropdown — renders in an overlay, so styled globally)
