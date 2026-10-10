@@ -307,9 +307,7 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
 
                     b.HasIndex("GroupAddressId");
 
-                    b.HasIndex("Timestamp", "DestinationAddress");
-
-                    b.HasIndex("Timestamp", "SourceAddress");
+                    b.HasIndex("Timestamp", "DestinationAddress", "SourceAddress");
 
                     b.ToTable("KnxTelegrams");
                 });

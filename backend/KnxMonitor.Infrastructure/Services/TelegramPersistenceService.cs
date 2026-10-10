@@ -26,7 +26,11 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
     private const int DeleteChunkSize = 5_000;
     private const int MaxDeleteChunksPerPass = 20;
 
-    private readonly Channel<KnxTelegram> _channel;
+    // Telegrams and, in buffered mode, heartbeats share one queue, so a heartbeat is written in the
+    // same flush as the telegrams it vouches for (see TryEnqueueHeartbeat).
+    private readonly record struct QueueItem(KnxTelegram? Telegram, MonitorHeartbeat? Beat);
+
+    private readonly Channel<QueueItem> _channel;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IRecordingSettingsProvider _settingsProvider;
     private readonly ILogger<TelegramPersistenceService> _logger;
@@ -47,7 +51,7 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
         _scopeFactory = scopeFactory;
         _settingsProvider = settingsProvider;
         _logger = logger;
-        _channel = Channel.CreateBounded<KnxTelegram>(new BoundedChannelOptions(Capacity)
+        _channel = Channel.CreateBounded<QueueItem>(new BoundedChannelOptions(Capacity)
         {
             // Wait-mode + TryWrite is what makes an overflow observable: TryWrite returns false
             // instead of blocking, and the drop gets counted. DropOldest would make TryWrite always
@@ -68,7 +72,7 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
 
     public bool TryEnqueue(KnxTelegram telegram)
     {
-        if (_channel.Writer.TryWrite(telegram))
+        if (_channel.Writer.TryWrite(new QueueItem(telegram, null)))
         {
             return true;
         }
@@ -78,6 +82,16 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
         Interlocked.Increment(ref _droppedTotal);
         return false;
     }
+
+    /// <summary>
+    /// In buffered mode a heartbeat must not reach the database before the telegrams of its
+    /// minute: after a power cut the availability report would call the lost minutes "up". So it
+    /// rides the same queue and is written in the same flush. Returns false in immediate mode (or
+    /// when the queue is closed or full); the caller then writes the beat itself.
+    /// </summary>
+    public bool TryEnqueueHeartbeat(MonitorHeartbeat beat) =>
+        _settingsProvider.HistoryWriteIntervalSeconds > 0
+        && _channel.Writer.TryWrite(new QueueItem(null, beat));
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -110,6 +124,7 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
     private async Task RunAsync(CancellationToken ct)
     {
         var batch = new List<KnxTelegram>(BatchSize);
+        var beats = new List<MonitorHeartbeat>();
         var reader = _channel.Reader;
         try
         {
@@ -122,21 +137,22 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
                     // Immediate mode: write what is there right now, batching only under bursts.
                     while (batch.Count < BatchSize && reader.TryRead(out var item))
                     {
-                        batch.Add(item);
+                        Take(item, batch, beats);
                     }
                 }
                 else
                 {
-                    await CollectForIntervalAsync(batch, interval, ct);
+                    await CollectForIntervalAsync(batch, beats, interval, ct);
                 }
 
-                if (batch.Count == 0)
+                if (batch.Count == 0 && beats.Count == 0)
                 {
                     continue;
                 }
 
-                await PersistAsync(batch, retentionDue: interval > TimeSpan.Zero, ct);
+                await PersistAsync(batch, beats, retentionDue: interval > TimeSpan.Zero, ct);
                 batch.Clear();
+                beats.Clear();
                 LogDropsIfAny();
             }
         }
@@ -155,7 +171,8 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
     /// the buffer reaches its cap, or the queue is completed. Returns early on shutdown so the
     /// final write happens right away instead of after the interval.
     /// </summary>
-    private async Task CollectForIntervalAsync(List<KnxTelegram> batch, TimeSpan interval, CancellationToken ct)
+    private async Task CollectForIntervalAsync(
+        List<KnxTelegram> batch, List<MonitorHeartbeat> beats, TimeSpan interval, CancellationToken ct)
     {
         var reader = _channel.Reader;
         var deadline = DateTime.UtcNow + interval;
@@ -164,7 +181,7 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
         {
             while (batch.Count < MaxBufferedTelegrams && reader.TryRead(out var item))
             {
-                batch.Add(item);
+                Take(item, batch, beats);
             }
 
             var remaining = deadline - DateTime.UtcNow;
@@ -189,15 +206,58 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
         }
     }
 
-    private async Task PersistAsync(List<KnxTelegram> batch, bool retentionDue, CancellationToken ct)
+    private static void Take(QueueItem item, List<KnxTelegram> batch, List<MonitorHeartbeat> beats)
     {
-        try
+        if (item.Telegram is not null) batch.Add(item.Telegram);
+        if (item.Beat is not null) beats.Add(item.Beat);
+    }
+
+    private async Task PersistAsync(
+        List<KnxTelegram> batch, List<MonitorHeartbeat> beats, bool retentionDue, CancellationToken ct)
+    {
+        // A buffered batch can hold minutes of telegrams, so one failed write (a locked database,
+        // a full disk that just got space) should not throw them all away: retry once.
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await WriteBatchAsync(batch, beats, retentionDue, ct);
+                return;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException && attempt == 1)
+            {
+                _logger.LogWarning(ex, "Writing {Count} telegrams failed, retrying once", batch.Count);
+                await Task.Delay(TimeSpan.FromSeconds(1), ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Failed to persist batch of {Count} telegrams", batch.Count);
+                return;
+            }
+        }
+    }
+
+    private async Task WriteBatchAsync(
+        List<KnxTelegram> batch, List<MonitorHeartbeat> beats, bool retentionDue, CancellationToken ct)
+    {
         {
             // Single scope/connection per batch — retention runs on the SAME
             // connection right after the insert, so there is only ever one SQLite writer.
             using var scope = _scopeFactory.CreateScope();
             var repo = scope.ServiceProvider.GetRequiredService<ITelegramRepository>();
-            await repo.AddRangeAsync(batch);
+            if (batch.Count > 0)
+            {
+                await repo.AddRangeAsync(batch);
+            }
+
+            // Heartbeats only after their telegrams are stored (buffered mode only).
+            if (beats.Count > 0 && scope.ServiceProvider.GetService<IMonitorHeartbeatRepository>() is { } beatRepo)
+            {
+                foreach (var beat in beats)
+                {
+                    await beatRepo.AddAsync(beat);
+                }
+            }
 
             // In buffered mode every flush also trims and checkpoints: the WAL is synced to the
             // database file once per interval instead of every ten seconds.
@@ -210,10 +270,6 @@ public class TelegramPersistenceService : ITelegramQueue, IHostedService, IAsync
                 _batchesSinceRetention = 0;
                 _lastRetention = DateTime.UtcNow;
             }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogError(ex, "Failed to persist batch of {Count} telegrams", batch.Count);
         }
     }
 

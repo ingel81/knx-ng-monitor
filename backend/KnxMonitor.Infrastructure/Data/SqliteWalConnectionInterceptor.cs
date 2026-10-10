@@ -1,4 +1,5 @@
 using System.Data.Common;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace KnxMonitor.Infrastructure.Data;
@@ -26,6 +27,15 @@ public sealed class SqliteWalConnectionInterceptor : DbConnectionInterceptor
 
     private static void Apply(DbConnection connection)
     {
+        // EF checks whether the database exists over a read-only connection. Switching journal
+        // mode there fails with "attempt to write a readonly database" when the file is still
+        // empty (0 bytes), which aborted startup. A read-only connection has nothing to set.
+        if (connection is SqliteConnection sqlite
+            && new SqliteConnectionStringBuilder(sqlite.ConnectionString).Mode == SqliteOpenMode.ReadOnly)
+        {
+            return;
+        }
+
         using var command = connection.CreateCommand();
         command.CommandText = "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;";
         command.ExecuteNonQuery();

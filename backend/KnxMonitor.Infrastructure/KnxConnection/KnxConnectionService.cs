@@ -147,7 +147,8 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
                 await _knxBus.ConnectAsync(_cancellationTokenSource.Token);
             }
             catch (KnxIpUnicastConnectorException ex) when (
-                parameters is IpTunnelingConnectorParameters { IndividualAddress: not null, FallbackToAnyIndividualAddress: true })
+                parameters is IpTunnelingConnectorParameters { IndividualAddress: not null, FallbackToAnyIndividualAddress: true }
+                && IsTunnelAddressRejection(ex))
             {
                 // Falcon falls back only when the requested address is taken. An address that is
                 // not one of the interface's tunnel addresses at all is rejected outright (seen on
@@ -209,7 +210,8 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         // worker cannot slip a reconnect into the gap between the check and the pause below.
         _testInProgress = true;
         // Capture and pause the live link (non-latching) so we don't open a second tunnel.
-        var liveConfig = IsConnected ? _activeConfiguration : null;
+        // A bus that Falcon is still reconnecting holds the tunnel slot as well: pause it too.
+        var liveConfig = IsConnected || IsRecovering ? _activeConfiguration : null;
         if (liveConfig != null)
         {
             _logger.LogInformation("Pausing live link for test probe (freeing tunnel)");
@@ -228,6 +230,12 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             // A probe answers "reachable right now?"; quietly retrying in the background would only
             // blur that answer and keep a tunnel slot busy after the probe is gone.
             probeParameters.AutoReconnect = false;
+            // The probe asks "is the interface reachable", so it does not insist on the requested
+            // tunnel address: the live connect falls back from a rejected one, the probe would not.
+            if (probeParameters is IpTunnelingConnectorParameters tunnelProbe)
+            {
+                tunnelProbe.IndividualAddress = null;
+            }
             probe = new KnxBus(probeParameters);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await probe.ConnectAsync(cts.Token);
@@ -407,6 +415,16 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
 
         return p;
     }
+
+    /// <summary>
+    /// The interface refused the requested individual address itself. Only then does a retry
+    /// without it make sense; an unreachable host would just fail a second time. Falcon exposes no
+    /// error code for this, the message is the KNXnet/IP status text.
+    /// </summary>
+    internal static bool IsTunnelAddressRejection(Exception ex) =>
+        ex.Message.Contains("Tunnelling IA", StringComparison.OrdinalIgnoreCase)
+        || ex.Message.Contains("Tunneling IA", StringComparison.OrdinalIgnoreCase)
+        || ex.Message.Contains("Extended CRI", StringComparison.OrdinalIgnoreCase);
 
     private static IpProtocol ToFalconProtocol(TunnelProtocol protocol) =>
         protocol == TunnelProtocol.Tcp ? IpProtocol.Tcp : IpProtocol.Udp;
@@ -756,9 +774,15 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
 
                 default:
                     // Closed, MediumFailure, or Broken without AutoReconnect: the link is gone.
-                    Interlocked.Exchange(ref _recoveringSinceTicks, 0);
+                    // Only a link that was up (or being recovered) counts as lost; a connect attempt
+                    // that fails on its own must not wake the worker and defeat its backoff.
+                    var wasRecovering = Interlocked.Exchange(ref _recoveringSinceTicks, 0) != 0;
+                    var wasUp = wasRecovering || _state == KnxLinkState.Connected;
                     SetState(KnxLinkState.Disconnected);
-                    LinkLost?.Invoke(this, EventArgs.Empty);
+                    if (wasUp)
+                    {
+                        LinkLost?.Invoke(this, EventArgs.Empty);
+                    }
                     break;
             }
         }

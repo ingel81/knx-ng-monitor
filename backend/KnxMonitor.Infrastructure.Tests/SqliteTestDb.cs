@@ -30,6 +30,7 @@ public sealed class SqliteTestDb : IDisposable
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<IGroupAddressRepository, GroupAddressRepository>();
         services.AddScoped<IChartSelectionRepository, ChartSelectionRepository>();
+        services.AddScoped<IMonitorHeartbeatRepository, MonitorHeartbeatRepository>();
 
         Services = services.BuildServiceProvider();
 

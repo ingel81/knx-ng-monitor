@@ -23,13 +23,16 @@ if [ "$(id -u)" = "0" ]; then
     esac
 
     mkdir -p "$DATA_DIR"
-    # Only walk the tree when the top level does not match yet: a large archive would otherwise
-    # be re-owned on every start for nothing.
-    if [ "$(stat -c '%u:%g' "$DATA_DIR")" != "$PUID:$PGID" ]; then
+    # Re-own only when something does not belong to the target yet (the directory itself or any
+    # file below, e.g. a database left behind by a root run). find stops at the first hit, so a
+    # correctly owned archive costs one walk of stat calls and no writes.
+    if [ -n "$(find "$DATA_DIR" \( ! -user "$PUID" -o ! -group "$PGID" \) -print -quit)" ]; then
         echo "knx-ng-monitor: handing $DATA_DIR to $PUID:$PGID"
         chown -R "$PUID:$PGID" "$DATA_DIR"
     fi
 
+    # setpriv keeps the environment, including root's HOME; the "app" user's home is /app.
+    export HOME=/app
     exec setpriv --reuid="$PUID" --regid="$PGID" --clear-groups "$APP" "$@"
 fi
 

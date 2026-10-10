@@ -391,9 +391,11 @@ public class KnxController : ControllerBase
         if (request.ConnectionType == ConnectionType.Routing)
         {
             // Routing joins a multicast group, a host name makes no sense there.
-            if (!System.Net.IPAddress.TryParse(host, out var ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+            if (!System.Net.IPAddress.TryParse(host, out var ip)
+                || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork
+                || ip.GetAddressBytes()[0] is < 224 or > 239)
             {
-                return "Routing needs an IPv4 multicast address.";
+                return "Routing needs an IPv4 multicast address (224.0.0.0 to 239.255.255.255).";
             }
             return null;
         }

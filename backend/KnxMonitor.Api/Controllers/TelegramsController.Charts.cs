@@ -265,6 +265,18 @@ public partial class TelegramsController
         var (rangeFrom, rangeTo) = ResolveRange(from, to);
         var ct = HttpContext.RequestAborted;
 
+        // The SQL counts one range per local hour, so its cost grows with the length of the range,
+        // not with the data. Clamp the range to what is stored (a typo like year 0202 would
+        // otherwise build millions of ranges) and the offset to real time zones (UTC-14..+14).
+        tz = Math.Clamp(tz, -840, 840);
+        var bounds = await _repository.GetTimestampBoundsAsync(ct);
+        if (bounds is not { } b || rangeTo < b.Oldest || rangeFrom > b.Newest)
+        {
+            return Ok(new HeatmapResponse { Total = 0, Grid = EmptyHeatmapGrid() });
+        }
+        if (rangeFrom < b.Oldest) rangeFrom = b.Oldest;
+        if (rangeTo > b.Newest) rangeTo = b.Newest;
+
         // Counted per (weekday, hour) in SQL (#39): at most 168 rows instead of every timestamp.
         var grid = await _repository.CountPerWeekdayHourAsync(rangeFrom, rangeTo, tz, ct);
         var total = grid.Sum(row => row.Sum());
@@ -344,6 +356,9 @@ public partial class TelegramsController
             }).ToList()
         });
     }
+
+    private static long[][] EmptyHeatmapGrid() =>
+        Enumerable.Range(0, 7).Select(_ => new long[24]).ToArray();
 
     private static (DateTime From, DateTime To) ResolveRange(DateTime? from, DateTime? to)
     {

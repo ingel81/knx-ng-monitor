@@ -194,6 +194,8 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
                 .OrderByDescending(t => t.Timestamp)
                 .ThenByDescending(t => t.Id)
                 .Take(perAddress)
+                // The name of a series that has only this carried-in point comes from here.
+                .Include(t => t.GroupAddress)
                 .AsNoTracking()
                 .ToListAsync(ct);
 
@@ -203,6 +205,18 @@ public class TelegramRepository : Repository<KnxTelegram>, ITelegramRepository
             }
         }
         return result;
+    }
+
+    public async Task<(DateTime Oldest, DateTime Newest)?> GetTimestampBoundsAsync(CancellationToken ct = default)
+    {
+        // Both ends come straight off the Timestamp index.
+        var oldest = await _dbSet.OrderBy(t => t.Timestamp).Select(t => (DateTime?)t.Timestamp).FirstOrDefaultAsync(ct);
+        if (oldest is null)
+        {
+            return null;
+        }
+        var newest = await _dbSet.OrderByDescending(t => t.Timestamp).Select(t => t.Timestamp).FirstAsync(ct);
+        return (oldest.Value, newest);
     }
 
     public async Task<int> CountInRangeAsync(DateTime from, DateTime to, CancellationToken ct = default)

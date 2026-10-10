@@ -5,11 +5,15 @@
 namespace KnxMonitor.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class GroupAddressFunctionsAndSourceIndex : Migration
+    public partial class GroupAddressFunctionsAndTelegramIndex : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropIndex(
+                name: "IX_KnxTelegrams_Timestamp_DestinationAddress",
+                table: "KnxTelegrams");
+
             migrationBuilder.AddColumn<string>(
                 name: "Functions",
                 table: "GroupAddresses",
@@ -17,21 +21,26 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
                 nullable: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_KnxTelegrams_Timestamp_SourceAddress",
+                name: "IX_KnxTelegrams_Timestamp_DestinationAddress_SourceAddress",
                 table: "KnxTelegrams",
-                columns: new[] { "Timestamp", "SourceAddress" });
+                columns: new[] { "Timestamp", "DestinationAddress", "SourceAddress" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
-                name: "IX_KnxTelegrams_Timestamp_SourceAddress",
+                name: "IX_KnxTelegrams_Timestamp_DestinationAddress_SourceAddress",
                 table: "KnxTelegrams");
 
             migrationBuilder.DropColumn(
                 name: "Functions",
                 table: "GroupAddresses");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_KnxTelegrams_Timestamp_DestinationAddress",
+                table: "KnxTelegrams",
+                columns: new[] { "Timestamp", "DestinationAddress" });
         }
     }
 }

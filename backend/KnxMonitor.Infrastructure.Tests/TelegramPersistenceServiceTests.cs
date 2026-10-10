@@ -73,6 +73,44 @@ public class TelegramPersistenceServiceTests : IDisposable
         (await CountAsync()).Should().Be(7, "stopping must not lose a ten-minute buffer");
     }
 
+    [Fact]
+    public async Task BufferedMode_WritesHeartbeatsTogetherWithTheirTelegrams()
+    {
+        // After a power cut a heartbeat on disk must not vouch for telegrams that never got there.
+        _settings.Current.HistoryWriteIntervalSeconds = 3;
+        var svc = CreateService();
+        await svc.StartAsync(default);
+        try
+        {
+            Enqueue(svc, 2);
+            svc.TryEnqueueHeartbeat(new MonitorHeartbeat { Timestamp = DateTime.UtcNow, State = KnxLinkState.Connected })
+                .Should().BeTrue();
+            await Task.Delay(TimeSpan.FromSeconds(1.5));
+            (await BeatCountAsync()).Should().Be(0, "the beat waits for the flush of its telegrams");
+
+            await WaitForCount(2, TimeSpan.FromSeconds(4));
+            (await BeatCountAsync()).Should().Be(1);
+        }
+        finally
+        {
+            await svc.StopAsync(default);
+        }
+    }
+
+    [Fact]
+    public void ImmediateMode_LeavesHeartbeatsToTheCaller()
+    {
+        var svc = CreateService();
+        svc.TryEnqueueHeartbeat(new MonitorHeartbeat { Timestamp = DateTime.UtcNow }).Should().BeFalse();
+    }
+
+    private async Task<int> BeatCountAsync()
+    {
+        using var scope = _db.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<IMonitorHeartbeatRepository>();
+        return (await repo.GetRangeAsync(DateTime.UtcNow.AddHours(-1), DateTime.UtcNow.AddHours(1))).Count;
+    }
+
     private TelegramPersistenceService CreateService() => new(
         _db.Services.GetRequiredService<IServiceScopeFactory>(),
         _settings,

@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KnxMonitor.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261010110128_GroupAddressFunctionsAndSourceIndex")]
-    partial class GroupAddressFunctionsAndSourceIndex
+    [Migration("20261010113404_GroupAddressFunctionsAndTelegramIndex")]
+    partial class GroupAddressFunctionsAndTelegramIndex
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -310,9 +310,7 @@ namespace KnxMonitor.Infrastructure.Data.Migrations
 
                     b.HasIndex("GroupAddressId");
 
-                    b.HasIndex("Timestamp", "DestinationAddress");
-
-                    b.HasIndex("Timestamp", "SourceAddress");
+                    b.HasIndex("Timestamp", "DestinationAddress", "SourceAddress");
 
                     b.ToTable("KnxTelegrams");
                 });

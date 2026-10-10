@@ -114,6 +114,16 @@ public class ConnectorParametersTests
         tunnel.IndividualAddress.Should().BeNull();
     }
 
+    [Theory]
+    [InlineData("Could not connect to IP interface (The IA requested in the Extended CRI is not a Tunnelling IA).", true)]
+    [InlineData("No reply from interface 192.168.99.99:3671", false)]
+    [InlineData("Host \"knx-gw.invalid\" not found", false)]
+    public void OnlyARejectedTunnelAddressTriggersTheFallback(string message, bool expected)
+    {
+        // An unreachable interface must not cost a second, equally hopeless connect attempt.
+        KnxConnectionService.IsTunnelAddressRejection(new InvalidOperationException(message)).Should().Be(expected);
+    }
+
     [Fact]
     public async Task Routing_JoinsTheConfiguredMulticastGroup()
     {

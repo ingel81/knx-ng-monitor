@@ -209,10 +209,10 @@ public class ApplicationDbContext : DbContext
             // so deleting a project's GAs (SetNull on telegrams) is index-backed — the real
             // delete cost was EF's tracked cascade, which ProjectRepository.DeleteProjectFastAsync
             // now bypasses with set-based ExecuteUpdate/ExecuteDelete.
-            entity.HasIndex(e => new { e.Timestamp, e.DestinationAddress });
-            // Same shape for the sender: the top-senders statistic (#38) groups a time range by
-            // SourceAddress and is covered by this index instead of reading every row.
-            entity.HasIndex(e => new { e.Timestamp, e.SourceAddress });
+            // SourceAddress rides along as the last column: the top-senders statistic (#38) is then
+            // covered too. A second (Timestamp, SourceAddress) index made SQLite pick it for the
+            // destination queries as well, which then had to read every row of the range.
+            entity.HasIndex(e => new { e.Timestamp, e.DestinationAddress, e.SourceAddress });
 
             entity.HasOne(e => e.GroupAddress)
                 .WithMany(g => g.Telegrams)
