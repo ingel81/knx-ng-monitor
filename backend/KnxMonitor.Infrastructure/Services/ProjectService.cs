@@ -12,17 +12,20 @@ public class ProjectService : IProjectService
     private readonly IGroupAddressRepository _groupAddressRepository;
     private readonly IKnxProjectParserService _parserService;
     private readonly IProjectCacheService _cacheService;
+    private readonly IKnxConnectionService _knx;
 
     public ProjectService(
         IProjectRepository projectRepository,
         IGroupAddressRepository groupAddressRepository,
         IKnxProjectParserService parserService,
-        IProjectCacheService cacheService)
+        IProjectCacheService cacheService,
+        IKnxConnectionService knx)
     {
         _projectRepository = projectRepository;
         _groupAddressRepository = groupAddressRepository;
         _parserService = parserService;
         _cacheService = cacheService;
+        _knx = knx;
     }
 
     public async Task<ProjectDto> UploadProjectAsync(Stream fileStream, string fileName)
@@ -127,14 +130,25 @@ public class ProjectService : IProjectService
         if (project == null)
             return false;
 
+        // The running link carries the keyring of the project that was active when it was built.
+        // Switching to or away from a project with a keyring has to rebuild it (#47); switching
+        // between projects without one leaves the link alone, as before.
+        var previous = await _projectRepository.GetActiveProjectAsync();
+        var keyringChanges = previous?.Id != id
+            && (await _projectRepository.GetKeyringBlobAsync(id) != null
+                || (previous != null && await _projectRepository.GetKeyringBlobAsync(previous.Id) != null));
+
         // Atomically make exactly this project active (set-based, single transaction).
         await _projectRepository.SetActiveExclusiveAsync(id);
 
         // Decoding-only: refresh the GA cache so telegrams resolve to names/DPTs. The bus link is
         // intentionally untouched — connection is governed solely by KnxConfiguration.AutoConnect,
         // the auto-connect worker and manual connect/disconnect. Activating a project decodes; it
-        // does not connect (and must not override a deliberate manual disconnect).
+        // does not connect (and must not override a deliberate manual disconnect). A keyring change
+        // only rebuilds a link that is already up.
         await _cacheService.RefreshAsync();
+        if (keyringChanges)
+            await _knx.ReloadKeyringAsync();
 
         return true;
     }
@@ -301,6 +315,11 @@ public class ProjectService : IProjectService
         // connect time (the decrypted per-GA keys above are not sufficient for that Load() call).
         // SECURITY: stores the keyring password at rest — see ProjectKeyringBlob.
         await _projectRepository.UpsertKeyringBlobAsync(id, keyringData, keyringPassword);
+
+        // The running link still holds the old keys; without this a restart was needed (#47).
+        var active = await _projectRepository.GetActiveProjectAsync();
+        if (active?.Id == id)
+            await _knx.ReloadKeyringAsync();
 
         return new KeyringUploadResultDto
         {

@@ -3,6 +3,7 @@ using KnxMonitor.Core.Enums;
 using KnxMonitor.Core.Entities;
 using KnxMonitor.Core.Interfaces;
 using KnxMonitor.Core.Models;
+using KnxMonitor.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using LibraryFeatureDetector = KnxMonitor.ProjectParser.Core.Interfaces.IFeatureDetector;
@@ -342,9 +343,11 @@ public class ProjectImportService
             // KNX Data Secure can Load() them at connect time. The decrypted per-GA keys stored above
             // (parsed.KeyringKeys) are not sufficient for the Falcon Load() call.
             // SECURITY: stores the keyring password at rest — see ProjectKeyringBlob.
+            var keyringStored = false;
             if (context.KeyringFile is { Length: > 0 } && !string.IsNullOrEmpty(context.KeyringPassword))
             {
                 await projectRepository.UpsertKeyringBlobAsync(project.Id, context.KeyringFile, context.KeyringPassword);
+                keyringStored = true;
                 _logger.LogInformation("Job {JobId}: stored raw keyring blob for runtime Data Secure", jobId);
             }
 
@@ -360,6 +363,11 @@ public class ProjectImportService
                 // force: a re-import keeps the project id, so the id check would skip the reload
                 // and incoming telegrams would keep decoding against the pre-import DPTs (#24).
                 await cacheService.RefreshAsync(force: true);
+
+                // A running link still holds the previous keyring (or none); rebuild it so the
+                // imported keys take effect without a restart (#47). Only touches a link that is up.
+                if (keyringStored)
+                    await scope.ServiceProvider.GetRequiredService<IKnxConnectionService>().ReloadKeyringAsync();
             }
 
             _jobManager.UpdateStep(jobId, ImportStepType.RefreshCache, "completed", 100);

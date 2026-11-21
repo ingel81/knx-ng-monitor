@@ -67,4 +67,12 @@ public interface IKnxConnectionService
     /// Returns false if not connected.
     /// </summary>
     Task<bool> ReadGroupValueAsync(string address);
+
+    /// <summary>
+    /// The keyring is loaded only when the link is built. After the active project's keyring
+    /// changed (upload, import, other project activated) this rebuilds a running link so the new
+    /// keys take effect without a restart (#47). Does nothing while disconnected, after a manual
+    /// disconnect or during a test probe. Returns true when it reconnected.
+    /// </summary>
+    Task<bool> ReloadKeyringAsync();
 }

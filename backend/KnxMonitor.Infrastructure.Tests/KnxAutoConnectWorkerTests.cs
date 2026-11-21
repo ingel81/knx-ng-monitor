@@ -166,6 +166,7 @@ public class KnxAutoConnectWorkerTests
         public Task<ConnectionTestOutcome> TestConnectionAsync(KnxConfiguration configuration)
             => Task.FromResult(ConnectionTestOutcome.Failed);
         public Task DisconnectAsync() => Task.CompletedTask;
+        public Task<bool> ReloadKeyringAsync() => Task.FromResult(false);
         public Task<bool> WriteGroupValueAsync(string address, string? dptType, string value) => Task.FromResult(false);
         public Task<bool> ReadGroupValueAsync(string address) => Task.FromResult(false);
         public Task<KnxConfiguration?> GetActiveConfigurationAsync() => Task.FromResult<KnxConfiguration?>(null);

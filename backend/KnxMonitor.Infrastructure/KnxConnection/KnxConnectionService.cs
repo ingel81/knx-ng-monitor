@@ -672,6 +672,25 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         }
     }
 
+    public async Task<bool> ReloadKeyringAsync()
+    {
+        await _busLock.WaitAsync();
+        try
+        {
+            var config = _activeConfiguration;
+            if (config == null || _manualDisconnect || _testInProgress || !(IsConnected || IsRecovering))
+            {
+                return false;
+            }
+            _logger.LogInformation("Keyring of the active project changed; reconnecting to load it");
+            return await ConnectCoreAsync(config);
+        }
+        finally
+        {
+            _busLock.Release();
+        }
+    }
+
     public async Task<bool> ReadGroupValueAsync(string address)
     {
         if (!IsConnected || _knxBus == null)
