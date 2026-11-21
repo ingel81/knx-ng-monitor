@@ -10,6 +10,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { ProjectService, GroupAddressDto, GroupRangeDto } from '../../core/services/project.service';
 import { LanguageService } from '../../core/i18n/language.service';
+import { localeTag } from '../../core/i18n/locale.util';
+import { formatDecodedValue } from '../../core/i18n/value-format.util';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { DptTitleDirective } from '../../shared/grid/dpt-title.directive';
 import { dpt1Labels } from '../../shared/grid/knx-grid.util';
@@ -214,6 +216,11 @@ export class GroupAddressesComponent implements OnInit, OnDestroy {
       }
     }
     this.pendingValues.clear();
+  }
+
+  /** The live value in the browser locale (#44); stored raw, formatted only for display. */
+  liveValueText(leaf: GaLeaf): string {
+    return formatDecodedValue(leaf.liveValue, leaf.datapointType, localeTag(this.lang.lang()));
   }
 
   /** Absolute timestamp of the shown value, for the row tooltip. */

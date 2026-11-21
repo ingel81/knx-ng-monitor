@@ -26,6 +26,7 @@ import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { DateTimeFieldComponent } from '../../shared/date-time-field/date-time-field.component';
 import { localeTag } from '../../core/i18n/locale.util';
+import { formatDecodedValue } from '../../core/i18n/value-format.util';
 import { formatKnxDate } from '../../core/i18n/date.util';
 import { LoggerService } from '../../core/logging/logger.service';
 import { ProjectService, LocationDto } from '../../core/services/project.service';
@@ -122,7 +123,9 @@ export class MonitorComponent implements OnInit, OnDestroy, AfterViewInit {
   // einmal gefaltet, nicht bei jedem neuen Telegramm im Puffer erneut.
   private liveSearchCache = new SearchCache<KnxTelegram>((t) =>
     [t.sourceAddress, t.sourceName, t.sourceLocationPath, t.destinationAddress, t.groupAddressName,
-      ...(t.functions ?? []), t.datapointType, t.value, t.valueDecoded]
+      ...(t.functions ?? []), t.datapointType, t.value, t.valueDecoded,
+      // The shown form too (#44): "21,5" has to find the "21.5" the backend sends.
+      formatDecodedValue(t.valueDecoded, t.datapointType, localeTag(this.lang.lang()))]
       .join(' '));
 
   // --- Live state ------------------------------------------------------------

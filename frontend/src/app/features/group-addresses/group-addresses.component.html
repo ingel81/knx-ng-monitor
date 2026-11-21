@@ -108,7 +108,7 @@
                               @if (leaf.pendingRead) {
                                 <span class="leaf-value is-waiting">{{ 'ga.waiting' | translate }}</span>
                               } @else if (leaf.liveValue !== undefined) {
-                                <span class="leaf-value" [attr.title]="liveValueTitle(leaf)">{{ leaf.liveValue }}</span>
+                                <span class="leaf-value" [attr.title]="liveValueTitle(leaf)">{{ liveValueText(leaf) }}</span>
                               } @else if (leaf.noAnswer) {
                                 <span class="leaf-value is-muted">{{ 'ga.noAnswer' | translate }}</span>
                               } @else {

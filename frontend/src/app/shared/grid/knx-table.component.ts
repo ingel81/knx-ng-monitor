@@ -8,6 +8,7 @@ import { DptTitleDirective } from './dpt-title.directive';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LanguageService } from '../../core/i18n/language.service';
 import { localeTag } from '../../core/i18n/locale.util';
+import { formatDecodedValue } from '../../core/i18n/value-format.util';
 import { formatKnxDateIn } from '../../core/i18n/date.util';
 
 export type ColumnKind = 'time' | 'datetime' | 'mono' | 'muted-mono' | 'dpt' | 'name' | 'type' | 'value' | 'location' | 'functions';
@@ -122,6 +123,11 @@ export class KnxTableComponent {
 
   // --- Wert + Einheit --------------------------------------------------------
   valueText(row: KnxTelegram): string { return this.val(row, 'valueDecoded') || this.val(row, 'value'); }
+  /** The value as shown: decoded text in the browser locale (#44); the raw text drives class and unit. */
+  displayValue(row: KnxTelegram): string {
+    const decoded = this.val(row, 'valueDecoded');
+    return decoded ? formatDecodedValue(decoded, this.val(row, 'datapointType'), this.locale) : this.val(row, 'value');
+  }
   valueClass(row: KnxTelegram): string {
     const v = this.valueText(row).trim();
     if (/^(on|an|ein|auf|true|1|ja|yes)$/i.test(v)) return 'val-on';

@@ -12,6 +12,8 @@ import { dpt1Labels, messageTypeKind, messageTypeName, unitForDpt } from './knx-
 import { DptTitleDirective } from './dpt-title.directive';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LanguageService } from '../../core/i18n/language.service';
+import { localeTag } from '../../core/i18n/locale.util';
+import { formatDecodedValue } from '../../core/i18n/value-format.util';
 import { formatKnxDate } from '../../core/i18n/date.util';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog.component';
 import { ProjectService, CommunicationObjectDto, DeviceDto } from '../../core/services/project.service';
@@ -74,7 +76,7 @@ export interface TelegramDetailData {
 
       <div class="knx-sheet-value">
         <div class="value-hero">
-          <span class="big mono">{{ data.valueDecoded || data.value || '–' }}</span>
+          <span class="big mono">{{ displayValue || data.value || '–' }}</span>
           @if (unit) { <span class="big-unit">{{ unit }}</span> }
         </div>
       </div>
@@ -240,6 +242,11 @@ export class TelegramDetailComponent implements OnInit, AfterViewInit, OnDestroy
 
   get typeName(): string {
     return messageTypeName(this.data.messageType);
+  }
+
+  /** Decoded value in the browser locale (#44). */
+  get displayValue(): string {
+    return formatDecodedValue(this.data.valueDecoded, this.data.datapointType, localeTag(this.lang.lang()));
   }
 
   get unit(): string {

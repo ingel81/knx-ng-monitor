@@ -4,6 +4,8 @@ import { KnxTelegram } from '../../core/services/signalr.service';
 import { messageTypeKind, messageTypeName, unitForDpt } from './knx-grid.util';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LanguageService } from '../../core/i18n/language.service';
+import { localeTag } from '../../core/i18n/locale.util';
+import { formatDecodedValue } from '../../core/i18n/value-format.util';
 import { formatKnxDate } from '../../core/i18n/date.util';
 
 /** Mobile Karten-Ansicht (<768px) statt Grid-Zeilen. Tippen -> select. */
@@ -20,7 +22,7 @@ import { formatKnxDate } from '../../core/i18n/date.util';
               {{ row.groupAddressName || ('cards.unknown' | translate) }}
             </span>
             <span class="mc-val mono">
-              {{ row.valueDecoded || decodedFallback(row) }}<span class="mc-unit">{{ unit(row) }}</span>
+              {{ displayValue(row) || decodedFallback(row) }}<span class="mc-unit">{{ unit(row) }}</span>
             </span>
           </div>
           <div class="mc-meta">
@@ -51,6 +53,10 @@ export class TelegramCardsComponent {
     return k ? `msg-${k}` : '';
   }
   decodedFallback(row: KnxTelegram): string { return (row.value ?? '').toString() || '–'; }
+  /** Decoded value in the browser locale (#44). */
+  displayValue(row: KnxTelegram): string {
+    return formatDecodedValue(row.valueDecoded, row.datapointType, localeTag(this.langSvc.lang()));
+  }
 
   unit(row: KnxTelegram): string {
     const v = (row.valueDecoded ?? '').toString().trim();

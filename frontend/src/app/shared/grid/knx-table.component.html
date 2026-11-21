@@ -44,7 +44,7 @@
               }
             }
             @case ('value') {
-              <span [ngClass]="valueClass(row)" knxOverflowTitle>{{ valueText(row) || '–' }}</span>
+              <span [ngClass]="valueClass(row)" knxOverflowTitle>{{ displayValue(row) || '–' }}</span>
               @if (valueUnit(row)) { <span class="val-unit">&nbsp;{{ valueUnit(row) }}</span> }
             }
           }
