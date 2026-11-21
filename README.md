@@ -149,15 +149,15 @@ A ~4-minute guided walkthrough of every feature on YouTube. The app UI itself is
 ## Features
 
 - **Real-time KNX monitoring** - live view of bus telegrams via SignalR, over KNXnet/IP **tunneling (UDP or TCP) or routing**, **always-on**: auto-connects on startup and reconnects after gateway/network/container interruptions, rides out short dropouts on the tunnel; optional fixed tunnel address with fallback, host name or IP for the interface
-- **DPT decoding** - via the Falcon datapoint catalog: full DPT range, sub-type aware, with units and enumeration names (English labels, locale-invariant numbers)
+- **DPT decoding** - via the Falcon datapoint catalog: full DPT range, sub-type aware, with units and enumeration names (English labels); numbers, dates and times shown in the browser's regional format
 - **ETS project import** - ETS 4 / 5 / 6 `.knxproj` files up to ETS 6.4 (project schema 23), three- / two-level / free addressing
 - **KNX Secure** - password-protected projects (incl. ETS6 PBKDF2/AES wrapping) and `.knxkeys` keyring decryption; **Data Secure** group telegrams decrypted at runtime, optional opt-in IP-Secure tunnel
 - **Unified Monitor view** - one view with a **Live / Archive** toggle and a shared filter; custom virtual-scroll grid with color-coding (Read / Write / Response), value semantics + DPST units, live bus-load badge (msg/s + %), pause (no telegram loss), auto-scroll, free-text + room filter; opt-in columns for the sender name, the sender's building part and the ETS functions of the destination
-- **Charts & statistics** - time-series charts for numeric DPTs (one Y-axis per unit, live window, tooltip across all series, saved group-address selections), a statistics view (total, average msg/s, telegrams over time, top group addresses and senders) and a weekday × hour activity heatmap, all counted in the database
-- **Topology & group-address tree** - Locations (building → floor → room) and com-objects parsed across ETS 4/5/6, a Topology tree view, a 3-level group-address tree, a room filter and a "used by" device list; plus a force-directed **GA network graph (Alpha)** with group, room, DPT and neighbourhood filters
-- **Write / read from the UI** - send a GroupValueRead or write a DPT-typed value to the live bus from the detail drawer, behind a confirmation dialog
+- **Charts & statistics** - time-series charts for numeric DPTs (one Y-axis per unit, live window, tooltip across all series, saved group-address selections), a statistics view (total, average msg/s, telegrams over time, top group addresses and senders) and a weekday × hour activity heatmap, all counted in the database, with a note when the range reaches past the ring buffer
+- **Topology & group-address tree** - Locations (building → floor → room) and com-objects parsed across ETS 4/5/6, a Topology tree view, a 3-level group-address tree with a type (DPT) filter, a room filter and a "used by" device list; plus a force-directed **GA network graph (Alpha)** with group, room, DPT and neighbourhood filters
+- **Write / read from the UI** - send a GroupValueRead or write a DPT-typed value to the live bus from the detail drawer or the group-address list, behind a confirmation dialog; your own telegrams show up in the monitor and the recording like any other
 - **Data recording** - two-tier, fully self-contained: count-based SQLite hot-tier ring buffer (bounded size) plus an opt-in NDJSON+gzip long-term archive; optional buffered writes (every 5 s up to 10 min) to spare SD cards; keyset-paginated query API and server-streamed CSV export
-- **Runtime DE / EN** - full bilingual UI, switchable without a reload; dates follow the browser's regional settings, always 24-hour
+- **Runtime DE / EN** - full bilingual UI, switchable without a reload; dates and values follow the browser's regional settings, always 24-hour
 - **JWT auth** - access tokens (15 min) + refresh tokens (7 days), secret auto-generated on first start
 - **Single-port deployment** - backend serves the Angular frontend in production
 
@@ -353,7 +353,19 @@ Thanks for testing!
 
 ## Project status
 
-**Current - v0.13.1:** a big round of community feedback. The **tunnel survives a bad
+**Current - v0.14.0:** a round of fixes from the issue tracker and the KNX forum. **Writes
+and reads from the app** now show up in the live view and the recording (#49) - Falcon never
+reports what its own connection sends, so they used to reach the bus and vanish. A **new
+keyring** takes effect without a restart (#47). 1-bit values use their subtype's words in the
+write dropdown (Up/Down, Open/Close, ...) instead of On/Off everywhere (#46), and the same
+mix-up had drawn Up/Down and Open/Close **upside down in the charts** and left 15 subtypes
+uncharted. Values follow the **browser's regional format** like the timestamps already did
+(`847,2 W`, `16.09.2026`, #44), the group-address list gets a **type (DPT) filter** with
+subtypes and search, shared with the graph, whose filters moved into the toolbar (#45), and
+statistics and charts say when the selected range reaches further back than the ring buffer
+(#43).
+
+**Previous - v0.13.1:** a big round of community feedback. The **tunnel survives a bad
 network link** (#22): Falcon's auto-reconnect is on, a lost link is rebuilt right away with
 a short backoff instead of waiting for the next poll, the transport is selectable (UDP or
 **TCP**), and the interface can be asked for a **fixed tunnel address** with a fallback to any
@@ -460,8 +472,9 @@ time-series charts + statistics, building topology, group-address tree, runtime
 DE/EN switch, GA write/read, KNX Secure runtime decryption + optional IP-Secure
 tunnel.
 
-**Next:** topology/room live dashboard with current values, runtime Secure
-on-hardware acceptance, notifications (mail/webhook/MQTT), device detail view.
+**Next:** a discreet notice when a new version is out (#52), statistics and charts that
+also read the archive (#51), topology/room live dashboard with current values, runtime
+Secure on-hardware acceptance, output plugins such as InfluxDB / MQTT (#50), device detail view.
 
 Full version history: [CHANGELOG.md](CHANGELOG.md) ·
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases).

@@ -10,6 +10,47 @@ Docker images are published per tag to
 binaries and auto-generated notes are on the
 [GitHub Releases](https://github.com/ingel81/knx-ng-monitor/releases) page.
 
+## [0.14.0]
+
+### Added
+- **Values in the browser's regional format (#44).** The value column showed the invariant
+  form (`847.2 W`, `2026-10-10`, `Wed 08:11:51`) next to timestamps that already follow the
+  browser locale (#42). Numbers, times (DPT 10), dates (DPT 11) and date-times (DPT 19) are
+  now formatted for display in the same locale, in the table, the mobile cards, the detail
+  view, the group-address list and the graph labels: `847,2 W`, `16.09.2026`,
+  `Mi., 08:11:51`, `80,12 %`. Numbers keep their decimals and get no grouping. Search finds
+  both spellings. API, database and CSV export keep the invariant form.
+- **Filter group addresses by DPT (#45).** The group-address list has a type filter next to
+  the search: every main type with "all of DPT n" and the subtypes that occur in the project,
+  with its own search field ("feucht" finds 9.007). The GA network graph uses the same
+  filter and gains the subtypes; its group and room filters are dropdowns in the same style,
+  and on desktop all graph filters moved into the toolbar instead of a second bar.
+- **Note when a range reaches past the ring buffer (#43).** Statistics and charts read the
+  ring buffer only, so a 30-day range on a busy bus silently showed a few days. Both views now
+  say from when data exists ("Data only from 16.09.2026, 08:14"), with a link to the ring
+  buffer setting, and the average rate counts from there instead of over the empty days.
+  Reading the archive as well is tracked in #51. `GET /api/telegrams/stats` and `/series`
+  return the new `bufferStart`.
+
+### Fixed
+- **Writes and reads from the app were missing from the live view and the recording (#49).**
+  Falcon never reports the telegrams its own connection sends, so a write from the
+  group-address list reached the bus but showed up nowhere. Own writes and reads now go
+  through the same path as received telegrams, with the tunnel (or routing) address as the
+  source, like in the ETS bus monitor.
+- **A new keyring needed a restart (#47).** The keyring is loaded when the bus link is
+  built, so uploading a new one, importing the active project with one, or switching to or
+  away from a project with one only took effect after restarting the container. The running
+  link is now rebuilt in these cases.
+- **1-bit values used the wrong words (#46).** The write dropdown offered On / Off for every
+  DPT 1, also for Up/Down (1.008) or Open/Close (1.009); it now uses the subtype's own labels,
+  in English and German. The same mix-up made charts draw **Up/Down and Open/Close upside
+  down**, and 15 subtypes (Increase, Alarm, Day/Night, Heating/Cooling, ...) were not charted
+  at all: 1-bit values are now read by their subtype's labels instead of a fixed word list.
+- **Toolbars had different heights** depending on the page (53 to 63 px) and two title sizes;
+  they are 61 px with one title size everywhere now. The log search no longer cuts off its
+  placeholder, and select fields keep their arrow off the border.
+
 ## [0.13.1]
 
 The `v0.13.0` tag was never published: the release pipeline stopped at an outdated
