@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { dpt1Labels } from '../../shared/grid/knx-grid.util';
 import { environment } from '../../../environments/environment.development';
 
 /** One numeric point of a charted series. `t` is an ISO timestamp, `v` the numeric value. */
@@ -114,8 +115,17 @@ export class ChartsService {
  * live-appended points match historical ones: first numeric token (leading minus + decimal
  * allowed, comma or dot), else a known boolean/enum word → 1/0. Returns null when not chartable.
  */
-export function extractNumeric(decoded: string | null | undefined): number | null {
+export function extractNumeric(decoded: string | null | undefined, dpt?: string | null): number | null {
   if (!decoded) return null;
+  // 1-bit values by their subtype's labels first: "Up" is 0 for 1.008, "Open" is 0 for 1.009,
+  // and most subtypes (Increase, Alarm, Day, ...) are in neither list below (#46). The backend
+  // decodes in English, so the English labels are the ones to match.
+  const labels = dpt1Labels(dpt, 'en');
+  if (labels) {
+    const text = decoded.trim().toLowerCase();
+    if (text === labels[0].toLowerCase()) return 0;
+    if (text === labels[1].toLowerCase()) return 1;
+  }
   const m = decoded.match(/-?\d+(?:[.,]\d+)?/);
   if (m) {
     const n = Number(m[0].replace(',', '.'));

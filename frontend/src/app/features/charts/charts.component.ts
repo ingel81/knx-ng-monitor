@@ -816,7 +816,7 @@ export class ChartsComponent implements OnInit, OnDestroy {
     if (!this.liveAppend || this.preset === 'custom') return;
     const s = this.series.find((x) => x.address === t.destinationAddress);
     if (!s) return;
-    const v = extractNumeric(t.valueDecoded);
+    const v = extractNumeric(t.valueDecoded, t.datapointType);
     if (v === null) return;
     const ts = new Date(t.timestamp).getTime();
     s.data.push([ts, v]);

@@ -12,6 +12,7 @@ import { ProjectService, GroupAddressDto, GroupRangeDto } from '../../core/servi
 import { LanguageService } from '../../core/i18n/language.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { DptTitleDirective } from '../../shared/grid/dpt-title.directive';
+import { dpt1Labels } from '../../shared/grid/knx-grid.util';
 import { SearchCache, searchTokens } from '../../shared/search.util';
 import { SlashFocusDirective } from '../../shared/slash-focus.directive';
 import { formatKnxDate } from '../../core/i18n/date.util';
@@ -450,6 +451,13 @@ export class GroupAddressesComponent implements OnInit, OnDestroy {
    * Mobile: folds a leaf's value input open or shut. On desktop the input is always visible,
    * where the CSS simply ignores the flag.
    */
+  /** Label of a 1-bit value in the subtype's wording ("Up" / "Down" for 1.008), Off / On otherwise (#46). */
+  boolLabel(leaf: GaLeaf, value: string): string {
+    const labels = dpt1Labels(leaf.datapointType, this.lang.lang());
+    if (labels) return labels[value === '1' ? 1 : 0];
+    return this.lang.translate(value === '1' ? 'detail.on' : 'detail.off');
+  }
+
   toggleWrite(leaf: GaLeaf): void {
     leaf.writeOpen = !leaf.writeOpen;
   }
@@ -457,9 +465,7 @@ export class GroupAddressesComponent implements OnInit, OnDestroy {
   async write(leaf: GaLeaf): Promise<void> {
     if (leaf.writeValue === '') return;
 
-    const shown = leaf.isBool
-      ? this.lang.translate(leaf.writeValue === '1' ? 'detail.on' : 'detail.off')
-      : leaf.writeValue;
+    const shown = leaf.isBool ? this.boolLabel(leaf, leaf.writeValue) : leaf.writeValue;
 
     const data: ConfirmDialogData = {
       title: this.lang.translate('detail.writeConfirmTitle'),

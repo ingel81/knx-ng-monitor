@@ -4,7 +4,9 @@
 // The embedded master data only carries English and German texts; all other
 // languages fall back to English inside Falcon, so we export exactly these two.
 
+using System.Globalization;
 using System.Text;
+using Knx.Falcon;
 using Knx.Falcon.ApplicationData.DatapointTypes;
 
 var outPath = args.Length > 0
@@ -42,9 +44,36 @@ foreach (var dpt in factory.AllDatapointTypes.OrderBy(d => d.MainTypeNumber))
 }
 
 sb.AppendLine("};");
+sb.AppendLine();
+
+// Value labels of the 1-bit subtypes ("Up"/"Down" for 1.008, …) as Falcon formats them,
+// so the write dropdown offers the same words the decoded value column shows.
+sb.AppendLine("export interface Dpt1Labels {");
+sb.AppendLine("  /** [label for 0, label for 1] */");
+sb.AppendLine("  en: [string, string];");
+sb.AppendLine("  de: [string, string];");
+sb.AppendLine("}");
+sb.AppendLine();
+sb.AppendLine("/** Keys: \"1.001\" (1-bit subtypes only). */");
+sb.AppendLine("export const DPT1_LABELS: Record<string, Dpt1Labels> = {");
+var labels = 0;
+foreach (var sub in factory.AllDatapointTypes.Where(d => d.MainTypeNumber == 1).SelectMany(d => d.SubTypes).OrderBy(s => s.SubTypeNumber))
+{
+    var dpt = factory.Get(1, sub.SubTypeNumber);
+    string Label(bool v, string culture)
+    {
+        var prev = CultureInfo.CurrentUICulture;
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+        try { return dpt.Format(new GroupValue(v), null, CultureInfo.InvariantCulture); }
+        finally { CultureInfo.CurrentUICulture = prev; }
+    }
+    sb.AppendLine($"  '1.{sub.SubTypeNumber:D3}': {{ en: [{Q(Label(false, "en"))}, {Q(Label(true, "en"))}], de: [{Q(Label(false, "de"))}, {Q(Label(true, "de"))}] }},");
+    labels++;
+}
+sb.AppendLine("};");
 
 File.WriteAllText(outPath, sb.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-Console.WriteLine($"Wrote {mains} main types + {subs} subtypes to {outPath}");
+Console.WriteLine($"Wrote {mains} main types + {subs} subtypes + {labels} 1-bit label pairs to {outPath}");
 
 static void Append(StringBuilder sb, string? key, string? name, string? en, string? de) =>
     sb.AppendLine($"  '{key}': {{ n: {Q(name)}, en: {Q(en)}, de: {Q(de)} }},");

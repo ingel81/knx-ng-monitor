@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using KnxMonitor.Infrastructure.KnxConnection;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KnxMonitor.Api.Controllers;
@@ -120,7 +121,7 @@ public partial class TelegramsController
             {
                 foreach (var t in before)
                 {
-                    if (TryExtractNumeric(t.ValueDecoded, out var carryValue))
+                    if (TryExtractNumeric(t.GroupAddress?.DatapointType, t.ValueDecoded, out var carryValue))
                     {
                         carry = new ChartPoint { T = ToIsoUtc(t.Timestamp), V = carryValue };
                         carryUnit = ExtractUnit(t.ValueDecoded);
@@ -137,7 +138,7 @@ public partial class TelegramsController
             foreach (var t in telegrams)
             {
                 name ??= t.GroupAddress?.Name;
-                if (!TryExtractNumeric(t.ValueDecoded, out var value))
+                if (!TryExtractNumeric(t.GroupAddress?.DatapointType, t.ValueDecoded, out var value))
                 {
                     continue;
                 }
@@ -458,12 +459,20 @@ public partial class TelegramsController
     private static string ToIsoUtc(DateTime timestamp) =>
         DateTime.SpecifyKind(timestamp, DateTimeKind.Utc).ToString("O", CultureInfo.InvariantCulture);
 
-    internal static bool TryExtractNumeric(string? decoded, out double value)
+    internal static bool TryExtractNumeric(string? dptType, string? decoded, out double value)
     {
         value = 0;
         if (string.IsNullOrWhiteSpace(decoded))
         {
             return false;
+        }
+
+        // 1-bit values by their subtype's labels first: the word lists below cannot tell that
+        // "Up" is 0 for 1.008 and they miss most subtypes (Increase, Alarm, Day, ...) (#46).
+        if (DptConverter.TryGetBitValue(dptType, decoded, out var bit))
+        {
+            value = bit;
+            return true;
         }
 
         var match = NumericToken.Match(decoded);

@@ -8,6 +8,8 @@
 :root {
   --paper:#F0F1ED; --paper-sunk:#E8EAE4; --surface:#FFFFFF; --surface-2:#FAFAF7; --surface-3:#F4F5F1;
   --ink:#16201D; --ink-2:#51605B; --ink-3:#8A958F; --ink-on-dark:#EAF0EC;
+  // Select caret in --ink-2 (a background image cannot read a custom property's colour).
+  --select-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%2351605B' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --line:#E2E5DE; --line-2:#D2D6CD; --line-strong:#B9BFB5;
 
   --teal-50:#ECF5F3; --teal-100:#D2EAE5; --teal-200:#A9D6CE; --teal-500:#15897E;
@@ -49,6 +51,7 @@
 .theme-dark {
   --paper:#0E1A18; --paper-sunk:#0A1413; --surface:#14201E; --surface-2:#182523; --surface-3:#1E2C29;
   --ink:#E6EFEC; --ink-2:#9FB3AD; --ink-3:#6E837D;
+  --select-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%239FB3AD' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.11); --line-strong:rgba(255,255,255,.20);
 
   --brand:#19A395; --brand-hover:#21B7A8; --brand-tint:rgba(25,163,149,.15); --brand-tint-2:rgba(25,163,149,.26);

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Knx.Falcon;
@@ -163,6 +164,35 @@ public static partial class DptConverter
             return false;
         try { bytes = Convert.FromHexString(cleaned); return true; }
         catch { return false; }
+    }
+
+    // DPT string -> (label for 0, label for 1), or null when the DPT is not 1-bit. Filled lazily;
+    // a chart over a busy GA asks this once per telegram.
+    private static readonly ConcurrentDictionary<string, (string Off, string On)?> BitLabelCache = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Maps a decoded 1-bit value back to its bit, using the subtype's own labels: "Up" is 0 and
+    /// "Down" is 1 for 1.008, "Open" is 0 and "Close" is 1 for 1.009 (#46). A fixed list of
+    /// "truthy" words cannot get this right, because the same word means 0 in one subtype and
+    /// 1 in another. Returns false for non-1-bit DPTs and for text that is neither label.
+    /// </summary>
+    public static bool TryGetBitValue(string? dptType, string? decoded, out int bit)
+    {
+        bit = 0;
+        if (string.IsNullOrWhiteSpace(dptType) || string.IsNullOrWhiteSpace(decoded))
+            return false;
+
+        var labels = BitLabelCache.GetOrAdd(dptType, static dpt =>
+            TryParseDpt(dpt, out var main, out _) && main == 1
+                ? (Decode(dpt, new GroupValue(false)), Decode(dpt, new GroupValue(true)))
+                : null);
+        if (labels is not { } l)
+            return false;
+
+        var text = decoded.Trim();
+        if (string.Equals(text, l.Off, StringComparison.OrdinalIgnoreCase)) { bit = 0; return true; }
+        if (string.Equals(text, l.On, StringComparison.OrdinalIgnoreCase)) { bit = 1; return true; }
+        return false;
     }
 
     /// <summary>Extracts main (and optional sub) number from any common DPT string form.</summary>

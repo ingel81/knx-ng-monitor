@@ -423,3 +423,37 @@ export const DPT_DESCRIPTIONS: Record<string, DptDescription> = {
   '288.600': { n: 'DPT_Brightness_Colour_RGBW_Transition', en: 'Brightness Colour RGBW Transition', de: 'Helligkeit/Farbe RGBW-Übergang' },
   '288.601': { n: 'DPT_Brightness_Colour_HSVW_Transition', en: 'Brightness Colour HSVW Transition', de: 'Helligkeit/Farbe HSVW-Übergang' },
 };
+
+export interface Dpt1Labels {
+  /** [label for 0, label for 1] */
+  en: [string, string];
+  de: [string, string];
+}
+
+/** Keys: "1.001" (1-bit subtypes only). */
+export const DPT1_LABELS: Record<string, Dpt1Labels> = {
+  '1.001': { en: ['Off', 'On'], de: ['Aus', 'Ein'] },
+  '1.002': { en: ['False', 'True'], de: ['Falsch', 'Wahr'] },
+  '1.003': { en: ['Disable', 'Enable'], de: ['Abschalten', 'Freigeben'] },
+  '1.004': { en: ['No ramp', 'Ramp'], de: ['Kein Anstieg', 'Anstieg'] },
+  '1.005': { en: ['No alarm', 'Alarm'], de: ['Kein Alarm', 'Alarm'] },
+  '1.006': { en: ['Low', 'High'], de: ['Niedrig', 'Hoch'] },
+  '1.007': { en: ['Decrease', 'Increase'], de: ['Verringern', 'Erhöhen'] },
+  '1.008': { en: ['Up', 'Down'], de: ['Auf', 'Ab'] },
+  '1.009': { en: ['Open', 'Close'], de: ['Öffnen', 'Schließen'] },
+  '1.010': { en: ['Stop', 'Start'], de: ['Stopp', 'Start'] },
+  '1.011': { en: ['Inactive', 'Active'], de: ['Inaktiv', 'Aktiv'] },
+  '1.012': { en: ['Not inverted', 'Inverted'], de: ['Nicht invertiert', 'Invertiert'] },
+  '1.013': { en: ['Start/stop', 'Cyclically'], de: ['Start/Stopp', 'Zyklisch'] },
+  '1.014': { en: ['Fixed', 'Calculated'], de: ['Fest', 'Berechnet'] },
+  '1.015': { en: ['no action (dummy)', 'reset command (trigger)'], de: ['Keine Aktion (Dummy)', 'Rücksetzen (Trigger)'] },
+  '1.016': { en: ['no action (dummy)', 'acknowledge command (trigger), e.g. for alarming'], de: ['Keine Aktion (Dummy)', 'Bestätigung (Trigger)'] },
+  '1.017': { en: ['trigger (0)', 'trigger (1)'], de: ['Trigger (0)', 'Trigger (1)'] },
+  '1.018': { en: ['not occupied', 'occupied'], de: ['Nicht belegt', 'Belegt'] },
+  '1.019': { en: ['closed', 'open'], de: ['Geschlossen', 'Offen'] },
+  '1.021': { en: ['logical function OR', 'logical function AND'], de: ['Logikfunktion ODER', 'Logikfunktion UND'] },
+  '1.022': { en: ['scene A', 'scene B'], de: ['Szene A', 'Szene B'] },
+  '1.023': { en: ['only move Up/Down mode (shutter)', 'move Up/Down + StepStop mode (blind)'], de: ['Auf/Ab (Rolladen)', 'Auf/Ab und Schritt/Stopp (Jalousie)'] },
+  '1.024': { en: ['Day', 'Night'], de: ['Tag', 'Nacht'] },
+  '1.100': { en: ['cooling', 'heating'], de: ['Kühlen', 'Heizen'] },
+};

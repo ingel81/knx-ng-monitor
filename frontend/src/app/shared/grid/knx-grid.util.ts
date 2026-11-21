@@ -1,4 +1,4 @@
-import { DPT_DESCRIPTIONS } from './dpt-descriptions';
+import { DPT1_LABELS, DPT_DESCRIPTIONS } from './dpt-descriptions';
 
 /** Normalisiert messageType (Enum-Zahl oder String) auf einen Kurz-Key. */
 export function messageTypeKind(type: string | number | undefined): '' | 'write' | 'read' | 'response' {
@@ -70,6 +70,18 @@ export function dptDescription(dpt: string | undefined | null, lang: 'en' | 'de'
   if (!entry) return '';
   const text = entry[lang] || entry.en;
   return [key, text, entry.n].filter(Boolean).join(' · ');
+}
+
+/**
+ * Labels for the values 0 and 1 of a 1-bit subtype, e.g. ["Up", "Down"] for 1.008, in the
+ * same wording the decoded value column uses. null for anything that is not a known 1.xxx
+ * subtype, so the caller falls back to its generic Off / On.
+ */
+export function dpt1Labels(dpt: string | undefined | null, lang: 'en' | 'de'): [string, string] | null {
+  const p = parseDpt(dpt);
+  if (!p || p.main !== 1 || p.sub === null) return null;
+  const entry = DPT1_LABELS[dptKey(1, p.sub)];
+  return entry ? entry[lang] : null;
 }
 
 /** Einheit zu einem DPT-String (nur Subtypen tragen Einheiten). */

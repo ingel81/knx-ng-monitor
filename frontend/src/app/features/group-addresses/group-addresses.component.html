@@ -140,8 +140,8 @@
                               <div class="slot slot-write" [class.is-open]="leaf.writeOpen">
                                 @if (leaf.isBool) {
                                   <select class="knx-input knx-input--sm" [(ngModel)]="leaf.writeValue">
-                                    <option value="1">{{ 'detail.on' | translate }}</option>
-                                    <option value="0">{{ 'detail.off' | translate }}</option>
+                                    <option value="0">{{ boolLabel(leaf, '0') }}</option>
+                                    <option value="1">{{ boolLabel(leaf, '1') }}</option>
                                   </select>
                                 } @else {
                                   <input class="knx-input knx-input--sm" type="text" [(ngModel)]="leaf.writeValue"
