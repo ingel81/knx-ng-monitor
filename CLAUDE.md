@@ -225,7 +225,7 @@ Migrations live in `backend/KnxMonitor.Infrastructure/Data/Migrations/`.
 
 ## Current Implementation Status
 
-`v0.13.1` is live (Docker + binaries on GitHub Releases, see `README.md`; `v0.13.0` was tagged but never published); the next release is `v0.14.0`. Done since v0.1.0, among others: Data Secure runtime decryption with the stored keyring keys plus opt-in IP-Secure tunnel, parsing of communication objects, locations and group ranges, uploading a keyring to an existing project, Serilog logging with the in-app log viewer. Open work: the "Next" section of `README.md` and `docs/local/TODO.md` (local only, not in git). ETS 5 / 6 functions are parsed since v0.13 (#12).
+`v0.14.0` is live (Docker + binaries on GitHub Releases, see `README.md`; `v0.13.0` was tagged but never published); the next release is `v0.15.0`. Done since v0.1.0, among others: Data Secure runtime decryption with the stored keyring keys plus opt-in IP-Secure tunnel, parsing of communication objects, locations and group ranges, uploading a keyring to an existing project, Serilog logging with the in-app log viewer. Open work: the "Next" section of `README.md` and `docs/local/TODO.md` (local only, not in git). ETS 5 / 6 functions are parsed since v0.13 (#12).
 
 ## Design Guidelines
 
