@@ -26,13 +26,6 @@
     flex-wrap: wrap;
   }
 
-  .page-title {
-    margin: 0;
-    font-size: var(--fs-lg, 16px);
-    font-weight: 600;
-    color: var(--ink);
-  }
-
   // knx-input defaults to width:100%, which would fill the whole tb-right row
   // and push the Expand/Collapse buttons onto a second line. Cap it so the
   // filter + buttons share one line like the other pages' toolbars.

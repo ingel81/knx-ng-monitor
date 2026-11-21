@@ -89,13 +89,14 @@
       border: none !important;
     }
 
+    // 34px inside the 1px border = 36px, like the other toolbar controls.
     .mat-mdc-form-field-flex {
       align-items: center;
-      min-height: 36px;
+      min-height: 34px;
     }
 
     .mat-mdc-form-field-infix {
-      min-height: 36px;
+      min-height: 34px;
       padding: 0;
       border-top: 0;
       width: auto;
@@ -109,7 +110,7 @@
     .mat-mdc-select {
       display: flex;
       align-items: center;
-      height: 36px;
+      height: 34px;
     }
 
     .mat-mdc-select-trigger {

@@ -120,11 +120,14 @@ select.knx-input {
 
 /* ---------------- toolbar ---------------- */
 .toolbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; flex: none;
-  padding: var(--sp-3) var(--sp-5); background: var(--surface); border-bottom: 1px solid var(--line); }
+  padding: var(--sp-3) var(--sp-5); background: var(--surface); border-bottom: 1px solid var(--line);
+  /* One height on every view: 36px controls + padding + border, also where only a title sits. */
+  min-height: 61px; }
 .tb-left { display: flex; align-items: center; gap: var(--sp-3); }
 .tb-right { display: flex; align-items: center; gap: var(--sp-2); margin-left: auto; }
 .tb-divider { width: 1px; height: 24px; background: var(--line-2); margin: 0 var(--sp-1); flex: none; }
-.page-title { font-size: var(--fs-xl); font-weight: var(--fw-semi); margin: 0; letter-spacing: -.01em; color: var(--ink); }
+/* One title size on every view; pages used to override it locally to fs-lg. */
+.page-title { font-size: var(--fs-lg); font-weight: var(--fw-semi); margin: 0; letter-spacing: -.01em; color: var(--ink); }
 
 /* ---------------- filter bar ---------------- */
 .filterbar { flex: none; padding: var(--sp-3) var(--sp-5); background: var(--paper-sunk); border-bottom: 1px solid var(--line-2); }
@@ -296,9 +299,10 @@ select.knx-input {
   }
   .mdc-notched-outline, .mdc-notched-outline__leading, .mdc-notched-outline__notch,
   .mdc-notched-outline__trailing { border: none !important; }
-  .mat-mdc-form-field-flex { align-items: center; min-height: 36px; }
-  .mat-mdc-form-field-infix { min-height: 36px; padding: 0; border-top: 0; width: auto; display: flex; align-items: center; }
-  .mat-mdc-select { display: flex; align-items: center; height: 36px; }
+  /* 34px inside the 1px border = 36px, the height of every other toolbar control. */
+  .mat-mdc-form-field-flex { align-items: center; min-height: 34px; }
+  .mat-mdc-form-field-infix { min-height: 34px; padding: 0; border-top: 0; width: auto; display: flex; align-items: center; }
+  .mat-mdc-select { display: flex; align-items: center; height: 34px; }
   .mat-mdc-select-trigger { display: flex; align-items: center; height: 100%; }
   .mat-mdc-select-value, .mat-mdc-select-placeholder { font-size: var(--fs-md); color: var(--ink); }
   .mat-mdc-select-value-text, mat-select-trigger { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -311,8 +315,8 @@ select.knx-input {
 /* Touch target >= 44px on mobile, like the other toolbar controls. */
 @media (max-width: 767px) {
   .mat-mdc-form-field.knx-select {
-    .mat-mdc-form-field-flex, .mat-mdc-form-field-infix { min-height: 44px; }
-    .mat-mdc-select { height: 44px; }
+    .mat-mdc-form-field-flex, .mat-mdc-form-field-infix { min-height: 42px; }
+    .mat-mdc-select { height: 42px; }
   }
 }
 
