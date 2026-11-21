@@ -280,6 +280,82 @@ select.knx-input {
   }
 }
 
+/* ============================================================================
+   KNX-SELECT: compact mat-select for filter bars (DPT, group, room filters).
+   Same look as .knx-input (36px, own border, no Material notch); the panel is
+   rendered in an overlay, hence the global rules. Used via
+   <mat-form-field class="knx-select"> + panelClass="knx-select-panel".
+   ============================================================================ */
+.mat-mdc-form-field.knx-select {
+  .mat-mdc-text-field-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-sm);
+    padding: 0 var(--sp-3);
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  }
+  .mdc-notched-outline, .mdc-notched-outline__leading, .mdc-notched-outline__notch,
+  .mdc-notched-outline__trailing { border: none !important; }
+  .mat-mdc-form-field-flex { align-items: center; min-height: 36px; }
+  .mat-mdc-form-field-infix { min-height: 36px; padding: 0; border-top: 0; width: auto; display: flex; align-items: center; }
+  .mat-mdc-select { display: flex; align-items: center; height: 36px; }
+  .mat-mdc-select-trigger { display: flex; align-items: center; height: 100%; }
+  .mat-mdc-select-value, .mat-mdc-select-placeholder { font-size: var(--fs-md); color: var(--ink); }
+  .mat-mdc-select-value-text, mat-select-trigger { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mat-mdc-text-field-wrapper:hover { border-color: var(--ink-3); }
+  &.mat-focused .mat-mdc-text-field-wrapper { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-tint); }
+  /* An active filter is marked like the other filter controls. */
+  &.is-active .mat-mdc-text-field-wrapper { border-color: var(--brand); }
+}
+
+/* Touch target >= 44px on mobile, like the other toolbar controls. */
+@media (max-width: 767px) {
+  .mat-mdc-form-field.knx-select {
+    .mat-mdc-form-field-flex, .mat-mdc-form-field-infix { min-height: 44px; }
+    .mat-mdc-select { height: 44px; }
+  }
+}
+
+.mat-mdc-select-panel.knx-select-panel {
+  padding-top: 0;
+  --mat-select-panel-background-color: var(--surface);
+
+  .mat-mdc-option {
+    min-height: 34px;
+    font-size: var(--fs-sm);
+    padding-left: var(--sp-3);
+    padding-right: var(--sp-3);
+  }
+  .mat-mdc-option .mdc-list-item__primary-text { font-size: var(--fs-sm); letter-spacing: 0; }
+  .mat-mdc-optgroup-label {
+    min-height: 30px;
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-semi);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ink-3);
+  }
+  .mat-mdc-optgroup .mat-mdc-option { padding-left: var(--sp-5); }
+  .opt-key { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--ink-3); margin-right: var(--sp-2); }
+
+  /* Sticky search row at the top of the list. */
+  .knx-select-search {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+
+    > mat-icon { flex: none; width: 17px; height: 17px; font-size: 17px; color: var(--ink-3); }
+    .knx-input { flex: 1; min-width: 0; height: 32px; }
+  }
+  .knx-select-empty { padding: var(--sp-4) var(--sp-3); text-align: center; font-size: var(--fs-sm); color: var(--ink-3); }
+}
+
 /* Time suggestions of the date-time field: the panel takes the width of the narrow time
    input, so the options get compact padding and the panel a floor that fits hh:mm. */
 .mat-timepicker-panel {

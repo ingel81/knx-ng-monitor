@@ -17,7 +17,11 @@ import { LiveBufferService } from '../../core/services/live-buffer.service';
 import { messageTypeKind } from '../../shared/grid/knx-grid.util';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LanguageService } from '../../core/i18n/language.service';
-import { DPT_DESCRIPTIONS } from '../../shared/grid/dpt-descriptions';
+import { localeTag } from '../../core/i18n/locale.util';
+import { formatDecodedValue } from '../../core/i18n/value-format.util';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { DptSelectComponent, dptGroupsOf, matchesDptFilter } from '../../shared/dpt-select/dpt-select.component';
 import { SearchCache, searchTokens } from '../../shared/search.util';
 import { SlashFocusDirective } from '../../shared/slash-focus.directive';
 import { escapeHtml } from '../../shared/html.util';
@@ -87,7 +91,7 @@ interface FilterOption { value: string; label: string; depth: number }
 @Component({
   selector: 'app-graph',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, TranslatePipe, SlashFocusDirective],
+  imports: [CommonModule, FormsModule, MatIconModule, MatTooltipModule, MatFormFieldModule, MatSelectModule, TranslatePipe, SlashFocusDirective, DptSelectComponent],
   templateUrl: './graph.component.html',
   styleUrl: './graph.component.scss',
 })
@@ -116,7 +120,8 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly depths = [1, 2, 3];
   groupOptions: FilterOption[] = [];
   roomOptions: FilterOption[] = [];
-  dptOptions: string[] = [];
+  /** DPT strings of all GAs, the source of the type filter's options. */
+  gaDpts: (string | null | undefined)[] = [];
   /** Filters are set but leave nothing to draw. */
   filterEmpty = false;
   private lang = inject(LanguageService);
@@ -274,7 +279,7 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
       if (n.kind !== 'ga' || !n.address) return true;
       const addr = n.address;
       if (f.group && addr !== f.group && !addr.startsWith(`${f.group}/`)) return false;
-      if (f.dpt && this.dptMain(this.gaByAddr.get(addr)?.datapointType) !== f.dpt) return false;
+      if (f.dpt && !matchesDptFilter(this.gaByAddr.get(addr)?.datapointType, f.dpt)) return false;
       if (roomGas && !roomGas.has(addr)) return false;
       return true;
     };
@@ -309,10 +314,6 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
       while (p && !keep.has(p) && guard++ < 50) { keep.add(p); p = this.parentOf.get(p); }
     }
     return keep;
-  }
-
-  private dptMain(dpt?: string): string {
-    return (dpt ?? '').match(/\d+/)?.[0] ?? '';
   }
 
   /**
@@ -385,17 +386,14 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
     };
     walk(roots, 0, new Set());
 
-    const dpts = new Set<string>();
-    for (const ga of this.gas) {
-      const m = this.dptMain(ga.datapointType);
-      if (m) dpts.add(m);
-    }
-    this.dptOptions = [...dpts].sort((a, b) => Number(a) - Number(b));
+    // Set once per load: a fresh array on every change detection would rebuild the options.
+    this.gaDpts = this.gas.map((ga) => ga.datapointType);
+    const dptGroups = dptGroupsOf(this.gaDpts);
 
     const f = this.filter;
     if (f.group && !this.groupOptions.some((o) => o.value === f.group)) f.group = '';
     if (f.room && !this.roomOptions.some((o) => o.value === f.room)) f.room = '';
-    if (f.dpt && !this.dptOptions.includes(f.dpt)) f.dpt = '';
+    if (f.dpt && !dptGroups.some((g) => g.main === f.dpt || g.subs.includes(f.dpt))) f.dpt = '';
   }
 
   /** Name of the group range covering a main (span >= 256) or middle (span < 256) block. */
@@ -406,15 +404,9 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
     return r?.name ?? null;
   }
 
-  /** Option text with a leading indent for the nesting level (native selects ignore padding). */
-  optionLabel(o: FilterOption): string {
-    return '   '.repeat(o.depth) + o.label;
-  }
-
-  dptLabel(main: string): string {
-    const d = DPT_DESCRIPTIONS[main];
-    const text = d ? (this.lang.lang() === 'de' ? d.de : d.en) : '';
-    return text ? `DPT ${main}  ${text}` : `DPT ${main}`;
+  /** Label of the selected group / room for the closed field. */
+  optionText(options: FilterOption[], value: string): string {
+    return options.find((o) => o.value === value)?.label ?? '';
   }
 
   get hasActiveFilter(): boolean {
@@ -829,7 +821,8 @@ export class GraphComponent implements OnInit, AfterViewInit, OnDestroy {
     node.__glow = 1;
     node.__glowColor = col;
     node.__heat = Math.min(1, (node.__heat || 0) + 0.34);
-    if (t.valueDecoded) node.__value = t.valueDecoded;
+    // Same browser-locale form as the tables (#44): "2,07 W", not the invariant "2.07 W".
+    if (t.valueDecoded) node.__value = formatDecodedValue(t.valueDecoded, t.datapointType, localeTag(this.lang.lang()));
     const links = this.linksByNode.get(node.id);
     if (links && this.graph) for (const l of links) { l.__pc = col; this.graph.emitParticle(l); }
   }

@@ -1,4 +1,6 @@
 <div class="graph-container">
+  <!-- One bar like every other view (#45 follow-up): title, the filters, the view buttons.
+       On mobile the filters fold behind the toggle into a full-width block of this bar. -->
   <div class="toolbar">
     <div class="tb-left">
       <h2 class="page-title">{{ 'graph.title' | translate }}</h2>
@@ -6,6 +8,68 @@
         <span class="graph-stats">{{ nodeCount }} {{ 'graph.nodes' | translate }} · {{ linkCount }} {{ 'graph.edges' | translate }}</span>
       }
     </div>
+
+    @if (hasActiveProject && !loading) {
+      <div class="tb-filters" [class.is-open]="filtersExpanded">
+        <div class="knx-field fb-search">
+          <mat-icon class="field-icon">search</mat-icon>
+          <input class="knx-input knx-input--search" type="text" knxSlashFocus
+                 [(ngModel)]="filter.q" (ngModelChange)="onSearchInput()"
+                 [placeholder]="'graph.filter.search' | translate"
+                 [attr.aria-label]="'graph.filter.search' | translate"
+                 [matTooltip]="'common.slashHint' | translate" matTooltipShowDelay="600">
+          @if (filter.q) {
+            <button type="button" class="field-clear" (click)="clearSearch()" [attr.aria-label]="'graph.filter.clearSearch' | translate">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </div>
+
+        <div class="fb-quick" role="group" [attr.aria-label]="'graph.filter.depth' | translate"
+             [matTooltip]="'graph.filter.depthHint' | translate">
+          <span class="fb-label">{{ 'graph.filter.depth' | translate }}</span>
+          @for (d of depths; track d) {
+            <button type="button" class="knx-chip" [class.is-active]="filter.depth === d"
+                    [attr.aria-pressed]="filter.depth === d" [disabled]="!filter.q.trim()"
+                    (click)="setDepth(d)">{{ d }}</button>
+          }
+        </div>
+
+        <mat-form-field appearance="outline" class="knx-select fb-select" [class.is-active]="!!filter.group" subscriptSizing="dynamic">
+          <mat-select [(ngModel)]="filter.group" (ngModelChange)="onFilterChange()" panelClass="knx-select-panel"
+                      [attr.aria-label]="'graph.filter.group' | translate">
+            <mat-select-trigger>{{ filter.group ? optionText(groupOptions, filter.group) : ('graph.filter.groupAll' | translate) }}</mat-select-trigger>
+            <mat-option value="">{{ 'graph.filter.groupAll' | translate }}</mat-option>
+            @for (o of groupOptions; track o.value) {
+              <mat-option [value]="o.value" [style.padding-left.px]="12 + o.depth * 16">{{ o.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        @if (roomOptions.length > 0) {
+          <mat-form-field appearance="outline" class="knx-select fb-select" [class.is-active]="!!filter.room" subscriptSizing="dynamic">
+            <mat-select [(ngModel)]="filter.room" (ngModelChange)="onFilterChange()" panelClass="knx-select-panel"
+                        [attr.aria-label]="'graph.filter.room' | translate">
+              <mat-select-trigger>{{ filter.room ? optionText(roomOptions, filter.room) : ('graph.filter.roomAll' | translate) }}</mat-select-trigger>
+              <mat-option value="">{{ 'graph.filter.roomAll' | translate }}</mat-option>
+              @for (o of roomOptions; track o.value) {
+                <mat-option [value]="o.value" [style.padding-left.px]="12 + o.depth * 16">{{ o.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+
+        <knx-dpt-select class="fb-dpt" [dpts]="gaDpts" [(value)]="filter.dpt" (valueChange)="onFilterChange()" />
+
+        @if (hasActiveFilter) {
+          <button type="button" class="knx-btn knx-btn--ghost fb-reset" (click)="resetFilter()"
+                  [matTooltip]="'graph.filter.reset' | translate" [attr.aria-label]="'graph.filter.reset' | translate">
+            <mat-icon>filter_alt_off</mat-icon>
+            <span class="fb-reset-text">{{ 'graph.filter.reset' | translate }}</span>
+          </button>
+        }
+      </div>
+    }
 
     <div class="tb-right">
       <button type="button" class="knx-btn knx-btn--outline knx-btn--icon filter-toggle"
@@ -31,77 +95,6 @@
       </button>
     </div>
   </div>
-
-  @if (hasActiveProject && !loading) {
-    <div class="filterbar" [class.is-open]="filtersExpanded">
-      <div class="filterbar-main">
-        <div class="knx-field fb-search">
-          <mat-icon class="field-icon">search</mat-icon>
-          <input class="knx-input knx-input--search" type="text" knxSlashFocus
-                 [(ngModel)]="filter.q" (ngModelChange)="onSearchInput()"
-                 [placeholder]="'graph.filter.search' | translate"
-                 [attr.aria-label]="'graph.filter.search' | translate"
-                 [matTooltip]="'common.slashHint' | translate" matTooltipShowDelay="600">
-          @if (filter.q) {
-            <button type="button" class="field-clear" (click)="clearSearch()" [attr.aria-label]="'graph.filter.clearSearch' | translate">
-              <mat-icon>close</mat-icon>
-            </button>
-          }
-        </div>
-
-        <div class="fb-quick" role="group" [attr.aria-label]="'graph.filter.depth' | translate"
-             [matTooltip]="'graph.filter.depthHint' | translate">
-          <span class="fb-label">{{ 'graph.filter.depth' | translate }}</span>
-          @for (d of depths; track d) {
-            <button type="button" class="knx-chip" [class.is-active]="filter.depth === d"
-                    [attr.aria-pressed]="filter.depth === d" [disabled]="!filter.q.trim()"
-                    (click)="setDepth(d)">{{ d }}</button>
-          }
-        </div>
-
-        <span class="fb-sep"></span>
-
-        <label class="fb-room">
-          <span class="fb-label">{{ 'graph.filter.group' | translate }}</span>
-          <select class="knx-input" [(ngModel)]="filter.group" (ngModelChange)="onFilterChange()">
-            <option value="">{{ 'graph.filter.groupAll' | translate }}</option>
-            @for (o of groupOptions; track o.value) {
-              <option [value]="o.value">{{ optionLabel(o) }}</option>
-            }
-          </select>
-        </label>
-
-        @if (roomOptions.length > 0) {
-          <label class="fb-room">
-            <span class="fb-label">{{ 'graph.filter.room' | translate }}</span>
-            <select class="knx-input" [(ngModel)]="filter.room" (ngModelChange)="onFilterChange()">
-              <option value="">{{ 'graph.filter.roomAll' | translate }}</option>
-              @for (o of roomOptions; track o.value) {
-                <option [value]="o.value">{{ optionLabel(o) }}</option>
-              }
-            </select>
-          </label>
-        }
-
-        <label class="fb-room">
-          <span class="fb-label">{{ 'graph.filter.dpt' | translate }}</span>
-          <select class="knx-input" [(ngModel)]="filter.dpt" (ngModelChange)="onFilterChange()">
-            <option value="">{{ 'graph.filter.dptAll' | translate }}</option>
-            @for (d of dptOptions; track d) {
-              <option [value]="d">{{ dptLabel(d) }}</option>
-            }
-          </select>
-        </label>
-
-        @if (hasActiveFilter) {
-          <button type="button" class="knx-btn knx-btn--ghost" (click)="resetFilter()">
-            <mat-icon>close</mat-icon>
-            {{ 'graph.filter.reset' | translate }}
-          </button>
-        }
-      </div>
-    </div>
-  }
 
   <div class="graph-body">
     @if (loading) {

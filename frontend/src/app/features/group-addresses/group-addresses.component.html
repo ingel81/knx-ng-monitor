@@ -12,6 +12,7 @@
                [matTooltip]="'common.slashHint' | translate" matTooltipShowDelay="600"
                [(ngModel)]="filter" (ngModelChange)="onFilterChange()"
                [placeholder]="'ga.filterPlaceholder' | translate" />
+        <knx-dpt-select class="ga-dpt" [dpts]="leafDpts" [(value)]="dptFilter" (valueChange)="onFilterChange()" />
         <button class="knx-btn knx-btn--outline" (click)="setAllOpen(true)">
           <mat-icon>unfold_more</mat-icon>
           {{ 'ga.expandAll' | translate }}

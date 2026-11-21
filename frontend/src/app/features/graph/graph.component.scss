@@ -75,12 +75,23 @@
   }
 }
 
-// Graph filter bar (#17); layout and the mobile stacking come from the global .filterbar rules.
-.filterbar {
-  .fb-search { width: 230px; }
-  .fb-room select.knx-input { width: 190px; }
+// Graph filters (#17), part of the toolbar like on every other view. They take the space
+// between title and view buttons and wrap onto a second row of the same bar when narrow.
+.tb-filters {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2) var(--sp-3);
+  flex-wrap: wrap;
+  min-width: 0;
+
+  .fb-search { width: 200px; }
+  .fb-select { width: 190px; }
   .knx-chip { min-width: 32px; justify-content: center; }
   .knx-chip:disabled { opacity: .45; cursor: default; }
+  .fb-reset { padding: 0 var(--sp-2); }
+  .fb-reset-text { display: none; }
 }
 
 .graph-body {
@@ -169,10 +180,14 @@
   // Style Guide §9: Touch-Targets ≥44px — die 36px der Basis-Klasse sind auf Touch zu klein.
   .toolbar .tb-right .knx-btn { height: 44px; min-width: 44px; }
   .graph-legend { max-width: 160px; max-height: 32%; font-size: var(--fs-2xs); }
-  // The filter bar would cover most of the canvas; fold it behind the toolbar toggle.
+  // The filters would cover most of the canvas; fold them behind the toolbar toggle into a
+  // full-width block below the buttons.
   .toolbar .filter-toggle { display: inline-flex; }
-  .filterbar { display: none; }
-  .filterbar.is-open { display: block; }
-  .filterbar .fb-search { width: 100%; }
-  .filterbar .fb-search .knx-input { flex: 1; }
+  .tb-filters { display: none; order: 3; width: 100%; justify-content: flex-start; }
+  .tb-filters.is-open { display: flex; }
+  .tb-filters .fb-search, .tb-filters .fb-select, .tb-filters .fb-dpt { width: 100%; }
+  .tb-filters .fb-search .knx-input { flex: 1; }
+  .tb-filters .fb-quick { width: 100%; }
+  .tb-filters .fb-reset { flex: 1 1 100%; justify-content: center; min-height: 44px; }
+  .tb-filters .fb-reset-text { display: inline; }
 }
