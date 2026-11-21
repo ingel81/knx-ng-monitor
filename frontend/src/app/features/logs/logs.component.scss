@@ -65,7 +65,8 @@
 
   .knx-input {
     padding-left: 30px;
-    width: 220px;
+    // Fits the placeholder ("Nachricht oder Quelle filtern…") without cutting it off.
+    width: 260px;
     max-width: 100%;
   }
 }
