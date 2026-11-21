@@ -7,7 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import type { ECharts, EChartsCoreOption } from 'echarts/core';
 import { Subscription, firstValueFrom } from 'rxjs';
@@ -25,7 +25,8 @@ import { ThemeService } from '../../core/services/theme.service';
 import { OverflowTitleDirective } from '../../shared/grid/overflow-title.directive';
 import { SearchCache, foldForSearch, searchTokens } from '../../shared/search.util';
 import { SlashFocusDirective } from '../../shared/slash-focus.directive';
-import { RangePreset, isRangeOrdered, resolveRange } from './time-range.util';
+import { RangePreset, bufferStartAfterRangeStart, isRangeOrdered, resolveRange } from './time-range.util';
+import { formatKnxDate } from '../../core/i18n/date.util';
 import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom, styleLineSeries, TooltipRow } from './chart-skin';
 import { formatDurationMinutes } from '../../shared/duration.util';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -76,7 +77,7 @@ interface LiveSeries {
     A11yModule,
     CommonModule, FormsModule, MatIconModule, MatSelectModule, MatFormFieldModule,
     MatMenuModule, MatTooltipModule, NgxEchartsDirective, TranslatePipe, OverflowTitleDirective,
-    DateTimeFieldComponent, SlashFocusDirective
+    DateTimeFieldComponent, SlashFocusDirective, RouterLink
   ],
   templateUrl: './charts.component.html',
   styleUrl: './charts.component.scss'
@@ -158,6 +159,8 @@ export class ChartsComponent implements OnInit, OnDestroy {
 
   /** Row cap hit — the loaded range is incomplete at its older end. */
   truncated = false;
+  /** Start of the ring buffer when the range reaches further back, else null (#43). */
+  bufferStart: Date | null = null;
   /** Points kept vs. available, for an honest down-sampling note. */
   shownPoints = 0;
   totalPoints = 0;
@@ -776,6 +779,8 @@ export class ChartsComponent implements OnInit, OnDestroy {
         if (seq !== this.loadSeq) return;
         this.downSampled = res.series.some((s) => s.downSampled);
         this.truncated = res.truncated;
+        // A truncated result already says the older end is missing; one note is enough.
+        this.bufferStart = res.truncated ? null : bufferStartAfterRangeStart(range.from, res.bufferStart);
         this.totalPoints = res.series.reduce((sum, s) => sum + s.totalPoints, 0);
         this.shownPoints = res.series.reduce((sum, s) => sum + s.points.length, 0);
         this.series = res.series.map((s) => this.toLiveSeries(s));
@@ -793,6 +798,10 @@ export class ChartsComponent implements OnInit, OnDestroy {
   }
 
   private loadSeq = 0;
+
+  get bufferStartLabel(): string {
+    return formatKnxDate(this.bufferStart, 'dateTimeMin', this.lang.lang());
+  }
 
   private toLiveSeries(s: ChartSeries): LiveSeries {
     const ga = this.availableGas.find((g) => g.address === s.address);

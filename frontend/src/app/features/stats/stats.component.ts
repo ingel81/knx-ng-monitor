@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import type { EChartsCoreOption } from 'echarts/core';
 
@@ -14,7 +14,8 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { DateTimeFieldComponent } from '../../shared/date-time-field/date-time-field.component';
 import { DptTitleDirective } from '../../shared/grid/dpt-title.directive';
 import { ThemeService } from '../../core/services/theme.service';
-import { RangePreset, isRangeOrdered, resolveRange } from '../charts/time-range.util';
+import { RangePreset, bufferStartAfterRangeStart, isRangeOrdered, resolveRange } from '../charts/time-range.util';
+import { formatKnxDate } from '../../core/i18n/date.util';
 import { readSkin, valueAxis, timeAxis, tooltipCfg, dataZoom } from '../charts/chart-skin';
 
 type TopLimit = 10 | 20 | 50;
@@ -23,7 +24,7 @@ type TopLimit = 10 | 20 | 50;
   selector: 'app-stats',
   imports: [
     CommonModule, FormsModule, MatIconModule, MatTooltipModule, NgxEchartsDirective, TranslatePipe,
-    DateTimeFieldComponent, DptTitleDirective
+    DateTimeFieldComponent, DptTitleDirective, RouterLink
   ],
   templateUrl: './stats.component.html',
   styleUrl: './stats.component.scss'
@@ -68,6 +69,8 @@ export class StatsComponent implements OnInit {
   // --- State -----------------------------------------------------------------
   loading = false;
   error = false;
+  /** Start of the ring buffer when the range reaches further back, else null (#43). */
+  bufferStart: Date | null = null;
   total = 0;
   avgRate = 0;
   hasData = false;
@@ -284,9 +287,17 @@ export class StatsComponent implements OnInit {
     };
   }
 
+  get bufferStartLabel(): string {
+    return formatKnxDate(this.bufferStart, 'dateTimeMin', this.lang.lang());
+  }
+
   private applyStats(res: StatsResponse, from: string, to: string): void {
     this.total = res.total;
-    const rangeSeconds = Math.max(1, (new Date(to).getTime() - new Date(from).getTime()) / 1000);
+    this.bufferStart = bufferStartAfterRangeStart(from, res.bufferStart);
+    // The rate covers only the part of the range that has data: averaged over days the buffer
+    // does not reach, a busy bus looked four times quieter than it is (#43).
+    const rateFrom = this.bufferStart?.getTime() ?? new Date(from).getTime();
+    const rangeSeconds = Math.max(1, (new Date(to).getTime() - rateFrom) / 1000);
     this.avgRate = res.total / rangeSeconds;
     this.hasData = res.total > 0;
 

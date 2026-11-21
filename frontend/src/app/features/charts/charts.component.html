@@ -363,6 +363,14 @@
       <span class="note-short">{{ 'charts.truncatedNoteShort' | translate }}</span>
     </div>
   }
+  @if (bufferStart) {
+    <div class="note note--info">
+      <mat-icon>info</mat-icon>
+      <span class="note-full">{{ 'range.bufferNote' | translate: { date: bufferStartLabel } }}</span>
+      <span class="note-short">{{ 'range.bufferNoteShort' | translate: { date: bufferStartLabel } }}</span>
+      <a class="note-link" routerLink="/settings">{{ 'range.bufferNoteLink' | translate }}</a>
+    </div>
+  }
   @if (downSampled) {
     <div class="note">
       <span class="note-full">{{ 'charts.downSampledNote' | translate: { shown: formatCount(shownPoints), total: formatCount(totalPoints) } }}</span>

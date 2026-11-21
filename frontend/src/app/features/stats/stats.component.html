@@ -58,6 +58,16 @@
   </div>
 
   <div class="stats-body">
+    <!-- Statistics count the ring buffer only; say so when the range reaches further back (#43). -->
+    @if (bufferStart) {
+      <div class="buffer-note" role="status">
+        <mat-icon>info</mat-icon>
+        <span class="note-full">{{ 'range.bufferNote' | translate: { date: bufferStartLabel } }}</span>
+        <span class="note-short">{{ 'range.bufferNoteShort' | translate: { date: bufferStartLabel } }}</span>
+        <a class="note-link" routerLink="/settings">{{ 'range.bufferNoteLink' | translate }}</a>
+      </div>
+    }
+
     <div class="kpi-row">
       <div class="kpi-card">
         <div class="kpi-label">{{ 'stats.total' | translate }}</div>

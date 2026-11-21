@@ -255,6 +255,22 @@
   mat-icon { width: 18px; height: 18px; font-size: 18px; flex: none; }
 }
 
+// Ring buffer starts after the range (#43): informational, so the neutral note plus an icon.
+.note--info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+
+  mat-icon { width: 18px; height: 18px; font-size: 18px; flex: none; color: var(--ink-3); }
+}
+
+.note-link {
+  margin-left: auto;
+  flex: none;
+  color: var(--brand);
+  white-space: nowrap;
+}
+
 // Per-series summary under the chart.
 .series-stats {
   flex: none;

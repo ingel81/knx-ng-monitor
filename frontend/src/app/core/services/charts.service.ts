@@ -29,6 +29,8 @@ export interface SeriesResponse {
   series: ChartSeries[];
   /** The row cap was hit: the returned data is the newest part, the older end is missing. */
   truncated: boolean;
+  /** Oldest telegram in the ring buffer (ISO), null when empty. Series read nothing older. */
+  bufferStart?: string | null;
 }
 
 export interface StatsBucket {
@@ -40,6 +42,8 @@ export interface StatsResponse {
   total: number;
   bucketMs: number;
   counts: StatsBucket[];
+  /** Oldest telegram in the ring buffer (ISO), null when empty. Statistics count nothing older. */
+  bufferStart?: string | null;
 }
 
 export interface TopEntry {

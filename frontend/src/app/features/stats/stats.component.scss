@@ -339,6 +339,24 @@
 // charts toolbar (which needs ~1683px) and with the compact nav set in layout.scss, so the
 // two toolbars never collapse at different widths.
 // ---------------------------------------------------------------------------
+// Ring buffer starts after the selected range (#43).
+.buffer-note {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  background: var(--paper-sunk);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+
+  mat-icon { width: 18px; height: 18px; font-size: 18px; flex: none; color: var(--ink-3); }
+  .note-short { display: none; }
+  .note-link { margin-left: auto; flex: none; color: var(--brand); white-space: nowrap; }
+}
+
 @media (max-width: 1559.98px) {
   .tb-divider { display: none; }
 
@@ -422,6 +440,9 @@
 }
 
 @media (max-width: 767px) {
+  .buffer-note .note-full { display: none; }
+  .buffer-note .note-short { display: inline; }
+
   .toolbar { padding: var(--sp-3) var(--sp-4); }
 
   // Bottom padding is the scroll buffer above the bottom nav.

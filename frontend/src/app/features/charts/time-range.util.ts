@@ -46,3 +46,16 @@ export function localToIso(local: string): string | null {
   const d = new Date(local);
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
+
+/**
+ * Statistics and charts read the ring buffer only. Returns its start when the range reaches
+ * further back (by more than a minute, so a preset that starts right at the first telegram
+ * does not trip it), else null (#43).
+ */
+export function bufferStartAfterRangeStart(rangeFrom: string, bufferStart: string | null | undefined): Date | null {
+  if (!bufferStart) return null;
+  const start = new Date(bufferStart);
+  const from = new Date(rangeFrom);
+  if (isNaN(start.getTime()) || isNaN(from.getTime())) return null;
+  return start.getTime() - from.getTime() > 60_000 ? start : null;
+}

@@ -30,9 +30,11 @@ public partial class TelegramsController
     /// that yield no number are skipped. The result is down-sampled to at most maxPoints per address.
     /// </summary>
     /// <remarks>
-    /// A number is taken from the decoded value as the first numeric token (leading minus and
-    /// decimal point or comma allowed), so "21.5 °C" becomes 21.5; failing that, a known
-    /// boolean-ish word (On/Off, True/False, Open/Closed, Up/Down, …) becomes 1 or 0. Anything
+    /// A 1-bit value becomes its bit, read from the labels of the group address's DPT 1 subtype,
+    /// so "Down" is 1 for 1.008 and "Open" is 0 for 1.009. Otherwise a number is taken from the
+    /// decoded value as the first numeric token (leading minus and decimal point or comma
+    /// allowed), so "21.5 °C" becomes 21.5; failing that, a known boolean-ish word (On/Off,
+    /// True/False, Active/Inactive, …) becomes 1 or 0 for telegrams without a DPT. Anything
     /// else is dropped, and an address whose telegrams yield no number at all is omitted from the
     /// response instead of appearing empty. <c>unit</c> is whatever remains of the first chartable
     /// sample once the number is stripped — "°C" for "21.5 °C"; for a boolean sample, which holds
@@ -55,6 +57,10 @@ public partial class TelegramsController
     /// when there is no earlier value, and always null when <c>truncated</c> is true, since the
     /// missing older end would sit between it and the first point. An address with a carry value
     /// but no telegram inside the range is returned with an empty <c>points</c> list.
+    /// </para>
+    /// <para>
+    /// Series are read from the ring buffer only, not from the archive. <c>bufferStart</c> is its
+    /// oldest telegram (null when empty); a range that starts earlier has no data before it.
     /// </para>
     /// <para>
     /// A timestamp without a zone designator (<c>from=2026-07-30T00:00:00</c>) is interpreted as
@@ -172,7 +178,7 @@ public partial class TelegramsController
             });
         }
 
-        return Ok(new SeriesResponse { Series = series, Truncated = truncated });
+        return Ok(new SeriesResponse { Series = series, Truncated = truncated, BufferStart = await GetBufferStartAsync(ct) });
     }
 
     /// <summary>
@@ -180,6 +186,8 @@ public partial class TelegramsController
     /// plus the total count. Backs the statistics "telegrams over time" / msg-per-second view.
     /// </summary>
     /// <remarks>
+    /// Counts the ring buffer only, not the archive; <c>bufferStart</c> is its oldest telegram
+    /// (null when empty), so a client can tell when the range reaches further back.
     /// Counts all telegrams in the range — there is no address, source or type filter here. Every
     /// bucket is returned, including empty ones, so the buckets always tile the range gap-free.
     /// <c>bucketMs</c> is the bucket width in milliseconds and is fractional: the range is divided
@@ -230,8 +238,17 @@ public partial class TelegramsController
         {
             Total = total,
             BucketMs = bucketMs,
-            Counts = bucketList
+            Counts = bucketList,
+            BufferStart = await GetBufferStartAsync(ct)
         });
+    }
+
+    // Oldest telegram still in the ring buffer, so the UI can say when a range reaches further
+    // back than the data it is computed from (#43). Read off the Timestamp index.
+    private async Task<string?> GetBufferStartAsync(CancellationToken ct)
+    {
+        var bounds = await _repository.GetTimestampBoundsAsync(ct);
+        return bounds is { } b ? ToIsoUtc(b.Oldest) : null;
     }
 
     /// <summary>
@@ -523,6 +540,12 @@ public class SeriesResponse
     /// The returned data is the most recent part of it; the older end is missing.
     /// </summary>
     public bool Truncated { get; set; }
+
+    /// <summary>
+    /// Oldest telegram in the ring buffer (UTC, ISO-8601), null when it is empty. Series are read
+    /// from the ring buffer only, so a range starting earlier has no data before this instant.
+    /// </summary>
+    public string? BufferStart { get; set; }
 }
 
 public class ChartSeries
@@ -555,6 +578,12 @@ public class StatsResponse
     public long Total { get; set; }
     public double BucketMs { get; set; }
     public List<StatsBucket> Counts { get; set; } = new();
+
+    /// <summary>
+    /// Oldest telegram in the ring buffer (UTC, ISO-8601), null when it is empty. Statistics count
+    /// the ring buffer only, so a range starting earlier has no data before this instant.
+    /// </summary>
+    public string? BufferStart { get; set; }
 }
 
 public class StatsBucket

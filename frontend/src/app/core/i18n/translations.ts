@@ -504,6 +504,9 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // Kurzfassungen für Mobil — die Langtexte kosten dort zwei Zeilen Höhe.
     'charts.downSampledNoteShort': '{{shown}} / {{total}} points',
     'charts.truncatedNoteShort': 'Older data missing',
+    'range.bufferNote': 'Data only from {{date}}: statistics and charts read the ring buffer, not the archive.',
+    'range.bufferNoteShort': 'Data only from {{date}}',
+    'range.bufferNoteLink': 'Enlarge ring buffer',
     'charts.exportCsv': 'CSV',
     'charts.exportCsvTooltip': 'Download the charted values as CSV',
     'charts.searchGa': 'Search address or name…',
@@ -1139,6 +1142,9 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     // Kurzfassungen für Mobil — die Langtexte kosten dort zwei Zeilen Höhe.
     'charts.downSampledNoteShort': '{{shown}} / {{total}} Punkte',
     'charts.truncatedNoteShort': 'Ältere Daten fehlen',
+    'range.bufferNote': 'Daten erst ab {{date}}: Statistik und Diagramme lesen den Ringpuffer, nicht das Archiv.',
+    'range.bufferNoteShort': 'Daten erst ab {{date}}',
+    'range.bufferNoteLink': 'Ringpuffer vergrößern',
     'charts.exportCsv': 'CSV',
     'charts.exportCsvTooltip': 'Dargestellte Werte als CSV herunterladen',
     'charts.searchGa': 'Adresse oder Name suchen…',
