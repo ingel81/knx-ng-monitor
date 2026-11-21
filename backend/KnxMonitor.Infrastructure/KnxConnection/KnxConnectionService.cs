@@ -128,6 +128,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
 
             // Create KNX bus instance
             var parameters = await BuildConnectorParameters(configuration, keyringBlob);
+            ConfigureParametersForTests?.Invoke(parameters);
             _autoReconnectActive = parameters.AutoReconnect;
             Interlocked.Exchange(ref _recoveringSinceTicks, 0);
             _knxBus = new KnxBus(parameters);
@@ -661,6 +662,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         {
             await _knxBus.WriteGroupValueAsync(ga, groupValue, MessagePriority.Low, _cancellationTokenSource.Token);
             _logger.LogInformation("GA write: {Address} = {Value} (DPT {Dpt})", address, value, dptType);
+            PublishOwnTelegram(ga, GroupEventType.ValueWrite, groupValue);
             return true;
         }
         catch (Exception ex)
@@ -690,6 +692,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             // receive path and shows up as a telegram in the live stream / history.
             await _knxBus.RequestGroupValueAsync(ga, MessagePriority.Low, _cancellationTokenSource.Token);
             _logger.LogInformation("GA read request sent to {Address}", address);
+            PublishOwnTelegram(ga, GroupEventType.ValueRead, null);
             return true;
         }
         catch (Exception ex)
@@ -699,12 +702,34 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
         }
     }
 
+    /// <summary>Test hook: adjusts the connector parameters before the bus is created (e.g. multicast TTL 0).</summary>
+    internal Action<ConnectorParameters>? ConfigureParametersForTests { get; set; }
+
     private void OnGroupMessageReceived(object? sender, GroupEventArgs e)
+        => PublishTelegram(e.SourceAddress, e.DestinationAddress, e.EventType, e.Value);
+
+    // Falcon raises GroupMessageReceived only for telegrams from other participants, never for the
+    // ones this bus sends itself (checked over a routing loopback). Without this, a write or read
+    // from the app went onto the bus but appeared neither live nor in the recording (#49). The
+    // source is the address the interface sends under: the tunnel address, or the configured one
+    // when routing.
+    private void PublishOwnTelegram(Knx.Falcon.GroupAddress destination, GroupEventType type, GroupValue? value)
+    {
+        var bus = _knxBus;
+        if (bus == null)
+            return;
+        IndividualAddress source;
+        try { source = bus.InterfaceConfiguration.IndividualAddress; }
+        catch { source = default; }
+        PublishTelegram(source, destination, type, value);
+    }
+
+    private void PublishTelegram(IndividualAddress sourceAddress, Knx.Falcon.GroupAddress destinationAddress, GroupEventType eventType, GroupValue? value)
     {
         try
         {
             // Map EventType to our MessageType enum (typed enum, not string)
-            var messageType = e.EventType switch
+            var messageType = eventType switch
             {
                 GroupEventType.ValueWrite => MessageType.Write,
                 GroupEventType.ValueRead => MessageType.Read,
@@ -713,14 +738,14 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             };
 
             // Get raw value bytes (for storage / hex display)
-            var valueBytes = GetValueBytes(e.Value);
+            var valueBytes = GetValueBytes(value);
 
             // Convert Falcon telegram to our domain model
             var telegram = new KnxTelegram
             {
                 Timestamp = DateTime.UtcNow,
-                SourceAddress = e.SourceAddress.ToString(),
-                DestinationAddress = e.DestinationAddress.ToString(),
+                SourceAddress = sourceAddress.ToString(),
+                DestinationAddress = destinationAddress.ToString(),
                 MessageType = messageType,
                 Value = valueBytes,
                 ValueDecoded = null, // Will be set after resolving DPT
@@ -738,7 +763,7 @@ public class KnxConnectionService : IKnxConnectionService, IAsyncDisposable, IDi
             }
 
             // Decode using the original GroupValue (keeps correct bit-size for short DPTs)
-            telegram.ValueDecoded = DptConverter.Decode(datapointType, e.Value);
+            telegram.ValueDecoded = DptConverter.Decode(datapointType, value);
 
             // Raise event for SignalR broadcasting (now with GroupAddressId set!)
             TelegramReceived?.Invoke(this, telegram);
